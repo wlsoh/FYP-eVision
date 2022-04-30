@@ -3,13 +3,27 @@
 # Program Name: Main GUI Integration
 # Date Created: 05/05/2022
 from tkinter import *
+from tkinter import messagebox
 from PIL import Image, ImageTk
 from ctypes import windll
 import pymysql
+import pymysql
+from pymysql.constants import CLIENT
+import re
 
 # Prevent blur due to screen scale setting
 windll.shcore.SetProcessDpiAwareness(1) 
-
+# Regex for password validation
+pare = re.compile(r"^(?=.*[A-Z])(?=.*[!@#$&*])(?=.*[0-9])(?=.*[a-z]).{8}$")
+# Create database connection to AWS RDS
+db = pymysql.connect(
+    host='mydatabase.cdkg8rguncrh.ap-southeast-1.rds.amazonaws.com',
+    user='admin',
+    password='%Abc040231',
+    database='eVision',
+    client_flag=CLIENT.MULTI_STATEMENTS
+)
+cursor = db.cursor()
 #==============================================================================================#
 #                                   Functions & Classes                                        #
 #==============================================================================================#
@@ -52,8 +66,60 @@ class ResizingCanvas(Canvas):
 #     y = (screen_height/2)-(window_height/2)
 #     z.geometry(f'{window_width}x{window_height}+{int(x)}+{int(y)}')
 
+# Login function
+def login():
+    uname = txt_email.get()
+    pas = txt_pass.get()
+    global currentuser
+    
+    # If both fields empty
+    if len(uname) == 0 & len(pas) == 0:
+        messagebox.showerror("Login Failed", "The fields were empty! Please fill in the valid email and password before login again!")
+        txt_email.focus()
+    # If email field empty
+    elif len(uname) == 0:
+        messagebox.showerror("Login Failed", "The email field was empty! Please fill in the valid email and login again!")
+        txt_email.focus()
+    # If password field empty
+    elif len(pas) == 0:
+        messagebox.showerror("Login Failed", "The password field was empty! Please fill in the valid password and login again!")
+        txt_pass.focus()
+    # If password minimum length not satisfied
+    elif len(pas) < 8:
+        messagebox.showerror("Login Failed", "The password should not less than 8 characters! Please fill in the valid password and login again!")
+        txt_pass.delete(0, END)
+        txt_pass.focus()
+    else:  
+        sql = '''SELECT * FROM User WHERE user_email = (%s) AND user_password = (%s)'''
+        row_result = cursor.execute(sql, (uname, pas))
+        if row_result > 0:
+            result_detail = cursor.fetchone()
+            currentuser = {
+                'user_id': result_detail[0],
+                'user_firstname': result_detail[1],
+                'user_lastname': result_detail[2],
+                'user_password': result_detail[3],
+                'user_addressline': result_detail[4],
+                'user_city': result_detail[5],
+                'user_state': result_detail[6],
+                'user_postcode': result_detail[7],
+                'user_email': result_detail[8],
+                'user_phone': result_detail[9],
+                'user_role': result_detail[10],
+                'user_firstlogin': result_detail[12]
+            }
+            messagebox.showinfo("Login Successful", "Hi {0}, welcome back to e-Vision!".format(currentuser["user_firstname"]))
+            mainPage() # Invoke the main page
+            root.withdraw() # Withdraw the login page
+        # If no such user found
+        else:
+            messagebox.showerror("Login Failed", "Invalid email/password! Please try to login again with valid email and password created!")
+            txt_email.delete(0, END)
+            txt_pass.delete(0, END)
+            txt_email.focus()
+        
 #==============================================================================================#
-#                                           Login                                              #
+#                                        Login Page                                            #
 #==============================================================================================#
 
 ## Login Page Interface (Root)
@@ -107,15 +173,22 @@ lbl_pass = Label(root, text="Password", font=("Lato bold", int(15*ratio)), bg="#
 lbl_pass.grid(row=5, column=1, sticky="w", padx=int(100*ratio), pady=(int(50*ratio),int(5*ratio)))
 txt_pass = Entry(root, bd=17, relief=FLAT, font=("Lato", int(14*ratio)), show="*")
 txt_pass.grid(row=6, column=1, sticky="nsew", padx=int(100*ratio))
-btn_login = Button(root, text="Login Account", font=("Lato bold", int(16*ratio)), height=2, fg="white", bg="#1267AC", relief=RAISED, activebackground="#0E4470", activeforeground="white")
+btn_login = Button(root, text="Login Account", command=lambda:login(), font=("Lato bold", int(16*ratio)), height=2, fg="white", bg="#1267AC", relief=RAISED, activebackground="#0E4470", activeforeground="white")
 btn_login.grid(row=7, column=1, sticky="nsew", padx=int(100*ratio), pady=(int(70*ratio),int(40*ratio)))
 lbl_reg = Label(root, text="Don't have account? Please contact company's Admin", font=("Lato", int(12*ratio)), bg="#EDF1F7")
 lbl_reg.grid(row=8, column=1, sticky="w", padx=int(100*ratio))
 
+#==============================================================================================#
+#                                         Main Page                                            #
+#==============================================================================================#
 
-
-
-
+## Main Page Interface
+def mainPage():
+    mainWindow = Toplevel(root)
+    mainWindow.title('e-Vision')
+    mainWindow.iconbitmap('asset/logo.ico')
+    mainWindow.state('zoomed')
+    mainWindow.minsize(int(cscreen_width*0.9), int(cscreen_height*0.9))
 
 
 
