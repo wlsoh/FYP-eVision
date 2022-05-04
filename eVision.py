@@ -103,12 +103,10 @@ def login():
             }
             now = datetime.now() # Get current date time
             dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-            print(dt_string)
             sql = '''UPDATE User SET user_lastlogin_datetime = (%s) WHERE user_id = (%s)''' # Update last login
             cursor.execute(sql, (dt_string, currentuser["user_id"]))
             cursor.connection.commit()
             currentuser["user_lastlogin"] = dt_string
-            print(currentuser)
             txt_email.delete(0, END)
             txt_pass.delete(0, END)
             txt_email.focus()
@@ -128,8 +126,7 @@ def logout():
     if confirmbox == 'yes':
         currentuser = {} # Set user session to empty
         mainWindow.destroy() # Destroy current winfow
-        root.iconify() # Show login page again
-        root.deiconify()
+        root.deiconify() # Show login page again
         
 # First time change password function
 def firstchange():
@@ -189,6 +186,10 @@ def firstchange():
         else:
             messagebox.showerror("Change Passord Failed", "Error occured in server! Please check with devloper in order to use the system!")
             logout()  
+
+# Do nothing function
+def disable_event():
+   pass
         
 #==============================================================================================#
 #                                        Login Page                                            #
@@ -279,10 +280,10 @@ def mainPage():
     mainWindow.grid_rowconfigure(7, weight=0)
     mainWindow.grid_rowconfigure(8, weight=0)
     # Setup frames
-    login_banner = Frame(mainWindow, width=int(cscreen_width*0.78), height=int(cscreen_height), bg="#EDF1F7")
-    login_banner.grid(row=0, column=0, rowspan=9, columnspan=3, sticky="nsew")
-    login_component = Frame(mainWindow, width=int(cscreen_width*0.22), height=int(cscreen_height), bg="#1D253D")
-    login_component.grid(row=0, column=3, rowspan=9, columnspan=2, sticky="nsew")
+    left_frame = Frame(mainWindow, width=int(cscreen_width*0.78), height=int(cscreen_height), bg="#EDF1F7")
+    left_frame.grid(row=0, column=0, rowspan=9, columnspan=3, sticky="nsew")
+    right_frame = Frame(mainWindow, width=int(cscreen_width*0.22), height=int(cscreen_height), bg="#1D253D")
+    right_frame.grid(row=0, column=3, rowspan=9, columnspan=2, sticky="nsew")
     # Left components
     video_player = Frame(mainWindow, bg="white", highlightbackground="black", highlightthickness=1)
     video_player.grid(row=0, column=0, rowspan=8, columnspan=3, sticky="nsew", padx=int(25*ratio), pady=(int(30*ratio), int(15*ratio)))
@@ -315,7 +316,7 @@ def mainPage():
     img_label.grid(column=3, row=0, columnspan=2, sticky="nsew", pady=(int(30*ratio), int(5*ratio)))
     btn_frame4 = Frame(mainWindow, bg="#1D253D")
     btn_frame4.grid(row=1, column=3, sticky="nse", padx=int(5*ratio))
-    btn_profile = Button(btn_frame4, text="Profile", font=("Lato bold", int(13*ratio)), height=1, width=int(15*ratio), fg="white", bg="#5869F0", relief=FLAT, activebackground="#414EBB", activeforeground="white")
+    btn_profile = Button(btn_frame4, text="Profile", command=lambda:profilePage(), font=("Lato bold", int(13*ratio)), height=1, width=int(15*ratio), fg="white", bg="#5869F0", relief=FLAT, activebackground="#414EBB", activeforeground="white")
     btn_profile.pack(pady=int(10*ratio))
     btn_frame5 = Frame(mainWindow, bg="#1D253D")
     btn_frame5.grid(row=1, column=4, sticky="nsw", padx=int(5*ratio))
@@ -426,10 +427,42 @@ def mainPage():
 ## Profile Page Interface
 def profilePage():
     global profileWindow
+    mainWindow.withdraw()
     profileWindow = Toplevel(mainWindow)
     profileWindow.title('e-Vision My Profile')
     profileWindow.iconbitmap('asset/logo.ico')
-    profileWindow.state('zoomed')
-    profileWindow.minsize(int(cscreen_width*0.9), int(cscreen_height*0.9))
+    height = int(700*ratio)
+    width = int(1150*ratio)
+    x = (cscreen_width/2)-(width/2)
+    y = (cscreen_height/2)-(height/2)
+    profileWindow.geometry(f'{width}x{height}+{int(x)}+{int(y)}')
+    profileWindow.resizable(False, False)
+    profileWindow.protocol("WM_DELETE_WINDOW", disable_event)
+    # Configure row column attribute
+    profileWindow.grid_columnconfigure(0, weight=1)
+    profileWindow.grid_columnconfigure(1, weight=2)
+    profileWindow.grid_columnconfigure(2, weight=2)
+    profileWindow.grid_rowconfigure(0, weight=1)
+    profileWindow.grid_rowconfigure(1, weight=1)
+    profileWindow.grid_rowconfigure(2, weight=1)
+    profileWindow.grid_rowconfigure(3, weight=0)
+    profileWindow.grid_rowconfigure(4, weight=1)
+    profileWindow.grid_rowconfigure(5, weight=0)
+    profileWindow.grid_rowconfigure(6, weight=2)
+    profileWindow.grid_rowconfigure(7, weight=3)
+    # Setup frames
+    left_frame = Frame(profileWindow, width=int(cscreen_width*0.18), height=int(cscreen_height), bg="#222222")
+    left_frame.grid(row=0, column=0, rowspan=8, sticky="nsew")
+    right_frame = Frame(profileWindow, width=int(cscreen_width*0.4), height=int(cscreen_height), bg="#EDF1F7")
+    right_frame.grid(row=0, column=1, rowspan=8, columnspan=2, sticky="nsew")
+    # Left components
+    btn_frame1 = Frame(profileWindow, bg="#222222")
+    btn_frame1.grid(row=0, column=0, sticky="nsw", padx=int(10*ratio), pady=int(10*ratio))
+    icon_back = Image.open('asset/back.png')
+    icon_back = icon_back.resize((int(65*ratio),int(65*ratio)), Image.ANTIALIAS)
+    icon_back = ImageTk.PhotoImage(icon_back)
+    btn_next = Button(btn_frame1, image=icon_back, height=int(65*ratio), width=int(65*ratio), bg="#222222", relief=FLAT, bd=0, highlightthickness=0, activebackground="#222222")
+    btn_next.image = icon_back
+    btn_next.pack()
 
 root.mainloop()
