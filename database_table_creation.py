@@ -56,7 +56,7 @@ if(exist == FALSE):
       user_email VARCHAR(255) NOT NULL,
       user_phone VARCHAR(15) NOT NULL,
       user_role TINYINT(1) NOT NULL DEFAULT '2',
-      user_avatar VARCHAR(255) NOT NULL DEFAULT '1AuuLIKp6NlG7UppLHFgdYHR6eKmrlged',
+      user_avatar VARCHAR(255) NOT NULL DEFAULT '1cqBLIEBhkWQ1qmRSi1UehZ7pYKeGQm8e',
       user_lastlogin_datetime DATETIME NULL,
       user_firstLogin TINYINT(1) NOT NULL DEFAULT '1',
       user_isDelete TINYINT(1) NOT NULL DEFAULT '0',

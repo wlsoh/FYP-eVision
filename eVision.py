@@ -5,6 +5,7 @@
 from tkinter import *
 from tkinter import messagebox
 from tkinter import ttk
+from tkinter.filedialog import askopenfile
 from PIL import Image, ImageTk
 from ctypes import windll
 import pymysql
@@ -12,6 +13,11 @@ import pymysql
 from pymysql.constants import CLIENT
 import re
 from datetime import datetime
+import os
+import io
+from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
+from Google import Create_Service
+import pandas as pd
 
 # Prevent blur due to screen scale setting
 windll.shcore.SetProcessDpiAwareness(1) 
@@ -26,6 +32,13 @@ db = pymysql.connect(
     client_flag=CLIENT.MULTI_STATEMENTS
 )
 cursor = db.cursor()
+# Connection with Google Cloud using Auth2.0
+CLIENT_SECRET_FILE = 'client_secret.json'
+API_NAME = 'drive'
+API_VERSION = 'v3'
+SCOPES = ['https://www.googleapis.com/auth/drive']
+service = Create_Service(CLIENT_SECRET_FILE, API_NAME, API_VERSION, SCOPES)
+folder_id = '18aJTxbazV-zxcygJQ4E9qIu1f1bwAAWH'
 #==============================================================================================#
 #                                   Functions & Classes                                        #
 #==============================================================================================#
@@ -85,6 +98,8 @@ def login():
         sql = '''SELECT * FROM User WHERE user_email = (%s) AND user_password = (%s)'''
         row_result = cursor.execute(sql, (uname, pas))
         if row_result > 0:
+            loading(root)
+            root.update()
             result_detail = cursor.fetchone()
             currentuser = {
                 'user_id': result_detail[0],
@@ -98,8 +113,9 @@ def login():
                 'user_email': result_detail[8],
                 'user_phone': result_detail[9],
                 'user_role': result_detail[10],
-                'user_lastlogin': result_detail[11],
-                'user_firstlogin': result_detail[12]
+                'user_avatar': result_detail[11],
+                'user_lastlogin': result_detail[12],
+                'user_firstlogin': result_detail[13]
             }
             now = datetime.now() # Get current date time
             dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
@@ -107,6 +123,10 @@ def login():
             cursor.execute(sql, (dt_string, currentuser["user_id"]))
             cursor.connection.commit()
             currentuser["user_lastlogin"] = dt_string
+            # Get avatar
+            getimg(currentuser["user_avatar"])
+            root.attributes('-disabled', 0)
+            loading_splash.destroy()
             txt_email.delete(0, END)
             txt_pass.delete(0, END)
             txt_email.focus()
@@ -124,9 +144,14 @@ def login():
 def logout():
     confirmbox = messagebox.askquestion('e-Vision Logout', 'Are you sure to logout the system?', icon='warning')
     if confirmbox == 'yes':
-        currentuser = {} # Set user session to empty
+        currentuser.clear() # Set user session to empty
+        # Clear all files in temp folder
+        dir = './temp'
+        for f in os.listdir(dir):
+            os.remove(os.path.join(dir, f))
         mainWindow.destroy() # Destroy current winfow
         root.deiconify() # Show login page again
+        root.state('zoomed')
         
 # First time change password function
 def firstchange():
@@ -190,6 +215,156 @@ def firstchange():
 # Do nothing function
 def disable_event():
    pass
+
+# Back to main function
+def backmain(cur):
+    cur.withdraw()
+    mainWindow.deiconify()
+    mainWindow.state('zoomed')
+
+# Download image from cloud storage function
+def getimg(fileid):
+    # Download the uploaded file
+    file_ids = [fileid]
+    file_names = [fileid + '.png']
+
+    for file_id, file_name in zip(file_ids, file_names):
+        request = service.files().get_media(fileId=file_id)
+        
+        fh = io.BytesIO()
+        downloader = MediaIoBaseDownload(fd=fh, request=request)
+        done = False
+        
+        while not done:
+            status, done = downloader.next_chunk()
+            print('Download progress {0}'.format(status.progress()*100))
+            
+        fh.seek(0)
+        with open(os.path.join('./temp', file_name), 'wb') as f:
+            f.write(fh.read())
+            f.close()
+            
+# Download video from cloud storage function
+def getvideo(fileid):
+    # Download the uploaded file
+    file_ids = [fileid]
+    file_names = [fileid + '.mp4']
+
+    for file_id, file_name in zip(file_ids, file_names):
+        request = service.files().get_media(fileId=file_id)
+        
+        fh = io.BytesIO()
+        downloader = MediaIoBaseDownload(fd=fh, request=request)
+        done = False
+        
+        while not done:
+            status, done = downloader.next_chunk()
+            print('Download progress {0}'.format(status.progress()*100))
+            
+        fh.seek(0)
+        with open(os.path.join('./temp', file_name), 'wb') as f:
+            f.write(fh.read())
+            f.close()         
+
+# Upload image to cloud storage function
+def uploadimg(filepath):
+    # Upload a file to folder
+    file_names = [filepath]
+    mime_types = ['image/jpg ']
+
+    for file_name, mime_type in zip(file_names, mime_types):
+        file_metadata = {
+            'name': file_name,
+            'parents': [folder_id]
+        }
+
+        media = MediaFileUpload(file_name, mimetype=mime_type)
+        
+        service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id'
+        ).execute()
+
+# Delete existing file
+def deletefile(fileid):
+    file_id = fileid
+    if(file_id != "1cqBLIEBhkWQ1qmRSi1UehZ7pYKeGQm8e"):
+        service.files().delete(fileId=file_id).execute()
+
+# Get the latest file ID
+def getfilelist():
+    # Get list of file
+    query = f"parents = '{folder_id}'"
+    response = service.files().list(q=query).execute()
+    files = response.get('files')
+    nextPageToken = response.get('nextPageToken')
+
+    while nextPageToken:
+        response = service.files().list(q=query, pageToken=nextPageToken).execute()
+        files.extend(response.get('files'))
+        nextPageToken = response.get('nextPageToken')
+        
+    pd.set_option('display.max_columns', 100)
+    pd.set_option('display.max_rows', 500)
+    pd.set_option('display.min_rows', 500)
+    pd.set_option('display.max_colwidth', 150)
+    pd.set_option('display.width', 200)
+    pd.set_option('expand_frame_repr', True)
+    df = pd.DataFrame(files)
+    # print(df)
+    # print(df.iloc[0,1])
+    return df.iloc[0,1]
+
+# Loading screen function
+def loading(win):
+    global loading_splash, frame_loading
+    
+    win.attributes('-disabled', 1)
+    loading_splash = Toplevel(root)
+    loading_splash.grab_set()
+    loading_splash.overrideredirect(True)
+    height = int(150*ratio)
+    width = int(400*ratio)
+    x = (cscreen_width/2)-(width/2)
+    y = (cscreen_height/2)-(height/2)
+    loading_splash.geometry(f'{width}x{height}+{int(x)}+{int(y)}')
+    frame_loading = Frame(loading_splash, width=width, height=height, bg="#242426")
+    frame_loading.pack()
+    Label(frame_loading, text="Loading...", font="Bahnschrift 15", bg="#242426", fg='#FFBD09').place(x=int(152*ratio), y=int(35*ratio))
+    Label(frame_loading, text="Please wait...", font="Bahnschrift 15", bg="#242426", fg='#FFBD09').place(x=int(135*ratio), y=int(70*ratio))
+
+# Upload avatar function
+def upload_avatar():
+    file = askopenfile(parent=profileWindow, mode='rb', title='Choose a image file', filetypes=[("PNG", "*.png"),("JPG", "*.jpg")])
+    if not file:
+        pass
+    else:
+        size = os.path.getsize(file.name)
+        # Limit file size as 20mb max
+        if size > 20971520:
+            messagebox.showerror("Avatar Upload Failed", "The avatar image should not be exceeding 20MB!")
+        else:
+            loading(profileWindow)
+            profileWindow.update()
+            uploadimg(file.name)
+            temp_id = getfilelist()
+            deletefile(currentuser["user_avatar"])
+            sql = '''UPDATE User SET user_avatar = (%s) WHERE user_id = (%s)''' # Update user avatar
+            cursor.execute(sql, (temp_id, currentuser["user_id"]))
+            cursor.connection.commit()
+            currentuser["user_avatar"] = temp_id
+            getimg(currentuser["user_avatar"]) # Download the new avatar to temp
+            avatar_path = 'temp/' + currentuser["user_avatar"] + '.png' # Display new avatar
+            img_avatar = Image.open(avatar_path)
+            img_avatar = img_avatar.resize((int(200*ratio),int(200*ratio)), Image.ANTIALIAS)
+            img_avatar = ImageTk.PhotoImage(img_avatar)
+            imgava_label.configure(image=img_avatar)
+            imgava_label.image = img_avatar
+            profileWindow.attributes('-disabled', 0)
+            loading_splash.destroy()
+            messagebox.showinfo("Avatar Upload Successful", "Your new avatar image had been successfully replaced!")
+        
         
 #==============================================================================================#
 #                                        Login Page                                            #
@@ -342,7 +517,6 @@ def mainPage():
     history_accif.pack(fill="both", expand=1)
     acci_tab.add(new_accif, text="Unreviewed List")
     acci_tab.add(history_accif, text="Accidents History")
-    # to be continued...
     btn_frame6 = Frame(mainWindow, bg="#1D253D")
     btn_frame6.grid(row=3, column=3, columnspan=2, sticky="nsew", padx=5)
     btn_refresh = Button(btn_frame6, text="Refresh Accident List", font=("Lato bold", int(13*ratio)), height=1, width=int(32*ratio), fg="white", bg="#5869F0", relief=FLAT, activebackground="#414EBB", activeforeground="white")
@@ -404,7 +578,7 @@ def mainPage():
         wel_lbl.grid(row=0, column=0, padx=int(25*ratio), pady=(int(25*ratio), int(10*ratio)), sticky="nsw")
         f1 = Frame(wel, bg="white")
         f1.grid(row=1, column=0, columnspan=2, padx=int(25*ratio), sticky="nsew")
-        desc_lbl = Text(f1, font=("Lato", int(12*ratio)), bg="white", wrap=WORD, highlightthickness=0, height=5, relief=FLAT)
+        desc_lbl = Text(f1, font=("Lato", int(12*ratio)), bg="white", wrap=WORD, highlightthickness=0, height=int(5*ratio), relief=FLAT)
         desc_lbl.pack()
         desc_lbl.insert(INSERT, "To make your account secure, please create a new password to replace the temporary password given initially. (At least 8 characters with minimum one special character and one uppercase letter)")
         desc_lbl.configure(state="disabled")
@@ -439,21 +613,21 @@ def profilePage():
     profileWindow.resizable(False, False)
     profileWindow.protocol("WM_DELETE_WINDOW", disable_event)
     # Configure row column attribute
-    profileWindow.grid_columnconfigure(0, weight=1)
-    profileWindow.grid_columnconfigure(1, weight=2)
-    profileWindow.grid_columnconfigure(2, weight=2)
-    profileWindow.grid_rowconfigure(0, weight=1)
-    profileWindow.grid_rowconfigure(1, weight=1)
+    profileWindow.grid_columnconfigure(0, weight=0)
+    profileWindow.grid_columnconfigure(1, weight=1)
+    profileWindow.grid_columnconfigure(2, weight=1)
+    profileWindow.grid_rowconfigure(0, weight=0)
+    profileWindow.grid_rowconfigure(1, weight=0)
     profileWindow.grid_rowconfigure(2, weight=1)
     profileWindow.grid_rowconfigure(3, weight=0)
-    profileWindow.grid_rowconfigure(4, weight=1)
+    profileWindow.grid_rowconfigure(4, weight=0)
     profileWindow.grid_rowconfigure(5, weight=0)
-    profileWindow.grid_rowconfigure(6, weight=2)
+    profileWindow.grid_rowconfigure(6, weight=1)
     profileWindow.grid_rowconfigure(7, weight=3)
     # Setup frames
-    left_frame = Frame(profileWindow, width=int(cscreen_width*0.18), height=int(cscreen_height), bg="#222222")
+    left_frame = Frame(profileWindow, width=int(cscreen_width*0.17), height=int(cscreen_height), bg="#222222")
     left_frame.grid(row=0, column=0, rowspan=8, sticky="nsew")
-    right_frame = Frame(profileWindow, width=int(cscreen_width*0.4), height=int(cscreen_height), bg="#EDF1F7")
+    right_frame = Frame(profileWindow, width=int(cscreen_width*0.43), height=int(cscreen_height), bg="#EDF1F7")
     right_frame.grid(row=0, column=1, rowspan=8, columnspan=2, sticky="nsew")
     # Left components
     btn_frame1 = Frame(profileWindow, bg="#222222")
@@ -461,8 +635,61 @@ def profilePage():
     icon_back = Image.open('asset/back.png')
     icon_back = icon_back.resize((int(65*ratio),int(65*ratio)), Image.ANTIALIAS)
     icon_back = ImageTk.PhotoImage(icon_back)
-    btn_next = Button(btn_frame1, image=icon_back, height=int(65*ratio), width=int(65*ratio), bg="#222222", relief=FLAT, bd=0, highlightthickness=0, activebackground="#222222")
-    btn_next.image = icon_back
-    btn_next.pack()
+    btn_back = Button(btn_frame1, command=lambda:backmain(profileWindow), image=icon_back, height=int(65*ratio), width=int(65*ratio), bg="#222222", relief=FLAT, bd=0, highlightthickness=0, activebackground="#222222")
+    btn_back.image = icon_back
+    btn_back.pack()
+    avatar_path = 'temp/' + currentuser["user_avatar"] + '.png'
+    img_avatar = Image.open(avatar_path)
+    img_avatar = img_avatar.resize((int(200*ratio),int(200*ratio)), Image.ANTIALIAS)
+    img_avatar = ImageTk.PhotoImage(img_avatar)
+    global imgava_label
+    imgava_label = Label(profileWindow, image=img_avatar, bg="#222222")
+    imgava_label.image = img_avatar
+    imgava_label.grid(column=0, row=1, rowspan=2, sticky="nsew")
+    page_title = Label(profileWindow, text="Personal Info", font=("Lato bold", int(18*ratio)), bg="#222222", fg="white")
+    page_title.grid(row=3, column=0, sticky="nsew", pady=int(10*ratio))
+    btn_frame2 = Frame(profileWindow, bg="#222222")
+    btn_frame2.grid(row=4, column=0, sticky="nsew")
+    btn_upload = Button(btn_frame2, command=lambda:upload_avatar(), text="Upload New Avatar", font=("Lato bold", int(12*ratio)), height=1, width=int(18*ratio), fg="white", bg="#1F5192", relief=FLAT, activebackground="#173B6A", activeforeground="white")
+    btn_upload.pack()
+    # Right components
+    sys_label = Label(profileWindow, text="e-Vision", font=("Lato bold", int(14*ratio)), bg="#EDF1F7", fg="black")
+    sys_label.grid(row=0, column=2, sticky="ne", padx=int(30*ratio), pady=int(15*ratio))
+    name_label = Label(profileWindow, text="{}".format(currentuser["user_firstname"]+" "+currentuser["user_lastname"]), font=("Lato bold", int(32*ratio)), bg="#EDF1F7", fg="#05009B")
+    name_label.grid(row=1, column=1, sticky="sw", padx=(int(35*ratio), 0), pady=(int(30*ratio), 0))
+    if currentuser["user_role"]==1:
+        txt = 'Admin'
+    else:
+        txt = 'Monitoring Employee'
+    role_label = Label(profileWindow, text="{}".format(txt), font=("Lato", int(15*ratio)), bg="#EDF1F7", fg="black")
+    role_label.grid(row=2, column=1, sticky="nw", padx=(int(35*ratio), 0))
+    uid_label = Label(profileWindow, text="User ID", font=("Lato bold", int(16*ratio)), bg="#EDF1F7", fg="black")
+    uid_label.grid(row=3, column=1, sticky="sw", padx=(int(35*ratio), 0))
+    uid_con = Label(profileWindow, text="{}".format(currentuser["user_id"]), font=("Lato", int(14*ratio)), bg="#EDF1F7", fg="black")
+    uid_con.grid(row=4, column=1, sticky="nw", padx=(int(35*ratio), 0))
+    add_label = Label(profileWindow, text="Address", font=("Lato bold", int(16*ratio)), bg="#EDF1F7", fg="black")
+    add_label.grid(row=5, column=1, sticky="sw", padx=(int(35*ratio), 0), pady=(int(40*ratio),0))
+    f1 = Frame(profileWindow, bg="#EDF1F7")
+    f1.grid(row=6, column=1, padx=(int(35*ratio), 0), sticky="nsw")
+    add_con = Text(f1, font=("Lato", int(14*ratio)), bg="#EDF1F7", fg="black", wrap=WORD, highlightthickness=0, height=int(5*ratio), width=int(25*ratio), relief=FLAT)
+    add_con.pack()
+    add_con.insert(INSERT, "{}, {} {}, {}.".format(currentuser["user_addressline"], currentuser["user_postcode"], currentuser["user_city"], currentuser["user_state"]))
+    add_con.configure(state="disabled")
+    email_label = Label(profileWindow, text="Email", font=("Lato bold", int(16*ratio)), bg="#EDF1F7", fg="black")
+    email_label.grid(row=3, column=2, sticky="sw", padx=(0, int(35*ratio)))
+    email_con = Label(profileWindow, text="{}".format(currentuser["user_email"]), font=("Lato", int(14*ratio)), bg="#EDF1F7", fg="black")
+    email_con.grid(row=4, column=2, sticky="nw", padx=(0, int(35*ratio)))
+    phone_label = Label(profileWindow, text="Phone Number", font=("Lato bold", int(16*ratio)), bg="#EDF1F7", fg="black")
+    phone_label.grid(row=5, column=2, sticky="sw", padx=(0, int(35*ratio)), pady=(int(40*ratio),0))
+    phone_con = Label(profileWindow, text="{}".format(currentuser["user_phone"]), font=("Lato", int(14*ratio)), bg="#EDF1F7", fg="black")
+    phone_con.grid(row=6, column=2, sticky="nw", padx=(0, int(35*ratio)))
+    btn_frame3 = Frame(profileWindow, bg="#EDF1F7")
+    btn_frame3.grid(row=7, column=1, sticky="nse", padx=int(80*ratio))
+    btn_edit = Button(btn_frame3, text="Edit Profile", font=("Lato bold", int(12*ratio)), height=1, width=int(20*ratio), fg="white", bg="#1F5192", relief=RAISED, activebackground="#173B6A", activeforeground="white")
+    btn_edit.pack()
+    btn_frame4 = Frame(profileWindow, bg="#EDF1F7")
+    btn_frame4.grid(row=7, column=2, sticky="nsw")
+    btn_chgpas = Button(btn_frame4, text="Change Password", font=("Lato bold", int(12*ratio)), height=1, width=int(20*ratio), fg="black", bg="white", relief=RAISED, activebackground="#DCDCDC", activeforeground="black")
+    btn_chgpas.pack()
 
 root.mainloop()

@@ -13,22 +13,22 @@ service = Create_Service(CLIENT_SECRET_FILE, API_NAME, API_VERSION, SCOPES)
 folder_id = '18aJTxbazV-zxcygJQ4E9qIu1f1bwAAWH'
 
 # Upload a file to folder
-# file_names = ['default_avatar.png']
-# mime_types = ['image/jpg ']
+file_names = ['default_avatar.jpg']
+mime_types = ['image/jpg ']
 
-# for file_name, mime_type in zip(file_names, mime_types):
-#     file_metadata = {
-#         'name': file_name,
-#         'parents': [folder_id]
-#     }
+for file_name, mime_type in zip(file_names, mime_types):
+    file_metadata = {
+        'name': file_name,
+        'parents': [folder_id]
+    }
 
-#     media = MediaFileUpload('./temp/{0}'.format(file_name), mimetype=mime_type)
+    media = MediaFileUpload('./temp/{0}'.format(file_name), mimetype=mime_type)
     
-#     service.files().create(
-#         body=file_metadata,
-#         media_body=media,
-#         fields='id'
-#     ).execute()
+    service.files().create(
+        body=file_metadata,
+        media_body=media,
+        fields='id'
+    ).execute()
     
     
 # Get list of file
@@ -50,11 +50,12 @@ pd.set_option('display.width', 200)
 pd.set_option('expand_frame_repr', True)
 df = pd.DataFrame(files)
 print(df)
+print(df.iloc[0,1])
 
 
 # Download the uploaded file
-# file_ids = ['1tPLVCcLDVOQMfhXCAZAFF9Q42CYKNvpz']
-# file_names = ['test.jpg']
+# file_ids = [df.iloc[0,1]]
+# file_names = [df.iloc[0,1] + '.png']
 
 # for file_id, file_name in zip(file_ids, file_names):
 #     request = service.files().get_media(fileId=file_id)
