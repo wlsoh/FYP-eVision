@@ -5,7 +5,6 @@
 import os
 import io
 import re
-from cv2 import exp
 import pymysql
 import pandas as pd
 from tkinter import *
@@ -139,7 +138,7 @@ class Usersession:
                 mainWindow.focus_force()
             # If error
             else:
-                messagebox.showerror("Change Passord Failed", "An error had occured in database server! Please contact developer for help!")
+                messagebox.showerror("Change Passord Failed", "An error had occured within transaction in database server! Please contact developer for help!")
                 logout()
                 
     # Upload avatar function
@@ -176,7 +175,7 @@ class Usersession:
                 else:
                     profileWindow.attributes('-disabled', 0)
                     loading_splash.destroy()
-                    messagebox.showerror("Avatar Upload Failed", "An error had occured in database server! Please contact developer for help!")
+                    messagebox.showerror("Avatar Upload Failed", "An error had occured within transaction in database server! Please contact developer for help!")
                 
     # Update password function
     def updatepass(self, oldf, newf, conf):
@@ -233,6 +232,7 @@ class Usersession:
                 conf.delete(0, END)
                 oldf.focus()
             else:
+                loading(updpassWindow)
                 cid = self.user_id
                 sql = '''UPDATE User SET user_password = (%s) WHERE user_id = (%s)'''
                 cursor.execute(sql, (new, cid))
@@ -254,17 +254,18 @@ class Usersession:
                     self.user_phone = result_details[9]
                     self.user_role = result_details[10]
                     self.user_firstlogin = result_details[12]
+                    loading_splash.destroy()
                     messagebox.showinfo("Change Password Successful", "Your had successfully updated your password!")
                     profileWindow.attributes('-disabled', 0)
                     updpassWindow.destroy() # Close the interface
                     profileWindow.focus_force()
                 # If error
                 else:
+                    loading_splash.destroy()
                     messagebox.showerror("Change Passord Failed", "An error had occured in database server! Please contact developer for help!")
-                    oldf.delete(0, END)
-                    newf.delete(0, END)
-                    conf.delete(0, END)
-                    newf.focus()
+                    profileWindow.attributes('-disabled', 0)
+                    updpassWindow.destroy() # Close the interface
+                    profileWindow.focus_force() 
                     
     # Update profile details function
     def updateprofile(self, uf, ul, ad, ci, st, po, em, ph):
@@ -340,6 +341,19 @@ class Usersession:
                         profileWindow.attributes('-disabled', 0)
                         updprofileWindow.destroy() # Close the interface
                         profileWindow.focus_force()  
+
+# User class
+class User:
+    def __init__(self, ufname, ulname, upass, uadd, ucity, ustate, upost, uemail, uphone):
+        self.user_firstname = ufname
+        self.user_lastname = ulname
+        self.user_password = upass
+        self.user_addressline = uadd
+        self.user_city = ucity
+        self.user_state = ustate
+        self.user_postcode = upost
+        self.user_email = uemail
+        self.user_phone = uphone
 
 # Dynamically resize login right
 class ResizingCanvas(Canvas):
@@ -528,6 +542,7 @@ def backmainbtn(comploc, curwin, bgcol):
 # Back to main function
 def backmain(cur):
     cur.withdraw()
+    style.theme_use("default")
     mainWindow.deiconify()
     mainWindow.state('zoomed')
 
@@ -859,6 +874,33 @@ def validate_pass2(*args):
     else:
         fbtn_save.config(state='disabled')
 
+# Search all user function
+def serachAllUser():
+    loading(usermanageWindow)
+    sql = '''SELECT * FROM User WHERE user_role = 2'''
+    cursor.execute(sql)
+    if cursor.rowcount > 0:
+        result = cursor.fetchall()
+        usermanageWindow.attributes('-disabled', 0)
+        loading_splash.destroy()
+        return result
+    # If no existing data found
+    else:
+        result = None
+        usermanageWindow.attributes('-disabled', 0)
+        loading_splash.destroy()
+        messagebox.showinfo("No User Data Found", "There was no existing monitoring employee found in the system!")
+        return result
+        
+        
+# Filter user callback fucntion
+def usrmngcallback(eventObject):
+    if filter_opt.get() == 'All':
+        filterfield_text.delete(0, 'end')
+        filterfield_text.config(state='disabled')
+    else:
+        filterfield_text.config(state='normal')
+        filterfield_text.focus()
     
 #==============================================================================================#
 #                                     Login Page (root)                                        #
@@ -915,10 +957,41 @@ txt_pass.grid(row=6, column=1, sticky="nsew", padx=round(100*ratio))
 var1 = IntVar()
 showpas = Checkbutton(root, text='Show Password',variable=var1, onvalue=1, offvalue=0, font=("Lato", round(11*ratio)), command=lambda:showpass(), bg="#EDF1F7")
 showpas.grid(row=7, column=1, sticky="nw", padx=round(100*ratio), pady=round(10*ratio))
-btn_login = Button(root, text="Login Account", command=lambda:login(txt_email, txt_pass), font=("Lato bold", round(16*ratio)), height=2, fg="white", bg="#1267AC", relief=RAISED, activebackground="#0E4470", activeforeground="white")
+btn_login = Button(root, text="Login Account", command=lambda:login(txt_email, txt_pass), font=("Lato bold", round(16*ratio)), height=2, fg="white", bg="#1267AC", relief=RIDGE, bd=1, activebackground="#0E4470", activeforeground="white")
 btn_login.grid(row=7, column=1, sticky="sew", padx=round(100*ratio), pady=(round(70*ratio),round(40*ratio)))
 lbl_reg = Label(root, text="Don't have account? Please contact company's Admin", font=("Lato", round(12*ratio)), bg="#EDF1F7")
 lbl_reg.grid(row=8, column=1, sticky="w", padx=round(100*ratio))
+
+
+#==============================================================================================#
+#                                    System Theme Styling                                      #
+#==============================================================================================#
+style = ttk.Style()
+# Create custom styling for management page
+mngstyle = ttk.Style()
+mngstyle.theme_create('mngstyle', parent='clam', settings = 
+        {
+        'TCombobox': 
+            {'configure': {'selectbackground': 'white',
+                           'fieldbackground': 'white',
+                           'background': 'white',
+                           'bordercolor':'#c4cbd2',
+                           'selectforeground': 'black',
+                           'padding': (round(5*ratio),round(5*ratio),round(5*ratio),round(5*ratio))}},
+        'Treeview': 
+            {'configure': {'background': 'white',
+                           'foreground': 'black',
+                           'rowheight': round(30*ratio),
+                           'fieldbackground':'white',
+                           'font': ("Lato", round(10*ratio))}},
+        'Treeview.Heading': 
+            {'configure': {'background': '#01987a',
+                           'foreground': 'white',
+                           'fieldbackground':'white',
+                           'font': ("Franklin Gothic Medium Cond", round(12*ratio))}}
+        }
+    )
+
 
 #==============================================================================================#
 #                                         Main Page                                            #
@@ -933,6 +1006,7 @@ def mainPage():
     mainWindow.iconbitmap('asset/logo.ico')
     mainWindow.state('zoomed')
     mainWindow.minsize(round(cscreen_width*0.9), round(cscreen_height*0.9))
+    style.theme_use('default')
     
     # Configure row column attribute
     mainWindow.grid_columnconfigure(0, weight=round(2*ratio))
@@ -948,20 +1022,32 @@ def mainPage():
     
     # Left components
     video_player = Frame(mainWindow, bg="white", highlightbackground="black", highlightthickness=1)
-    video_player.grid(row=0, column=0, rowspan=8, columnspan=3, sticky="nsew", padx=round(25*ratio), pady=(round(30*ratio), round(15*ratio)))
+    video_player.grid(row=0, column=0, rowspan=7, columnspan=3, sticky="nsew", padx=round(25*ratio), pady=(round(30*ratio), round(15*ratio)))
     if(usession.user_role == 1):
         btn_frame1 = Frame(mainWindow, bg="#EDF1F7")
-        btn_frame1.grid(row=8, column=0, sticky="nsew")
-        btn_mnguser = Button(btn_frame1, command=lambda:usermanagementPage(), text="Manage User", font=("Lato bold", round(12*ratio)), height=1, width=round(25*ratio), fg="white", bg="#364052", relief=RAISED, activebackground="#1D232D", activeforeground="white")
-        btn_mnguser.pack(pady=(round(10*ratio), round(30*ratio)))
+        btn_frame1.grid(row=7, rowspan=2, column=0, sticky="nsew")
+        btn_mnguserimg = Image.open('asset/manageuser_btn.png')
+        btn_mnguserimg = btn_mnguserimg.resize((round(182*ratio),round(50*ratio)), Image.ANTIALIAS)
+        btn_mnguserimg = ImageTk.PhotoImage(btn_mnguserimg)
+        btn_mnguser = Button(btn_frame1, command=lambda:usermanagementPage(), image=btn_mnguserimg, bg="#EDF1F7", relief=FLAT, bd=0, highlightthickness=0, activebackground="#EDF1F7")
+        btn_mnguser.image = btn_mnguserimg
+        btn_mnguser.pack(pady=(round(10*ratio),0))
         btn_frame2 = Frame(mainWindow, bg="#EDF1F7")
-        btn_frame2.grid(row=8, column=1, sticky="nsew")
-        btn_mngcamera = Button(btn_frame2, text="Manage Camera", font=("Lato bold", round(12*ratio)), height=1, width=round(25*ratio), fg="white", bg="#364052", relief=RAISED, activebackground="#1D232D", activeforeground="white")
-        btn_mngcamera.pack(pady=(round(10*ratio), round(30*ratio)))
+        btn_frame2.grid(row=7, rowspan=2, column=1, sticky="nsew")
+        btn_mngcamimg = Image.open('asset/managecam_btn.png')
+        btn_mngcamimg = btn_mngcamimg.resize((round(182*ratio),round(50*ratio)), Image.ANTIALIAS)
+        btn_mngcamimg = ImageTk.PhotoImage(btn_mngcamimg)
+        btn_mngcamera = Button(btn_frame2, image=btn_mngcamimg, bg="#EDF1F7", relief=FLAT, bd=0, highlightthickness=0, activebackground="#EDF1F7")
+        btn_mngcamera.image = btn_mngcamimg
+        btn_mngcamera.pack(pady=(round(10*ratio),0))
         btn_frame3 = Frame(mainWindow, bg="#EDF1F7")
-        btn_frame3.grid(row=8, column=2, sticky="nsew")
-        btn_asscamera = Button(btn_frame3, text="Assign Camera", font=("Lato bold", round(12*ratio)), height=1, width=round(25*ratio), fg="white", bg="#364052", relief=RAISED, activebackground="#1D232D", activeforeground="white")
-        btn_asscamera.pack(pady=(round(10*ratio), round(30*ratio)))
+        btn_frame3.grid(row=7, rowspan=2, column=2, sticky="nsew")
+        btn_agncamimg = Image.open('asset/assigncam_btn.png')
+        btn_agncamimg = btn_agncamimg.resize((round(182*ratio),round(50*ratio)), Image.ANTIALIAS)
+        btn_agncamimg = ImageTk.PhotoImage(btn_agncamimg)
+        btn_asscamera = Button(btn_frame3, image=btn_agncamimg, bg="#EDF1F7", relief=FLAT, bd=0, highlightthickness=0, activebackground="#EDF1F7")
+        btn_asscamera.image = btn_agncamimg
+        btn_asscamera.pack(pady=(round(10*ratio),0))
     else:
         btn_frame1 = Frame(mainWindow, bg="#EDF1F7")
         btn_frame1.grid(row=8, column=0, sticky="nsew", pady=(round(10*ratio), round(50*ratio)))
@@ -978,11 +1064,11 @@ def mainPage():
     img_label.grid(column=3, row=0, columnspan=2, sticky="nsew", pady=(round(30*ratio), round(5*ratio)))
     btn_frame4 = Frame(mainWindow, bg="#1D253D")
     btn_frame4.grid(row=1, column=3, sticky="nsew", padx=(round(30*ratio), round(5*ratio)), pady=round(10*ratio))
-    btn_profile = Button(btn_frame4, text="Profile", command=lambda:profilePage(), font=("Lato bold", round(13*ratio)), fg="white", bg="#5869F0", relief=FLAT, activebackground="#414EBB", activeforeground="white")
+    btn_profile = Button(btn_frame4, text="Profile", command=lambda:profilePage(), font=("Lato bold", round(13*ratio)), fg="white", bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB", activeforeground="white")
     btn_profile.pack(fill='x')
     btn_frame5 = Frame(mainWindow, bg="#1D253D")
     btn_frame5.grid(row=1, column=4, sticky="nsew", padx=(round(5*ratio), round(30*ratio)), pady=round(10*ratio))
-    btn_logout = Button(btn_frame5, text="Logout", command=lambda:logout(), font=("Lato bold", round(13*ratio)), height=1, width=round(15*ratio), fg="white", bg="#FF0000", relief=FLAT, activebackground="#B50505", activeforeground="white")
+    btn_logout = Button(btn_frame5, text="Logout", command=lambda:logout(), font=("Lato bold", round(13*ratio)), height=1, width=round(15*ratio), fg="white", bg="#FF0000", relief=RIDGE, bd=1, activebackground="#B50505", activeforeground="white")
     btn_logout.pack(fill='x')
     notebookstyle = ttk.Style()
     notebookstyle.theme_use('default')
@@ -1006,15 +1092,15 @@ def mainPage():
     acci_tab.add(history_accif, text="Accident History")
     btn_frame6 = Frame(mainWindow, bg="#1D253D")
     btn_frame6.grid(row=3, column=3, columnspan=2, sticky="nsew", padx=round(30*ratio), pady=round(10*ratio))
-    btn_refresh = Button(btn_frame6, text="Refresh Accident List", font=("Lato bold", round(13*ratio)), height=1, width=round(32*ratio), fg="white", bg="#5869F0", relief=FLAT, activebackground="#414EBB", activeforeground="white")
+    btn_refresh = Button(btn_frame6, text="Refresh Accident List", font=("Lato bold", round(13*ratio)), height=1, width=round(32*ratio), fg="white", bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB", activeforeground="white")
     btn_refresh.pack(fill='x')
     btn_frame7 = Frame(mainWindow, bg="#1D253D")
     btn_frame7.grid(row=4, column=3, sticky="nsew", padx=(round(30*ratio), round(5*ratio)), pady=(0, round(5*ratio)))
-    btn_init = Button(btn_frame7, text="Initiate", font=("Lato bold", round(13*ratio)), height=1, width=round(15*ratio), fg="white", bg="#5869F0", relief=FLAT, activebackground="#414EBB", activeforeground="white")
+    btn_init = Button(btn_frame7, text="Initiate", font=("Lato bold", round(13*ratio)), height=1, width=round(15*ratio), fg="white", bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB", activeforeground="white")
     btn_init.pack(fill='x')
     btn_frame8 = Frame(mainWindow, bg="#1D253D")
     btn_frame8.grid(row=4, column=4, sticky="nsew", padx=(round(5*ratio), round(30*ratio)), pady=(0, round(5*ratio)))
-    btn_stop = Button(btn_frame8, text="Stop", font=("Lato bold", round(13*ratio)), height=1, width=round(15*ratio), fg="white", bg="#5869F0", relief=FLAT, activebackground="#414EBB", activeforeground="white")
+    btn_stop = Button(btn_frame8, text="Stop", font=("Lato bold", round(13*ratio)), height=1, width=round(15*ratio), fg="white", bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB", activeforeground="white")
     btn_stop.pack(fill='x')
     camera_list = Label(mainWindow, text="Camera List: ", font=("Lato", round(13*ratio)), bg="#1D253D", fg="white")
     camera_list.grid(row=5, column=3, columnspan=2, sticky="w", padx=round(30*ratio), pady=(round(5*ratio),0))
@@ -1023,19 +1109,19 @@ def mainPage():
     camera_loc = Label(mainWindow, text="Location: ", font=("Lato", round(13*ratio)), bg="#1D253D", fg="white")
     camera_loc.grid(row=7, column=3, columnspan=2, sticky="w", padx=round(30*ratio), pady=(0,round(5*ratio)))
     btn_frame9 = Frame(mainWindow, bg="#1D253D")
-    btn_frame9.grid(row=8, column=3, sticky="nsew", padx=(round(30*ratio), round(5*ratio)), pady=(round(5*ratio), 0))
+    btn_frame9.grid(row=8, column=3, sticky="nsew", padx=(round(30*ratio), round(5*ratio)), pady=(round(5*ratio), round(15*ratio)))
     icon_prev = Image.open('asset/previous_icon.png')
     icon_prev = icon_prev.resize((round(30*ratio),round(30*ratio)), Image.ANTIALIAS)
     icon_prev = ImageTk.PhotoImage(icon_prev)
-    btn_prev = Button(btn_frame9, image=icon_prev, height=round(30*ratio), width=round(150*ratio), bg="#5869F0", relief=FLAT, activebackground="#414EBB")
+    btn_prev = Button(btn_frame9, image=icon_prev, height=round(30*ratio), width=round(150*ratio), bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB")
     btn_prev.image = icon_prev
     btn_prev.pack(fill='x')
     btn_frame10 = Frame(mainWindow, bg="#1D253D")
-    btn_frame10.grid(row=8, column=4, sticky="nsew", padx=(round(5*ratio), round(30*ratio)), pady=(round(5*ratio), 0))
+    btn_frame10.grid(row=8, column=4, sticky="nsew", padx=(round(5*ratio), round(30*ratio)), pady=(round(5*ratio), round(15*ratio)))
     icon_next = Image.open('asset/next_icon.png')
     icon_next = icon_next.resize((round(30*ratio),round(30*ratio)), Image.ANTIALIAS)
     icon_next = ImageTk.PhotoImage(icon_next)
-    btn_next = Button(btn_frame10, image=icon_next, height=round(30*ratio), width=round(150*ratio), bg="#5869F0", relief=FLAT, activebackground="#414EBB")
+    btn_next = Button(btn_frame10, image=icon_next, height=round(30*ratio), width=round(150*ratio), bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB")
     btn_next.image = icon_next
     btn_next.pack(fill='x')
     mainWindow.protocol("WM_DELETE_WINDOW", logout) # If click on close button of window
@@ -1093,7 +1179,7 @@ def mainPage():
         fsix_specialchar.grid(row=10, column=0, columnspan=2, sticky="nsw", padx=(round(40*ratio), 0))
         fseven_con = Label(wel, text="Confirm new password does not match new password", font=("Lato bold", round(10*ratio)), bg="white", fg="red")
         fseven_con.grid(row=11, column=0, columnspan=2, sticky="nsw", padx=(round(40*ratio), 0))
-        fbtn_save = Button(wel, command=lambda:usession.firstchange(txt_newpas, txt_cpas), text="Save", font=("Lato bold", round(15*ratio)), height=1, fg="white", bg="#1F5192", relief=RAISED, activebackground="#173B6A", activeforeground="white")
+        fbtn_save = Button(wel, command=lambda:usession.firstchange(txt_newpas, txt_cpas), text="Save", font=("Lato bold", round(15*ratio)), height=1, fg="white", bg="#1F5192", relief=RIDGE, bd=1, activebackground="#173B6A", activeforeground="white")
         fbtn_save.grid(row=12, column=0, columnspan=2, sticky="nsew", padx=round(40*ratio),  pady=round(30*ratio))
         fbtn_save.config(state='disabled')  
     
@@ -1116,6 +1202,7 @@ def profilePage():
     profileWindow.geometry(f'{width}x{height}+{round(x)}+{round(y)}')
     profileWindow.resizable(False, False)
     profileWindow.protocol("WM_DELETE_WINDOW", disable_event)
+    style.theme_use('default')
     
     # Configure row column attribute
     profileWindow.grid_columnconfigure(1, weight=round(1*ratio))
@@ -1145,7 +1232,7 @@ def profilePage():
     page_title.grid(row=3, column=0, sticky="nsew", pady=round(10*ratio))
     btn_frame2 = Frame(profileWindow, bg="#1b1b23")
     btn_frame2.grid(row=4, column=0, sticky="nsew")
-    btn_upload = Button(btn_frame2, command=lambda:usession.upload_avatar(imgava_label), text="Upload New Avatar", font=("Lato bold", round(12*ratio)), height=1, width=round(20*ratio), fg="white", bg="#1F5192", relief=FLAT, activebackground="#173B6A", activeforeground="white")
+    btn_upload = Button(btn_frame2, command=lambda:usession.upload_avatar(imgava_label), text="Upload New Avatar", font=("Lato bold", round(12*ratio)), height=1, width=round(20*ratio), fg="white", bg="#1F5192", relief=RIDGE, bd=1, activebackground="#173B6A", activeforeground="white")
     btn_upload.pack()
     CreateToolTip(btn_upload, text = 'Best fit image ratio is 50 50\n'
                  'Accept both PNG and JPG format\n'
@@ -1199,11 +1286,11 @@ def profilePage():
     phone_con.configure(state="disabled")
     btn_frame3 = Frame(profileWindow, bg="#2b2f3b")
     btn_frame3.grid(row=7, column=1, sticky="nse", padx=round(30*ratio), pady=round(10*ratio))
-    btn_edit = Button(btn_frame3, command=lambda:updateprofilePage(), text="Edit Profile", font=("Lato bold", round(12*ratio)), height=1, width=round(20*ratio), fg="white", bg="#1F5192", relief=FLAT, activebackground="#173B6A", activeforeground="white")
+    btn_edit = Button(btn_frame3, command=lambda:updateprofilePage(), text="Edit Profile", font=("Lato bold", round(12*ratio)), height=1, width=round(20*ratio), fg="white", bg="#1F5192", relief=RIDGE, bd=1, activebackground="#173B6A", activeforeground="white")
     btn_edit.pack()
     btn_frame4 = Frame(profileWindow, bg="#2b2f3b")
     btn_frame4.grid(row=7, column=2, sticky="nsw", padx=round(30*ratio), pady=round(10*ratio))
-    btn_chgpas = Button(btn_frame4, command=lambda:updatepassPage(), text="Change Password", font=("Lato bold", round(12*ratio)), height=1, width=round(20*ratio), fg="black", bg="white", relief=FLAT, activebackground="#DCDCDC", activeforeground="black")
+    btn_chgpas = Button(btn_frame4, command=lambda:updatepassPage(), text="Change Password", font=("Lato bold", round(12*ratio)), height=1, width=round(20*ratio), fg="black", bg="white", relief=RIDGE, bd=1, activebackground="#DCDCDC", activeforeground="black")
     btn_chgpas.pack()
     
 #==============================================================================================#
@@ -1212,7 +1299,6 @@ def profilePage():
 ## Update Profile Page Interface
 def updateprofilePage():
     global updprofileWindow, ufname_val, ulname_val, add_val, city_val, post_val, state_val, email_label_error, email_val, phone_label_error, phone_val, btn_upd, fname_label_error, lname_label_error, add_label_error, city_label_error
-    
     # Configure window attribute
     profileWindow.attributes('-disabled', 1)
     updprofileWindow = Toplevel(profileWindow)
@@ -1223,6 +1309,7 @@ def updateprofilePage():
     x = (cscreen_width/2)-(width/2)
     y = (cscreen_height/2)-(height/2)
     updprofileWindow.geometry(f'{width}x{height}+{round(x)}+{round(y)}')
+    style.theme_use('mngstyle')
     
     # Configure row column attribute
     updprofileWindow.grid_columnconfigure(0, weight=round(1*ratio))
@@ -1314,7 +1401,7 @@ def updateprofilePage():
     f5 = Frame(updprofileWindow, relief=SUNKEN)
     f5.grid(row=12, column=1, padx=(round(10*ratio), round(60*ratio)), sticky="ne")
     state_val = StringVar()
-    state_text = ttk.Combobox(f5, font=("Lato", round(14*ratio)), textvariable=state_val, state='readonly', background="white")
+    state_text = ttk.Combobox(f5, font=("Lato", round(13*ratio)), textvariable=state_val, state='readonly', background="white")
     state_text['values'] = ('Johor', 
                           'Kedah',
                           'Kelantan',
@@ -1392,11 +1479,11 @@ def updateprofilePage():
     CreateToolTip(phone_text, text = 'e.g. 012-3456789')
     f8 = Frame(updprofileWindow ,bg="white")
     f8.grid(row=17, column=0, sticky="nse", padx=(0,round(20*ratio)), pady=round(15*ratio))
-    btn_upd = Button(f8, text="Update", command=lambda:usession.updateprofile(ufname_text, ulname_text, add_text, city_text, state_text, post_text, email_text, phone_text), font=("Lato bold", round(12*ratio)), height=1, width=round(13*ratio), fg="white", bg="#1F5192", relief=RAISED, activebackground="#173B6A", activeforeground="white")
+    btn_upd = Button(f8, text="Update", command=lambda:usession.updateprofile(ufname_text, ulname_text, add_text, city_text, state_text, post_text, email_text, phone_text), font=("Lato bold", round(12*ratio)), height=1, width=round(13*ratio), fg="white", bg="#1F5192", relief=RIDGE, bd=1, activebackground="#173B6A", activeforeground="white")
     btn_upd.pack()
     f9 = Frame(updprofileWindow, bg="white")
     f9.grid(row=17, column=1, sticky="nsw", padx=(round(50*ratio),0), pady=round(15*ratio))
-    btn_close = Button(f9, text="Close", command=lambda:closeupdprofile(), font=("Lato bold", round(12*ratio)), height=1, width=round(13*ratio), fg="black", bg="white", relief=RAISED, activebackground="#DCDCDC", activeforeground="black")
+    btn_close = Button(f9, text="Close", command=lambda:closeupdprofile(), font=("Lato bold", round(12*ratio)), height=1, width=round(13*ratio), fg="black", bg="white", relief=RIDGE, bd=1, activebackground="#DCDCDC", activeforeground="black")
     btn_close.pack()
     
 #==============================================================================================#
@@ -1416,6 +1503,7 @@ def updatepassPage():
     x = (cscreen_width/2)-(width/2)
     y = (cscreen_height/2)-(height/2)
     updpassWindow.geometry(f'{width}x{height}+{round(x)}+{round(y)}')
+    style.theme_use('default')
     
     # Configure row column attribute
     updpassWindow.grid_columnconfigure(0, weight=round(1*ratio))
@@ -1481,12 +1569,12 @@ def updatepassPage():
     seven_con.grid(row=11, column=0, columnspan=2, sticky="nsw", padx=(round(40*ratio), 0))
     f4 = Frame(updpassWindow ,bg="white")
     f4.grid(row=12, column=0, sticky="nse", pady=round(30*ratio), padx=(0, round(30*ratio)))
-    btn_passupd = Button(f4, text="Update", command=lambda:usession.updatepass(oldpass_text, newpass_text, connewpass_text), font=("Lato bold", round(12*ratio)), height=1, width=round(13*ratio), fg="white", bg="#1F5192", relief=RAISED, activebackground="#173B6A", activeforeground="white")
+    btn_passupd = Button(f4, text="Update", command=lambda:usession.updatepass(oldpass_text, newpass_text, connewpass_text), font=("Lato bold", round(12*ratio)), height=1, width=round(13*ratio), fg="white", bg="#1F5192", relief=RIDGE, bd=1, activebackground="#173B6A", activeforeground="white")
     btn_passupd.pack()
     btn_passupd.config(state='disabled')
     f5 = Frame(updpassWindow, bg="white")
     f5.grid(row=12, column=1, sticky="nsw", pady=round(30*ratio), padx=(round(45*ratio), 0))
-    btn_passclose = Button(f5, text="Close", command=lambda:closechgpass(), font=("Lato bold", round(12*ratio)), height=1, width=round(13*ratio), fg="black", bg="white", relief=RAISED, activebackground="#DCDCDC", activeforeground="black")
+    btn_passclose = Button(f5, text="Close", command=lambda:closechgpass(), font=("Lato bold", round(12*ratio)), height=1, width=round(13*ratio), fg="black", bg="white", relief=RIDGE, bd=1, activebackground="#DCDCDC", activeforeground="black")
     btn_passclose.pack()
 
 #==============================================================================================#
@@ -1494,6 +1582,8 @@ def updatepassPage():
 #==============================================================================================#
 ## Admin - Manage User Page Interface
 def usermanagementPage():
+    global usermanageWindow, filterfield_text, filter_opt
+    
     # Configure  window attribute
     mainWindow.withdraw()
     usermanageWindow = Toplevel(mainWindow)
@@ -1506,6 +1596,7 @@ def usermanagementPage():
     usermanageWindow.geometry(f'{width}x{height}+{round(x)}+{round(y)}')
     usermanageWindow.resizable(False, False)
     usermanageWindow.protocol("WM_DELETE_WINDOW", disable_event)
+    style.theme_use('mngstyle')
     
     # Configure row column attribute
     usermanageWindow.grid_columnconfigure(2, weight=round(1*ratio))
@@ -1516,7 +1607,7 @@ def usermanagementPage():
     # Setup frames
     left_frame = Frame(usermanageWindow, width=round(cscreen_width*0.28), bg="#EDF1F7")
     left_frame.grid(row=0, column=0, rowspan=24, columnspan=3, sticky="nsew")
-    right_frame = Frame(usermanageWindow, width=round(cscreen_width*0.58), bg="#21BDBF")
+    right_frame = Frame(usermanageWindow, width=round(cscreen_width*0.58), bg="#293e50")
     right_frame.grid(row=0, column=3, rowspan=24, columnspan=2, sticky="nsew")
     dummy_frame = Frame(usermanageWindow, width=round(cscreen_width*0.094), bg="#EDF1F7")
     dummy_frame.grid(row=0, column=1, rowspan=24, sticky="nsew")
@@ -1531,7 +1622,7 @@ def usermanagementPage():
     usrmngtile = ImageTk.PhotoImage(usrmngtile)
     usrmngtile_label = Label(usermanageWindow, image=usrmngtile, bg="#EDF1F7")
     usrmngtile_label.image = usrmngtile
-    usrmngtile_label.grid(column=1, row=0, columnspan=2, sticky="nsw", pady=(round(30*ratio), round(5*ratio)), padx=(round(20*ratio), 0))
+    usrmngtile_label.grid(column=1, row=0, columnspan=2, rowspan=2, sticky="nsw", pady=(round(30*ratio), round(5*ratio)), padx=(round(20*ratio), 0))
     # User detail fields
     uid_label = Label(usermanageWindow, text="User ID", font=("Lato bold", round(13*ratio)), bg="#EDF1F7", fg="black")
     uid_label.grid(row=2, column=0, columnspan=3, sticky="sw", padx=round(60*ratio))
@@ -1541,7 +1632,8 @@ def usermanagementPage():
     uid_text.pack(fill=BOTH, expand=True)
     uid_text.configure(state="disabled")
     CreateToolTip(uid_text, text = 'Add New User: Leave this field blank as system will auto generate the user ID\n'
-                  'Update User Info: Select the user to be updated in the list, user ID field will be automatically filled')
+                  'Update User: Select the user to be updated in the list, user ID field will be automatically filled\n'
+                  'Delete User: Select the user to be deleted in the list before pressing on the button')
     ufname_label = Label(usermanageWindow, text="First Name", font=("Lato bold", round(13*ratio)), bg="#EDF1F7", fg="black")
     ufname_label.grid(row=4, column=0, columnspan=3, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
     f1 = Frame(usermanageWindow, borderwidth=round(2*ratio), relief=SUNKEN)
@@ -1564,7 +1656,7 @@ def usermanagementPage():
     pas_label.grid(row=8, column=0, columnspan=3, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
     fpas = Frame(usermanageWindow, bg="#EDF1F7")
     fpas.grid(row=9, column=0, columnspan=3, padx=round(60*ratio), sticky="new")
-    resetpas_btn = Button(fpas, text="Reset Password", font=("Lato bold", round(13*ratio)), width=round(20*ratio))
+    resetpas_btn = Button(fpas, text="Reset Password", font=("Lato bold", round(13*ratio)), width=round(20*ratio), relief=RIDGE, bd=1, bg="#6c757d", fg="white", activebackground="#4D5358", activeforeground="white")
     resetpas_btn.pack(side=LEFT)
     # pas_val = StringVar()
     # # pas_val.trace('w', addvalidation)
@@ -1609,8 +1701,7 @@ def usermanagementPage():
     state_label.grid(row=14, column=2, sticky="sw", padx=(round(15*ratio), round(60*ratio)), pady=(round(10*ratio), 0))
     f5 = Frame(usermanageWindow, relief=SUNKEN)
     f5.grid(row=15, column=2, padx=(round(10*ratio), round(60*ratio)), sticky="ne")
-    state_val = StringVar()
-    state_text = ttk.Combobox(f5, font=("Lato", round(14*ratio)), textvariable=state_val, state='readonly', background="white")
+    state_text = ttk.Combobox(f5, font=("Lato", round(13*ratio)), background="white")
     state_text['values'] = ('Johor', 
                           'Kedah',
                           'Kelantan',
@@ -1629,6 +1720,7 @@ def usermanagementPage():
                           'Putrajaya')
     state_text.pack(fill=BOTH, expand=True)
     state_text.current(0)
+    state_text['state'] = 'readonly'
     email_label = Label(usermanageWindow, text="Email", font=("Lato bold", round(13*ratio)), bg="#EDF1F7", fg="black")
     email_label.grid(row=16, column=0, columnspan=3, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
     um_email_label_error = Label(usermanageWindow, text="Improper Email Format!", font=("Lato bold", round(9*ratio)), bg="#EDF1F7", fg="red")
@@ -1653,22 +1745,100 @@ def usermanagementPage():
     CreateToolTip(phone_text, text = 'e.g. 012-3456789')
     f8 = Frame(usermanageWindow, bg="#EDF1F7")
     f8.grid(row=20, column=0, columnspan=3, sticky="nsew", padx=round(60*ratio), pady=(round(20*ratio), round(5*ratio)))
-    add_userbtn = Button(f8, text="Add New User", font=("Lato bold", round(13*ratio)), width=round(43*ratio), bg="#15D500", fg="white", relief=FLAT, activebackground="#10A500", activeforeground="white")
+    add_userbtn = Button(f8, text="Add New User", font=("Lato bold", round(13*ratio)), width=round(43*ratio), bg="#f2c40e", fg="white", relief=RIDGE, bd=1, activebackground="#C19C0C", activeforeground="white")
     add_userbtn.pack()
     f9 = Frame(usermanageWindow, bg="#EDF1F7")
     f9.grid(row=21, column=0, columnspan=3, sticky="nsew", padx=round(60*ratio), pady= round(5*ratio))
-    upd_userbtn = Button(f9, text="Update User Info", font=("Lato bold", round(13*ratio)), width=round(43*ratio), bg="#1F5192", fg="white", relief=FLAT, activebackground="#112F57", activeforeground="white")
+    upd_userbtn = Button(f9, text="Update User Info", font=("Lato bold", round(13*ratio)), width=round(43*ratio), bg="#18bc9b", fg="white", relief=RIDGE, bd=1, activebackground="#17856F", activeforeground="white")
     upd_userbtn.pack()
     f10 = Frame(usermanageWindow, bg="#EDF1F7")
     f10.grid(row=22, column=0, columnspan=3, sticky="nsew", padx=round(60*ratio), pady=round(5*ratio))
-    add_userbtn = Button(f10, text="Delete User", font=("Lato bold", round(13*ratio)), width=round(43*ratio), bg="#E30000", fg="white", relief=FLAT, activebackground="#9E0101", activeforeground="white")
-    add_userbtn.pack()
+    del_userbtn = Button(f10, text="Delete User", font=("Lato bold", round(13*ratio)), width=round(43*ratio), bg="#dc3545", fg="white", relief=RIDGE, bd=1, activebackground="#A72A36", activeforeground="white")
+    del_userbtn.pack()
     
     # Right components
-    sys_label = Label(usermanageWindow, text="e-Vision", font=("Lato bold", round(14*ratio)), bg="#21BDBF", fg="white")
+    sys_label = Label(usermanageWindow, text="e-Vision", font=("Lato bold", round(14*ratio)), bg="#293e50", fg="white")
     sys_label.grid(row=0, column=4, sticky="ne", padx=round(30*ratio), pady=round(15*ratio))
+    # Search components
+    f11 = Frame(usermanageWindow, bg="#293e50")
+    f11.grid(row=1, column=3, columnspan=2, sticky="nsew", padx=round(60*ratio))
+    f11a = Frame(f11, borderwidth=round(2*ratio), relief=SUNKEN)
+    f11a.pack(side=LEFT)
+    filterfield_text = Entry(f11a, bd=round(4*ratio), relief=FLAT, font=("Lato", round(10*ratio)), width=round(25*ratio), state='disabled')
+    filterfield_text.pack(fill=BOTH, expand=True)
+    f11b = Frame(f11)
+    f11b.pack(side=LEFT,  padx=round(10*ratio))
+    filter_opt = ttk.Combobox(f11b, font=("Lato", round(10*ratio)), background="white", width=round(15*ratio))
+    filter_opt['values'] = ('All',
+                          'User ID', 
+                          'First Name',
+                          'Last Name',
+                          'Email',
+                          'Phone Number')
+    filter_opt.pack(fill=BOTH, expand=True)
+    filter_opt.current(0)
+    filter_opt['state'] = 'readonly'
+    filter_opt.bind("<<ComboboxSelected>>", usrmngcallback)
+    f11c = Frame(f11)
+    f11c.pack(side=LEFT)
+    search_userbtn = Button(f11c, text="Search", font=("Lato bold", round(11*ratio)), width=round(12*ratio), bg="#E6E6E6", fg="black", relief=RIDGE, bd=1, activebackground="#B4B1B1", activeforeground="black")
+    search_userbtn.pack()
+    # Treeview frame
+    usrmng_tree_frame = Frame(usermanageWindow)
+    usrmng_tree_frame.grid(row=2, column=3, rowspan=20, columnspan=2, padx=round(60*ratio))
     # Treeview components
-    column_headerlist = ['User ID', 'First Name', 'Last Name', 'Address Line', 'City', 'Postcode', 'State', 'Email Address', 'Phone Number']
-    
+    usrmng_tree_vscroll = Scrollbar(usrmng_tree_frame)
+    usrmng_tree_vscroll.pack(side=RIGHT, fill=Y)
+    usrmng_tree_hscroll = Scrollbar(usrmng_tree_frame, orient='horizontal')
+    usrmng_tree_hscroll.pack(side=BOTTOM, fill=X)
+    column_headerlist = ['user_id', 'user_firstname', 'user_lastname', 'user_addressline', 'user_city', 'user_postcode', 'user_state', 'user_email', 'user_phone', 'user_lastlogin']
+    usrmng_tree = ttk.Treeview(usrmng_tree_frame, columns=column_headerlist, show='headings', yscrollcommand=usrmng_tree_vscroll.set, xscrollcommand=usrmng_tree_hscroll.set, selectmode="browse", height=round(22*ratio))
+    usrmng_tree.pack(side=TOP)
+    style.map('Treeview', background=[('selected', '#04D8AE')])  #selected color
+    # Configure scrollbar
+    usrmng_tree_vscroll.config(command=usrmng_tree.yview)
+    usrmng_tree_hscroll.config(command=usrmng_tree.xview)
+    # Define haeder column name
+    usrmng_tree.heading('user_id', text='User ID')
+    usrmng_tree.heading('user_firstname', text='First Name')
+    usrmng_tree.heading('user_lastname', text='Last Name')
+    usrmng_tree.heading('user_addressline', text='Address Line')
+    usrmng_tree.heading('user_city', text='City')
+    usrmng_tree.heading('user_postcode', text='Postcode')
+    usrmng_tree.heading('user_state', text='State')
+    usrmng_tree.heading('user_email', text='Email')
+    usrmng_tree.heading('user_phone', text='Phone Number')
+    usrmng_tree.heading('user_lastlogin', text='Last Login Period')
+    # Define column width and alignments
+    usrmng_tree.column('user_id', width=round(60*ratio), minwidth=round(60*ratio), anchor ='c')
+    usrmng_tree.column('user_firstname', width=round(100*ratio), minwidth=round(100*ratio), anchor ='c')
+    usrmng_tree.column('user_lastname', width=round(100*ratio), minwidth=round(100*ratio), anchor ='c')
+    usrmng_tree.column('user_addressline', width=round(150*ratio), minwidth=round(150*ratio), anchor ='c')
+    usrmng_tree.column('user_city', width=round(100*ratio), minwidth=round(100*ratio), anchor ='c')
+    usrmng_tree.column('user_postcode', width=round(70*ratio), minwidth=round(70*ratio), anchor ='c')
+    usrmng_tree.column('user_state', width=round(100*ratio), minwidth=round(100*ratio), anchor ='c')
+    usrmng_tree.column('user_email', width=round(100*ratio), minwidth=round(100*ratio), anchor ='c')
+    usrmng_tree.column('user_phone', width=round(100*ratio), minwidth=round(100*ratio), anchor ='c')
+    usrmng_tree.column('user_lastlogin', width=round(160*ratio), minwidth=round(160*ratio), anchor ='c')
+    # Fetch all users (default)
+    usrmng_tree.tag_configure('oddrow', background="white")
+    usrmng_tree.tag_configure('evenrow', background="#ecf3fd")
+    global usrmng_count
+    usrmng_count = 0
+    userresult = serachAllUser()
+    if userresult is not None:
+        for dt in userresult:
+            if usrmng_count % 2 == 0:
+                usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('evenrow',))
+            else:
+                usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('oddrow',))
+            usrmng_count +=1
+    # Clear selected btn
+    f12 = Frame(usermanageWindow, bg="#293e50")
+    f12.grid(row=22, column=3, columnspan=2, sticky="nsew", padx=round(60*ratio), pady=round(5*ratio))
+    clr_selectedbtn = Button(f12, text="Clear Selected User", font=("Lato bold", round(11*ratio)), width=round(25*ratio), bg="#E6E6E6", fg="black", relief=RIDGE, bd=1, activebackground="#B4B1B1", activeforeground="black")
+    clr_selectedbtn.pack(side=LEFT)
+    refresh_userbtn = Button(f12, text="Refresh User List", font=("Lato bold", round(11*ratio)), width=round(25*ratio), bg="#E6E6E6", fg="black", relief=RIDGE, bd=1, activebackground="#B4B1B1", activeforeground="black")
+    refresh_userbtn.pack(side=RIGHT)
 
 root.mainloop()
