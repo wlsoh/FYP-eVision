@@ -13,10 +13,10 @@ from tkinter import ttk
 from tkinter.filedialog import askopenfile
 from PIL import Image, ImageTk
 from ctypes import windll
-from pymysql.constants import CLIENT
 from datetime import datetime
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 from Google import Create_Service
+from mysql_db.db_connect import MySqlConnector
 
 
 #==============================================================================================#
@@ -26,18 +26,11 @@ from Google import Create_Service
 windll.shcore.SetProcessDpiAwareness(1) 
 # Regex for validation
 pare = re.compile(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$")
-emailregex = '^[a-z0-9]+[\._]?[a-z0-9]+[@]\w+[.]\w{2,3}$'
+emailregex = '^[a-zA-Z0-9]+[\._]?[a-z0-9]+[@]\w+[.]\w{2,3}$'
 phoneregex = "^(\+?6?01)[02-46-9]-*[0-9]{7}$|^(\+?6?01)[1]-*[0-9]{8}$"
 
 # Create database connection to AWS RDS
-db = pymysql.connect(
-    host='mydatabase.cdkg8rguncrh.ap-southeast-1.rds.amazonaws.com',
-    user='admin',
-    password='%Abc040231',
-    database='eVision',
-    client_flag=CLIENT.MULTI_STATEMENTS
-) 
-cursor = db.cursor()
+sql_config = 'online'
 
 # Connection with Google Cloud using Auth2.0
 CLIENT_SECRET_FILE = 'client_secret.json'
@@ -112,34 +105,41 @@ class Usersession:
             newf.focus()
         else:  
             cid = self.user_id
-            sql = '''UPDATE User SET user_password = (%s), user_firstLogin = 0 WHERE user_id = (%s)'''
-            cursor.execute(sql, (new, cid))
-            cursor.connection.commit()
-            if cursor.rowcount > 0:
-                # Update the current user data
-                sql = '''SELECT * FROM User WHERE user_id = (%s)'''
-                cursor.execute(sql, (cid))
-                result_details = cursor.fetchone()
-                self.user_id = result_details[0]
-                self.user_firstname = result_details[1]
-                self.user_lastname = result_details[2]
-                self.user_password = result_details[3]
-                self.user_addressline = result_details[4]
-                self.user_city = result_details[5]
-                self.user_state = result_details[6]
-                self.user_postcode = result_details[7]
-                self.user_email = result_details[8]
-                self.user_phone = result_details[9]
-                self.user_role = result_details[10]
-                self.user_firstlogin = result_details[12]
-                messagebox.showinfo("Change Password Successful", "Your temporary password had been replaced with the new password!")
-                mainWindow.attributes('-disabled', 0)
-                wel.destroy() # Close the interface
-                mainWindow.focus_force()
-            # If error
-            else:
-                messagebox.showerror("Change Passord Failed", "An error had occured within transaction in database server! Please contact developer for help!")
-                logout()
+            try:
+                mysql_con = MySqlConnector(sql_config) # Initial connection
+                sql = '''UPDATE User SET user_password = (%s), user_firstLogin = 0 WHERE user_id = (%s)'''
+                update = mysql_con.update(sql, (new, cid))
+                if update > 0:
+                    # Update the current user data
+                    sql = '''SELECT * FROM User WHERE user_id = (%s)'''
+                    result_details = mysql_con.queryall(sql, (cid))
+                    self.user_id = result_details[0][0]
+                    self.user_firstname = result_details[0][1]
+                    self.user_lastname = result_details[0][2]
+                    self.user_password = result_details[0][3]
+                    self.user_addressline = result_details[0][4]
+                    self.user_city = result_details[0][5]
+                    self.user_state = result_details[0][6]
+                    self.user_postcode = result_details[0][7]
+                    self.user_email = result_details[0][8]
+                    self.user_phone = result_details[0][9]
+                    self.user_role = result_details[0][10]
+                    self.user_firstlogin = result_details[0][12]
+                    messagebox.showinfo("Change Password Successful", "Your temporary password had been replaced with the new password!")
+                    mainWindow.attributes('-disabled', 0)
+                    wel.destroy() # Close the interface
+                    mainWindow.focus_force()
+                # If error
+                else:
+                    messagebox.showerror("Change Passord Failed", "Failed to update your temporary password! Please contact developer for help!")
+                    logout()
+            except pymysql.Error as e:
+                messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                print("Error %d: %s" % (e.args[0], e.args[1]))
+                return False
+            finally:
+                # Close the connection
+                mysql_con.close()
                 
     # Upload avatar function
     def upload_avatar(self, loc):
@@ -157,25 +157,34 @@ class Usersession:
                 uploadimg(file.name)
                 temp_id = getfilelist()
                 deletefile(self.user_avatar)
-                sql = '''UPDATE User SET user_avatar = (%s) WHERE user_id = (%s)''' # Update user avatar
-                cursor.execute(sql, (temp_id, self.user_id))
-                cursor.connection.commit()
-                if cursor.rowcount > 0:
-                    self.user_avatar = temp_id
-                    getimg(self.user_avatar) # Download the new avatar to temp
-                    avatar_path = 'temp/' + self.user_avatar + '.png' # Display new avatar
-                    img_avatar = Image.open(avatar_path)
-                    img_avatar = img_avatar.resize((round(200*ratio),round(200*ratio)), Image.ANTIALIAS)
-                    img_avatar = ImageTk.PhotoImage(img_avatar)
-                    loc.configure(image=img_avatar)
-                    loc.image = img_avatar
-                    profileWindow.attributes('-disabled', 0)
-                    loading_splash.destroy()
-                    messagebox.showinfo("Avatar Upload Successful", "Your new avatar image had been successfully replaced!")
-                else:
-                    profileWindow.attributes('-disabled', 0)
-                    loading_splash.destroy()
-                    messagebox.showerror("Avatar Upload Failed", "An error had occured within transaction in database server! Please contact developer for help!")
+                try:
+                    mysql_con = MySqlConnector(sql_config) # Initial connection
+                    sql = sql = '''UPDATE User SET user_avatar = (%s) WHERE user_id = (%s)''' # Update user avatar
+                    update = mysql_con.update(sql, (temp_id, self.user_id))
+                    if update > 0:
+                        self.user_avatar = temp_id
+                        getimg(self.user_avatar) # Download the new avatar to temp
+                        avatar_path = 'temp/' + self.user_avatar + '.png' # Display new avatar
+                        img_avatar = Image.open(avatar_path)
+                        img_avatar = img_avatar.resize((round(200*ratio),round(200*ratio)), Image.ANTIALIAS)
+                        img_avatar = ImageTk.PhotoImage(img_avatar)
+                        loc.configure(image=img_avatar)
+                        loc.image = img_avatar
+                        profileWindow.attributes('-disabled', 0)
+                        loading_splash.destroy()
+                        messagebox.showinfo("Avatar Upload Successful", "Your new avatar image had been successfully replaced!")
+                    # If error
+                    else:
+                        profileWindow.attributes('-disabled', 0)
+                        loading_splash.destroy()
+                        messagebox.showerror("Change Avatar Failed", "Failed to update your avatar! Please contact developer for help!")
+                except pymysql.Error as e:
+                    messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                    print("Error %d: %s" % (e.args[0], e.args[1]))
+                    return False
+                finally:
+                    # Close the connection
+                    mysql_con.close()
                 
     # Update password function
     def updatepass(self, oldf, newf, conf):
@@ -234,38 +243,45 @@ class Usersession:
             else:
                 loading(updpassWindow)
                 cid = self.user_id
-                sql = '''UPDATE User SET user_password = (%s) WHERE user_id = (%s)'''
-                cursor.execute(sql, (new, cid))
-                cursor.connection.commit()
-                if cursor.rowcount > 0:
-                    # Update the current user data
-                    sql = '''SELECT * FROM User WHERE user_id = (%s)'''
-                    cursor.execute(sql, (cid))
-                    result_details = cursor.fetchone()
-                    self.user_id = result_details[0]
-                    self.user_firstname = result_details[1]
-                    self.user_lastname = result_details[2]
-                    self.user_password = result_details[3]
-                    self.user_addressline = result_details[4]
-                    self.user_city = result_details[5]
-                    self.user_state = result_details[6]
-                    self.user_postcode = result_details[7]
-                    self.user_email = result_details[8]
-                    self.user_phone = result_details[9]
-                    self.user_role = result_details[10]
-                    self.user_firstlogin = result_details[12]
-                    loading_splash.destroy()
-                    messagebox.showinfo("Change Password Successful", "Your had successfully updated your password!")
-                    profileWindow.attributes('-disabled', 0)
-                    updpassWindow.destroy() # Close the interface
-                    profileWindow.focus_force()
-                # If error
-                else:
-                    loading_splash.destroy()
-                    messagebox.showerror("Change Passord Failed", "An error had occured in database server! Please contact developer for help!")
-                    profileWindow.attributes('-disabled', 0)
-                    updpassWindow.destroy() # Close the interface
-                    profileWindow.focus_force() 
+                try:
+                    mysql_con = MySqlConnector(sql_config) # Initial connection
+                    sql = '''UPDATE User SET user_password = (%s) WHERE user_id = (%s)'''
+                    update = mysql_con.update(sql, (new, cid))
+                    if update > 0:
+                        # Update the current user data
+                        sql = '''SELECT * FROM User WHERE user_id = (%s)'''
+                        result_details = mysql_con.queryall(sql, (cid))
+                        self.user_id = result_details[0][0]
+                        self.user_firstname = result_details[0][1]
+                        self.user_lastname = result_details[0][2]
+                        self.user_password = result_details[0][3]
+                        self.user_addressline = result_details[0][4]
+                        self.user_city = result_details[0][5]
+                        self.user_state = result_details[0][6]
+                        self.user_postcode = result_details[0][7]
+                        self.user_email = result_details[0][8]
+                        self.user_phone = result_details[0][9]
+                        self.user_role = result_details[0][10]
+                        self.user_firstlogin = result_details[0][12]
+                        loading_splash.destroy()
+                        messagebox.showinfo("Change Password Successful", "Your had successfully updated your password!")
+                        profileWindow.attributes('-disabled', 0)
+                        updpassWindow.destroy() # Close the interface
+                        profileWindow.focus_force()
+                    # If error
+                    else:
+                        loading_splash.destroy()
+                        messagebox.showerror("Change Passord Failed", "Failed to update your temporary password! Please contact developer for help!")
+                        profileWindow.attributes('-disabled', 0)
+                        updpassWindow.destroy() # Close the interface
+                        profileWindow.focus_force() 
+                except pymysql.Error as e:
+                    messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                    print("Error %d: %s" % (e.args[0], e.args[1]))
+                    return False
+                finally:
+                    # Close the connection
+                    mysql_con.close()
                     
     # Update profile details function
     def updateprofile(self, uf, ul, ad, ci, st, po, em, ph):
@@ -280,67 +296,84 @@ class Usersession:
                 global email_exist
                 email_exist = False
                 # Check for email redundancy
-                if em.get() != self.user_email:
-                    sql = '''SELECT user_email FROM User'''
-                    cursor.execute(sql)
-                    result = [result[0] for result in cursor.fetchall()]
-                    for i in range(len(result)):
-                        if result[i] == em.get():
-                            loading_splash.destroy()
-                            messagebox.showerror("Update Profile Failed", "The new inserted email had been registered previously!")
-                            email_exist = True
-                            updprofileWindow.attributes('-disabled', 0)
-                            updprofileWindow.focus_force()
-                            em.focus()
-                            break
+                if em.get().lower() != self.user_email:
+                    try:
+                        mysql_con = MySqlConnector(sql_config) # Initial connection
+                        sql = '''SELECT user_email FROM User'''
+                        result_details = mysql_con.queryall(sql)
+                        result = [result[0] for result in result_details]
+                        for i in range(len(result)):
+                            if result[i] == em.get().lower():
+                                loading_splash.destroy()
+                                messagebox.showerror("Update Profile Failed", "The new inserted email had been registered previously!")
+                                email_exist = True
+                                updprofileWindow.attributes('-disabled', 0)
+                                updprofileWindow.focus_force()
+                                em.focus()
+                                break
+                    except pymysql.Error as e:
+                        messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                        print("Error %d: %s" % (e.args[0], e.args[1]))
+                        return False
+                    finally:
+                        # Close the connection
+                        mysql_con.close()
+                        
                 # Update profile if exist was false
                 if(email_exist == False):
                     input_addline = ad.get()
                     if "," in input_addline[-1]:
                         input_addline = input_addline.rstrip(",")
-                    sql = '''UPDATE User SET user_firstname = (%s), user_lastname = (%s), user_addressline = (%s), user_city = (%s), user_state = (%s), user_postcode = (%s), user_email = (%s), user_phone = (%s) WHERE user_id = (%s)''' # Update user info
-                    cursor.execute(sql, (uf.get(), ul.get(), input_addline, ci.get(), st.get(), po.get(), em.get(), ph.get(), self.user_id))
-                    cursor.connection.commit()
-                    if cursor.rowcount > 0:
-                    # Update the current user data
-                        sql = '''SELECT * FROM User WHERE user_id = (%s)'''
-                        cursor.execute(sql, (self.user_id))
-                        result_details = cursor.fetchone()
-                        self.user_firstname = result_details[1]
-                        self.user_lastname = result_details[2]
-                        self.user_addressline = result_details[4]
-                        self.user_city = result_details[5]
-                        self.user_state = result_details[6]
-                        self.user_postcode = result_details[7]
-                        self.user_email = result_details[8]
-                        self.user_phone = result_details[9]
-                        loading_splash.destroy()
-                        messagebox.showinfo("Personal Info Update Successful", "Your new personal details had been updated!")
-                        profileWindow.attributes('-disabled', 0)
-                        updprofileWindow.destroy() # Close the interface
-                        profileWindow.focus_force()
-                        # Update content display
-                        canvas.itemconfig(name_label, text="{}".format(self.user_firstname+" "+self.user_lastname))
-                        add_con.configure(state=NORMAL)
-                        add_con.delete(1.0, END)
-                        add_con.insert(END, "{}, {} {}, {}.".format(self.user_addressline, self.user_postcode, self.user_city, self.user_state))
-                        add_con.configure(state=DISABLED)
-                        email_con.configure(state=NORMAL)
-                        email_con.delete(1.0, END)
-                        email_con.insert(END, "{}".format(self.user_email))
-                        email_con.configure(state=DISABLED)
-                        phone_con.configure(state=NORMAL)
-                        phone_con.delete(1.0, END)
-                        phone_con.insert(END, "{}".format(self.user_phone))
-                        phone_con.configure(state=DISABLED)
-                        profileWindow.update()
-                    # If error
-                    else:
-                        loading_splash.destroy()
-                        messagebox.showerror("Personal Info Update Failed", "An error had occured in database server! Please contact developer for help!")
-                        profileWindow.attributes('-disabled', 0)
-                        updprofileWindow.destroy() # Close the interface
-                        profileWindow.focus_force()  
+                    try:
+                        mysql_con = MySqlConnector(sql_config) # Initial connection
+                        sql = '''UPDATE User SET user_firstname = (%s), user_lastname = (%s), user_addressline = (%s), user_city = (%s), user_state = (%s), user_postcode = (%s), user_email = (%s), user_phone = (%s) WHERE user_id = (%s)''' # Update user info
+                        update = mysql_con.update(sql, (uf.get(), ul.get(), input_addline, ci.get(), st.get(), po.get(), em.get().lower(), ph.get(), self.user_id))
+                        if update > 0:
+                            # Update the current user data
+                            sql = '''SELECT * FROM User WHERE user_id = (%s)'''
+                            result_details1 = mysql_con.queryall(sql, (self.user_id))
+                            self.user_firstname = result_details1[0][1]
+                            self.user_lastname = result_details1[0][2]
+                            self.user_addressline = result_details1[0][4]
+                            self.user_city = result_details1[0][5]
+                            self.user_state = result_details1[0][6]
+                            self.user_postcode = result_details1[0][7]
+                            self.user_email = result_details1[0][8]
+                            self.user_phone = result_details1[0][9]
+                            loading_splash.destroy()
+                            messagebox.showinfo("Personal Info Update Successful", "Your new personal details had been updated!")
+                            profileWindow.attributes('-disabled', 0)
+                            updprofileWindow.destroy() # Close the interface
+                            profileWindow.focus_force()
+                            # Update content display
+                            canvas.itemconfig(name_label, text="{}".format(self.user_firstname+" "+self.user_lastname))
+                            add_con.configure(state=NORMAL)
+                            add_con.delete(1.0, END)
+                            add_con.insert(END, "{}, {} {}, {}.".format(self.user_addressline, self.user_postcode, self.user_city, self.user_state))
+                            add_con.configure(state=DISABLED)
+                            email_con.configure(state=NORMAL)
+                            email_con.delete(1.0, END)
+                            email_con.insert(END, "{}".format(self.user_email))
+                            email_con.configure(state=DISABLED)
+                            phone_con.configure(state=NORMAL)
+                            phone_con.delete(1.0, END)
+                            phone_con.insert(END, "{}".format(self.user_phone))
+                            phone_con.configure(state=DISABLED)
+                            profileWindow.update()
+                        # If error
+                        else:
+                            loading_splash.destroy()
+                            messagebox.showerror("Personal Info Update Failed", "Failed to update your personal details! Please contact developer for help!")
+                            profileWindow.attributes('-disabled', 0)
+                            updprofileWindow.destroy() # Close the interface
+                            profileWindow.focus_force() 
+                    except pymysql.Error as e:
+                        messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                        print("Error %d: %s" % (e.args[0], e.args[1]))
+                        return False
+                    finally:
+                        # Close the connection
+                        mysql_con.close()
 
 # User class
 class User:
@@ -466,51 +499,58 @@ def login(eloc, ploc):
         messagebox.showerror("Login Failed", "The password should not less than 8 characters! Please fill in the valid password and login again!")
         ploc.delete(0, END)
         ploc.focus()
-    else:  
-        sql = '''SELECT * FROM User WHERE user_email = (%s) AND user_password = (%s)'''
-        row_result = cursor.execute(sql, (uname, pas))
-        if row_result > 0:
-            loading(root)
-            root.update()
-            result_detail = cursor.fetchone()
-            usession = Usersession(
-                result_detail[0], 
-                result_detail[1], 
-                result_detail[2], 
-                result_detail[3], 
-                result_detail[4], 
-                result_detail[5], 
-                result_detail[6], 
-                result_detail[7], 
-                result_detail[8], 
-                result_detail[9], 
-                result_detail[10], 
-                result_detail[11], 
-                result_detail[12], 
-                result_detail[13]
-            )
-            now = datetime.now() # Get current date time
-            dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-            sql = '''UPDATE User SET user_lastlogin_datetime = (%s) WHERE user_id = (%s)''' # Update last login
-            cursor.execute(sql, (dt_string, usession.user_id))
-            cursor.connection.commit()
-            usession.user_lastlogin = dt_string
-            # Get avatar
-            getimg(usession.user_avatar)
-            root.attributes('-disabled', 0)
-            loading_splash.destroy()
-            eloc.delete(0, END)
-            ploc.delete(0, END)
-            eloc.focus()
-            messagebox.showinfo("Login Successful", "Hi {0}, welcome back to e-Vision!".format(usession.user_firstname))
-            mainPage() # Invoke the main page
-            root.withdraw() # Withdraw the login page
-        # If no such user found
-        else:
-            messagebox.showerror("Login Failed", "Invalid email/password! Please try to login again with valid email and password created!")
-            eloc.delete(0, END)
-            ploc.delete(0, END)
-            eloc.focus()
+    else:
+        try:
+            mysql_con = MySqlConnector(sql_config) # Initial connection
+            sql = '''SELECT * FROM User WHERE user_email = (%s) AND BINARY user_password = (%s)'''
+            result_details = mysql_con.queryall(sql, (uname.lower(), pas))
+            if result_details:
+                loading(root)
+                root.update()
+                usession = Usersession(
+                    result_details[0][0], 
+                    result_details[0][1], 
+                    result_details[0][2], 
+                    result_details[0][3], 
+                    result_details[0][4], 
+                    result_details[0][5], 
+                    result_details[0][6], 
+                    result_details[0][7], 
+                    result_details[0][8], 
+                    result_details[0][9], 
+                    result_details[0][10], 
+                    result_details[0][11], 
+                    result_details[0][12], 
+                    result_details[0][13]
+                )
+                now = datetime.now() # Get current date time
+                dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
+                sql = '''UPDATE User SET user_lastlogin_datetime = (%s) WHERE user_id = (%s)''' # Update last login
+                mysql_con.update(sql, (dt_string, usession.user_id))
+                usession.user_lastlogin = dt_string
+                # Get avatar
+                getimg(usession.user_avatar)
+                root.attributes('-disabled', 0)
+                loading_splash.destroy()
+                eloc.delete(0, END)
+                ploc.delete(0, END)
+                eloc.focus()
+                messagebox.showinfo("Login Successful", "Hi {0}, welcome back to e-Vision!".format(usession.user_firstname))
+                mainPage() # Invoke the main page
+                root.withdraw() # Withdraw the login page
+            # If no such user found
+            else:
+                messagebox.showerror("Login Failed", "Invalid email/password! Please try to login again with valid email and password created!")
+                eloc.delete(0, END)
+                ploc.delete(0, END)
+                eloc.focus()
+        except pymysql.Error as e:
+            messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+            print("Error %d: %s" % (e.args[0], e.args[1]))
+            return False
+        finally:
+            # Close the connection
+            mysql_con.close()
  
 # Logout function
 def logout():
@@ -877,22 +917,110 @@ def validate_pass2(*args):
 # Search all user function
 def serachAllUser():
     loading(usermanageWindow)
-    sql = '''SELECT * FROM User WHERE user_role = 2'''
-    cursor.execute(sql)
-    if cursor.rowcount > 0:
-        result = cursor.fetchall()
-        usermanageWindow.attributes('-disabled', 0)
-        loading_splash.destroy()
-        return result
-    # If no existing data found
+    try:
+        mysql_con = MySqlConnector(sql_config) # Initial connection
+        sql = '''SELECT * FROM User WHERE user_role = 2'''
+        result_details = mysql_con.queryall(sql)
+        if result_details:
+            usermanageWindow.attributes('-disabled', 0)
+            loading_splash.destroy()
+            return result_details
+        # If no existing data found
+        else:
+            result = None
+            usermanageWindow.attributes('-disabled', 0)
+            loading_splash.destroy()
+            messagebox.showinfo("No User Data Found", "There was no existing monitoring employee found in the system!")
+            return result_details
+    except pymysql.Error as e:
+        messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+        print("Error %d: %s" % (e.args[0], e.args[1]))
+        return False
+    finally:
+        # Close the connection
+        mysql_con.close()
+
+# Search user based on filter function
+def searchUserByFilter(value, opt):
+    if opt == 'All':
+        try:
+            mysql_con = MySqlConnector(sql_config) # Initial connection
+            loading(usermanageWindow)
+            sql = '''SELECT * FROM User WHERE user_role = 2'''
+            result_details = mysql_con.queryall(sql)
+            if result_details:
+                usrmng_tree.delete(*usrmng_tree.get_children())
+                usrmng_count = 0
+                for dt in result_details:
+                    if usrmng_count % 2 == 0:
+                        usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('evenrow',))
+                    else:
+                        usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('oddrow',))
+                    usrmng_count +=1
+                usermanageWindow.attributes('-disabled', 0)
+                loading_splash.destroy()
+            # If no existing data found
+            else:
+                result_details = None
+                usrmng_tree.delete(*usrmng_tree.get_children())
+                usrmng_count = 0
+                usermanageWindow.attributes('-disabled', 0)
+                loading_splash.destroy()
+                messagebox.showinfo("No User Data Found", "There was no existing monitoring employee found in the system!")
+        except pymysql.Error as e:
+            messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+            print("Error %d: %s" % (e.args[0], e.args[1]))
+            return False
+        finally:
+            # Close the connection
+            mysql_con.close()
     else:
-        result = None
-        usermanageWindow.attributes('-disabled', 0)
-        loading_splash.destroy()
-        messagebox.showinfo("No User Data Found", "There was no existing monitoring employee found in the system!")
-        return result
-        
-        
+        if not value:
+            message = "The value field should not be empty for " + opt + " fitlration option!"
+            messagebox.showerror("Invalid Empty Field", message)
+            filterfield_text.focus()
+        else:
+            try:
+                mysql_con = MySqlConnector(sql_config) # Initial connection
+                loading(usermanageWindow)
+                if opt == 'User ID':
+                    sql = '''SELECT * FROM User WHERE user_role = 2 AND user_id LIKE CONCAT('%%', %s, '%%')'''
+                elif opt == 'First Name':
+                    sql = '''SELECT * FROM User WHERE user_role = 2 AND user_firstname LIKE CONCAT('%%', %s, '%%')'''
+                elif opt == 'Last Name':
+                    sql = '''SELECT * FROM User WHERE user_role = 2 AND user_lastname LIKE CONCAT('%%', %s, '%%')'''
+                elif opt == 'Email':
+                    sql = '''SELECT * FROM User WHERE user_role = 2 AND user_email LIKE CONCAT('%%', %s, '%%')'''
+                else:
+                    sql = '''SELECT * FROM User WHERE user_role = 2 AND user_phone LIKE CONCAT('%%', %s, '%%')'''
+                result_details1 = mysql_con.queryall(sql, (value))
+                if result_details1:
+                    usrmng_tree.delete(*usrmng_tree.get_children())
+                    usrmng_count = 0
+                    for dt in result_details1:
+                        if usrmng_count % 2 == 0:
+                            usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('evenrow',))
+                        else:
+                            usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('oddrow',))
+                        usrmng_count +=1
+                    usermanageWindow.attributes('-disabled', 0)
+                    loading_splash.destroy()
+                # If no existing data found
+                else:
+                    result_details1 = None
+                    usrmng_tree.delete(*usrmng_tree.get_children())
+                    usrmng_count = 0
+                    usermanageWindow.attributes('-disabled', 0)
+                    loading_splash.destroy()
+                    messagebox.showinfo("No User Data Found", "There was no such monitoring employee found based on the filtration value!")
+            except pymysql.Error as e:
+                messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                print("Error %d: %s" % (e.args[0], e.args[1]))
+                return False
+            finally:
+                # Close the connection
+                mysql_con.close()
+       
 # Filter user callback fucntion
 def usrmngcallback(eventObject):
     if filter_opt.get() == 'All':
@@ -1582,7 +1710,7 @@ def updatepassPage():
 #==============================================================================================#
 ## Admin - Manage User Page Interface
 def usermanagementPage():
-    global usermanageWindow, filterfield_text, filter_opt
+    global usermanageWindow, filterfield_text, filter_opt, usrmng_tree
     
     # Configure  window attribute
     mainWindow.withdraw()
@@ -1781,7 +1909,7 @@ def usermanagementPage():
     filter_opt.bind("<<ComboboxSelected>>", usrmngcallback)
     f11c = Frame(f11)
     f11c.pack(side=LEFT)
-    search_userbtn = Button(f11c, text="Search", font=("Lato bold", round(11*ratio)), width=round(12*ratio), bg="#E6E6E6", fg="black", relief=RIDGE, bd=1, activebackground="#B4B1B1", activeforeground="black")
+    search_userbtn = Button(f11c, text="Search", command=lambda:searchUserByFilter(filterfield_text.get(), filter_opt.get()), font=("Lato bold", round(11*ratio)), width=round(12*ratio), bg="#E6E6E6", fg="black", relief=RIDGE, bd=1, activebackground="#B4B1B1", activeforeground="black")
     search_userbtn.pack()
     # Treeview frame
     usrmng_tree_frame = Frame(usermanageWindow)
