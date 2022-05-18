@@ -48,7 +48,7 @@ if(exist == FALSE):
       user_id CHAR(5) NOT NULL DEFAULT '0',
       user_firstname VARCHAR(30) NOT NULL,
       user_lastname VARCHAR(30) NOT NULL,
-      user_password VARCHAR(128) NOT NULL,
+      user_password CHAR(64) NOT NULL,
       user_addressline VARCHAR(255) NOT NULL,
       user_city VARCHAR(30) NOT NULL,
       user_state VARCHAR(30) NOT NULL,

@@ -46,11 +46,10 @@ folder_id = '18aJTxbazV-zxcygJQ4E9qIu1f1bwAAWH'
 #==============================================================================================#
 # Login session class
 class Usersession:
-    def __init__(self, uid, ufname, ulname, upass, uadd, ucity, ustate, upost, uemail, uphone, urole, uavatar, ullogin, uflogin):
+    def __init__(self, uid, ufname, ulname, uadd, ucity, ustate, upost, uemail, uphone, urole, uavatar, ullogin, uflogin):
         self.user_id = uid
         self.user_firstname = ufname
         self.user_lastname = ulname
-        self.user_password = upass
         self.user_addressline = uadd
         self.user_city = ucity
         self.user_state = ustate
@@ -91,12 +90,6 @@ class Usersession:
             newf.delete(0, END)
             conf.delete(0, END)
             newf.focus()
-        # If new password same with current password
-        elif (new == self.user_password):
-            messagebox.showerror("Change Password Failed", "The new password should not be same with existing password!")
-            newf.delete(0, END)
-            conf.delete(0, END)
-            newf.focus()
         # If new password not satisfied the requirement
         elif (re.fullmatch(pare, new)==None):
             messagebox.showerror("Change Password Failed", "The values for new password must be at least 8 characters with minimum one special character, one number and both uppercase & lowercase letter!")
@@ -107,32 +100,8 @@ class Usersession:
             cid = self.user_id
             try:
                 mysql_con = MySqlConnector(sql_config) # Initial connection
-                sql = '''UPDATE User SET user_password = (%s), user_firstLogin = 0 WHERE user_id = (%s)'''
-                update = mysql_con.update(sql, (new, cid))
-                if update > 0:
-                    # Update the current user data
-                    sql = '''SELECT * FROM User WHERE user_id = (%s)'''
-                    result_details = mysql_con.queryall(sql, (cid))
-                    self.user_id = result_details[0][0]
-                    self.user_firstname = result_details[0][1]
-                    self.user_lastname = result_details[0][2]
-                    self.user_password = result_details[0][3]
-                    self.user_addressline = result_details[0][4]
-                    self.user_city = result_details[0][5]
-                    self.user_state = result_details[0][6]
-                    self.user_postcode = result_details[0][7]
-                    self.user_email = result_details[0][8]
-                    self.user_phone = result_details[0][9]
-                    self.user_role = result_details[0][10]
-                    self.user_firstlogin = result_details[0][12]
-                    messagebox.showinfo("Change Password Successful", "Your temporary password had been replaced with the new password!")
-                    mainWindow.attributes('-disabled', 0)
-                    wel.destroy() # Close the interface
-                    mainWindow.focus_force()
-                # If error
-                else:
-                    messagebox.showerror("Change Passord Failed", "Failed to update your temporary password! Please contact developer for help!")
-                    logout()
+                sql = '''SELECT * FROM User WHERE user_id = (%s) AND BINARY user_password = SHA2(%s, 256)'''
+                result_details = mysql_con.queryall(sql, (cid, new))
             except pymysql.Error as e:
                 messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
                 print("Error %d: %s" % (e.args[0], e.args[1]))
@@ -140,6 +109,48 @@ class Usersession:
             finally:
                 # Close the connection
                 mysql_con.close()
+                
+            if not result_details:
+                try:
+                    mysql_con = MySqlConnector(sql_config) # Initial connection
+                    sql = '''UPDATE User SET user_password = SHA2(%s, 256), user_firstLogin = 0 WHERE user_id = (%s)'''
+                    update = mysql_con.update(sql, (new, cid))
+                    if update > 0:
+                        # Update the current user data
+                        sql = '''SELECT * FROM User WHERE user_id = (%s)'''
+                        result_details = mysql_con.queryall(sql, (cid))
+                        self.user_id = result_details[0][0]
+                        self.user_firstname = result_details[0][1]
+                        self.user_lastname = result_details[0][2]
+                        self.user_addressline = result_details[0][4]
+                        self.user_city = result_details[0][5]
+                        self.user_state = result_details[0][6]
+                        self.user_postcode = result_details[0][7]
+                        self.user_email = result_details[0][8]
+                        self.user_phone = result_details[0][9]
+                        self.user_role = result_details[0][10]
+                        self.user_firstlogin = result_details[0][12]
+                        messagebox.showinfo("Change Password Successful", "Your temporary password had been replaced with the new password!")
+                        mainWindow.attributes('-disabled', 0)
+                        wel.destroy() # Close the interface
+                        mainWindow.focus_force()
+                    # If error
+                    else:
+                        messagebox.showerror("Change Passord Failed", "Failed to update your temporary password! Please contact developer for help!")
+                        logout()
+                except pymysql.Error as e:
+                    messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                    print("Error %d: %s" % (e.args[0], e.args[1]))
+                    return False
+                finally:
+                    # Close the connection
+                    mysql_con.close()
+            else:
+                messagebox.showerror("Change Password Failed", "The new password should not be same with existing password!")
+                newf.delete(0, END)
+                conf.delete(0, END)
+                newf.focus()
+            
                 
     # Upload avatar function
     def upload_avatar(self, loc):
@@ -226,55 +237,13 @@ class Usersession:
                 newf.delete(0, END)
                 conf.delete(0, END)
                 oldf.focus()
-            # If old password incorrect
-            elif (old != self.user_password):
-                messagebox.showerror("Change Password Failed", "Incorrect current password!")
-                oldf.delete(0, END)
-                newf.delete(0, END)
-                conf.delete(0, END)
-                oldf.focus()
-            # If new password same with current password
-            elif (new == self.user_password):
-                messagebox.showerror("Change Password Failed", "The new password should not be same with existing password!")
-                oldf.delete(0, END)
-                newf.delete(0, END)
-                conf.delete(0, END)
-                oldf.focus()
             else:
-                loading(updpassWindow)
                 cid = self.user_id
+                
                 try:
                     mysql_con = MySqlConnector(sql_config) # Initial connection
-                    sql = '''UPDATE User SET user_password = (%s) WHERE user_id = (%s)'''
-                    update = mysql_con.update(sql, (new, cid))
-                    if update > 0:
-                        # Update the current user data
-                        sql = '''SELECT * FROM User WHERE user_id = (%s)'''
-                        result_details = mysql_con.queryall(sql, (cid))
-                        self.user_id = result_details[0][0]
-                        self.user_firstname = result_details[0][1]
-                        self.user_lastname = result_details[0][2]
-                        self.user_password = result_details[0][3]
-                        self.user_addressline = result_details[0][4]
-                        self.user_city = result_details[0][5]
-                        self.user_state = result_details[0][6]
-                        self.user_postcode = result_details[0][7]
-                        self.user_email = result_details[0][8]
-                        self.user_phone = result_details[0][9]
-                        self.user_role = result_details[0][10]
-                        self.user_firstlogin = result_details[0][12]
-                        loading_splash.destroy()
-                        messagebox.showinfo("Change Password Successful", "Your had successfully updated your password!")
-                        profileWindow.attributes('-disabled', 0)
-                        updpassWindow.destroy() # Close the interface
-                        profileWindow.focus_force()
-                    # If error
-                    else:
-                        loading_splash.destroy()
-                        messagebox.showerror("Change Passord Failed", "Failed to update your temporary password! Please contact developer for help!")
-                        profileWindow.attributes('-disabled', 0)
-                        updpassWindow.destroy() # Close the interface
-                        profileWindow.focus_force() 
+                    sql = '''SELECT * FROM User WHERE user_id = (%s) AND BINARY user_password = SHA2(%s, 256)'''
+                    result_details = mysql_con.queryall(sql, (cid, old))
                 except pymysql.Error as e:
                     messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
                     print("Error %d: %s" % (e.args[0], e.args[1]))
@@ -282,6 +251,74 @@ class Usersession:
                 finally:
                     # Close the connection
                     mysql_con.close()
+                
+                if result_details:
+                    try:
+                        mysql_con = MySqlConnector(sql_config) # Initial connection
+                        sql = '''SELECT * FROM User WHERE user_id = (%s) AND BINARY user_password = SHA2(%s, 256)'''
+                        result_details1 = mysql_con.queryall(sql, (cid, new))
+                    except pymysql.Error as e:
+                        messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                        print("Error %d: %s" % (e.args[0], e.args[1]))
+                        return False
+                    finally:
+                        # Close the connection
+                        mysql_con.close()
+                    
+                    if not  result_details1:
+                        loading(updpassWindow)
+                        try:
+                            mysql_con = MySqlConnector(sql_config) # Initial connection
+                            sql = '''UPDATE User SET user_password = SHA2(%s, 256) WHERE user_id = (%s)'''
+                            update = mysql_con.update(sql, (new, cid))
+                            if update > 0:
+                                # Update the current user data
+                                sql = '''SELECT * FROM User WHERE user_id = (%s)'''
+                                result_details = mysql_con.queryall(sql, (cid))
+                                self.user_id = result_details[0][0]
+                                self.user_firstname = result_details[0][1]
+                                self.user_lastname = result_details[0][2]
+                                self.user_addressline = result_details[0][4]
+                                self.user_city = result_details[0][5]
+                                self.user_state = result_details[0][6]
+                                self.user_postcode = result_details[0][7]
+                                self.user_email = result_details[0][8]
+                                self.user_phone = result_details[0][9]
+                                self.user_role = result_details[0][10]
+                                self.user_firstlogin = result_details[0][12]
+                                loading_splash.destroy()
+                                messagebox.showinfo("Change Password Successful", "Your had successfully updated your password!")
+                                profileWindow.attributes('-disabled', 0)
+                                updpassWindow.destroy() # Close the interface
+                                profileWindow.focus_force()
+                            # If error
+                            else:
+                                loading_splash.destroy()
+                                messagebox.showerror("Change Passord Failed", "Failed to update your temporary password! Please contact developer for help!")
+                                profileWindow.attributes('-disabled', 0)
+                                updpassWindow.destroy() # Close the interface
+                                profileWindow.focus_force() 
+                        except pymysql.Error as e:
+                            messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                            print("Error %d: %s" % (e.args[0], e.args[1]))
+                            return False
+                        finally:
+                            # Close the connection
+                            mysql_con.close()
+                    else:
+                        messagebox.showerror("Change Password Failed", "The new password should not be same with existing password!")
+                        oldf.delete(0, END)
+                        newf.delete(0, END)
+                        conf.delete(0, END)
+                        oldf.focus()
+                else:
+                    messagebox.showerror("Change Password Failed", "Incorrect current password!")
+                    oldf.delete(0, END)
+                    newf.delete(0, END)
+                    conf.delete(0, END)
+                    oldf.focus()
+                    
+                        
                     
     # Update profile details function
     def updateprofile(self, uf, ul, ad, ci, st, po, em, ph):
@@ -377,10 +414,9 @@ class Usersession:
 
 # User class
 class User:
-    def __init__(self, ufname, ulname, upass, uadd, ucity, ustate, upost, uemail, uphone):
+    def __init__(self, ufname, ulname, uadd, ucity, ustate, upost, uemail, uphone):
         self.user_firstname = ufname
         self.user_lastname = ulname
-        self.user_password = upass
         self.user_addressline = uadd
         self.user_city = ucity
         self.user_state = ustate
@@ -502,7 +538,7 @@ def login(eloc, ploc):
     else:
         try:
             mysql_con = MySqlConnector(sql_config) # Initial connection
-            sql = '''SELECT * FROM User WHERE user_email = (%s) AND BINARY user_password = (%s)'''
+            sql = '''SELECT * FROM User WHERE user_email = (%s) AND BINARY user_password = SHA2(%s, 256)'''
             result_details = mysql_con.queryall(sql, (uname.lower(), pas))
             if result_details:
                 loading(root)
@@ -510,8 +546,7 @@ def login(eloc, ploc):
                 usession = Usersession(
                     result_details[0][0], 
                     result_details[0][1], 
-                    result_details[0][2], 
-                    result_details[0][3], 
+                    result_details[0][2],  
                     result_details[0][4], 
                     result_details[0][5], 
                     result_details[0][6], 
