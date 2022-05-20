@@ -5,6 +5,8 @@
 import os
 import io
 import re
+import secrets
+import string
 import pymysql
 import pandas as pd
 from tkinter import *
@@ -17,6 +19,7 @@ from datetime import datetime
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 from Google import Create_Service
 from mysql_db.db_connect import MySqlConnector
+from email_sender import *
 
 
 #==============================================================================================#
@@ -464,8 +467,8 @@ class ToolTip(object):
         tw.wm_overrideredirect(1)
         tw.wm_geometry("+%d+%d" % (x, y))
         label = Label(tw, text=self.text, justify=LEFT,
-                      background="#ffffe0", relief=SOLID, borderwidth=1,
-                      font=("tahoma", "8", "normal"))
+                      background="white", relief=SOLID, borderwidth=1,
+                      font=("Lato", "8", "normal"))
         label.pack(ipadx=1)
 
     def hidetip(self):
@@ -487,14 +490,26 @@ def loading(win):
     loading_splash.grab_set()
     loading_splash.overrideredirect(True)
     height = round(150*ratio)
-    width = round(400*ratio)
+    width = round(450*ratio)
     x = (cscreen_width/2)-(width/2)
     y = (cscreen_height/2)-(height/2)
     loading_splash.geometry(f'{width}x{height}+{round(x)}+{round(y)}')
-    frame_loading = Frame(loading_splash, width=width, height=height, bg="#242426")
-    frame_loading.pack()
-    Label(frame_loading, text="Loading...", font=("Bahnschrift", round(15*ratio)), bg="#242426", fg='#FFBD09').place(x=round(152*ratio), y=round(35*ratio))
-    Label(frame_loading, text="Please wait...", font=("Bahnschrift", round(15*ratio)), bg="#242426", fg='#FFBD09').place(x=round(135*ratio), y=round(70*ratio))
+    # Left banner
+    frame_img = Frame(loading_splash, bg="#242426", width=round(150*ratio), height=round(150*ratio))
+    frame_img.grid(row=0, column=0, rowspan=2)
+    left_banner = Image.open('asset/loading_banner.jpg')
+    left_banner = left_banner.resize((round(150*ratio),round(150*ratio)), Image.ANTIALIAS)
+    left_banner = ImageTk.PhotoImage(left_banner)
+    leftb_lbl = Label(frame_img, image=left_banner, bg="#242426", relief=FLAT, bd=0)
+    leftb_lbl.image = left_banner
+    leftb_lbl.pack(expand=TRUE, fill=BOTH)
+    # Right content
+    frame_loading = Frame(loading_splash, bg="#242426", width=round(300*ratio), height=round(150*ratio))
+    frame_loading.grid(row=0, column=1, rowspan=2, columnspan=2)
+    txt1 = Label(loading_splash, text="Loading...", font=("Arial Rounded MT Bold", round(15*ratio)), bg="#242426", fg='#FFBD09')
+    txt1.grid(row=0, column=1, columnspan=2, sticky="sew")
+    txt2 = Label(loading_splash, text="Let's wait & chill", font=("Arial Rounded MT Bold", round(15*ratio)), bg="#242426", fg='#FFBD09')
+    txt2.grid(row=1, column=1, columnspan=2, sticky="new")
 
 # Dynamically resize login left image
 def resize_image(event):
@@ -507,35 +522,49 @@ def resize_image(event):
 
 # Hide/Show password function
 def showpass():
-    if(var1.get() == 1):
-        txt_pass.configure(show="")
-    else:
+    global passwordShown
+    
+    if passwordShown:
+        passwordShown = False
         txt_pass.configure(show="*")
+        show_pass.pack_forget()
+        hide_pass.pack(side=RIGHT, padx=round(10*ratio), fill=BOTH)
+        
+    else:
+        passwordShown = True
+        txt_pass.configure(show="")
+        hide_pass.pack_forget()
+        show_pass.pack(side=RIGHT, padx=round(10*ratio), fill=BOTH)
 
 # Login function
-def login(eloc, ploc):
+def login(eloc, ploc, eml_error, pas_error):
     uname = eloc.get()
     pas = ploc.get()
     global usession
     
     # If both fields empty
-    if len(uname) == 0 & len(pas) == 0:
-        messagebox.showerror("Login Failed", "The fields were empty! Please fill in the valid email and password before login again!")
+    if not uname and not pas:
+        eml_error.config(text="Invalid empty field!")
+        pas_error.config(text="Invalid empty field!")
         eloc.focus()
     # If email field empty
-    elif len(uname) == 0:
-        messagebox.showerror("Login Failed", "The email field was empty! Please fill in the valid email and login again!")
+    elif not uname and pas:
+        eml_error.config(text="Invalid empty field!")
+        pas_error.config(text="")
         eloc.focus()
     # If password field empty
-    elif len(pas) == 0:
-        messagebox.showerror("Login Failed", "The password field was empty! Please fill in the valid password and login again!")
+    elif not pas and uname:
+        eml_error.config(text="")
+        pas_error.config(text="Invalid empty field!")
         ploc.focus()
     # If password minimum length not satisfied
     elif len(pas) < 8:
-        messagebox.showerror("Login Failed", "The password should not less than 8 characters! Please fill in the valid password and login again!")
-        ploc.delete(0, END)
+        eml_error.config(text="")
+        pas_error.config(text="Password length should not less than 8 characters!")
         ploc.focus()
     else:
+        eml_error.config(text="")
+        pas_error.config(text="")
         try:
             mysql_con = MySqlConnector(sql_config) # Initial connection
             sql = '''SELECT * FROM User WHERE user_email = (%s) AND BINARY user_password = SHA2(%s, 256)'''
@@ -591,7 +620,7 @@ def login(eloc, ploc):
 def logout():
     confirmbox = messagebox.askquestion('e-Vision Logout', 'Are you sure to logout the system?', icon='warning')
     if confirmbox == 'yes':
-        global usession
+        global usession, passwordShown
         del usession # Delete user session
         # Clear all files in temp folder
         dir = './temp'
@@ -600,6 +629,11 @@ def logout():
         mainWindow.destroy() # Destroy current winfow
         root.deiconify() # Show login page again
         root.geometry(f'{width1}x{height1}+{round(x1)}+{round(y1)}')
+        if passwordShown:
+            passwordShown = False
+            txt_pass.configure(show="*")
+            show_pass.pack_forget()
+            hide_pass.pack(side=RIGHT, padx=round(10*ratio), fill=BOTH)
 
 # Do nothing function
 def disable_event():
@@ -610,9 +644,10 @@ def backmainbtn(comploc, curwin, bgcol):
     icon_back = Image.open('asset/back.png')
     icon_back = icon_back.resize((round(65*ratio),round(65*ratio)), Image.ANTIALIAS)
     icon_back = ImageTk.PhotoImage(icon_back)
-    btn_back = Button(comploc, command=lambda:backmain(curwin), image=icon_back, height=round(65*ratio), width=round(65*ratio), bg=bgcol, relief=FLAT, bd=0, highlightthickness=0, activebackground=bgcol)
+    btn_back = Button(comploc, cursor="hand2", command=lambda:backmain(curwin), image=icon_back, height=round(65*ratio), width=round(65*ratio), bg=bgcol, relief=FLAT, bd=0, highlightthickness=0, activebackground=bgcol)
     btn_back.image = icon_back
     btn_back.pack()
+    CreateToolTip(btn_back, text = 'Back to Main Page')
 
 # Back to main function
 def backmain(cur):
@@ -620,6 +655,13 @@ def backmain(cur):
     style.theme_use("default")
     mainWindow.deiconify()
     mainWindow.state('zoomed')
+    
+# Back to Login function
+def backlogin(cur):
+    cur.destroy()
+    style.theme_use("default")
+    root.attributes('-disabled', 0)
+    root.focus_force()
 
 # Download image from cloud storage function
 def getimg(fileid):
@@ -740,17 +782,17 @@ def closechgpass():
 # Limit first name entry box length function
 def fnamevalidation(u_input):
     if len(u_input) > 30: 
-        btn_upd.config(state='disabled')  
+        btn_upd.config(state='disabled', cursor="")  
         fname_label_error.configure(text="Exceed 30 Characters Length Limit!")
         fname_label_error.grid(row=3, column=0, columnspan=2, sticky="se", padx=round(60*ratio), pady=(round(10*ratio), 0))
         return True 
     elif len(u_input) > 0 and len(u_input) <= 30:
         fname_label_error.grid_remove()
         if not phone_label_error.grid_info() and not email_label_error.grid_info() and not lname_label_error.grid_info() and not add_label_error.grid_info() and not city_label_error.grid_info(): 
-            btn_upd.config(state='normal')  
+            btn_upd.config(state='normal', cursor="hand2")  
         return True 
     elif (len(u_input)==0):
-        btn_upd.config(state='disabled')  
+        btn_upd.config(state='disabled', cursor="")  
         fname_label_error.configure(text="Invalid Empty Field!")
         fname_label_error.grid(row=3, column=0, columnspan=2, sticky="se", padx=round(60*ratio), pady=(round(10*ratio), 0))
         return True 
@@ -758,17 +800,17 @@ def fnamevalidation(u_input):
 # Limit last name entry box length function
 def lnamevalidation(u_input):
     if len(u_input) > 30: 
-        btn_upd.config(state='disabled')  
+        btn_upd.config(state='disabled', cursor="")  
         lname_label_error.configure(text="Exceed 30 Characters Length Limit!")
         lname_label_error.grid(row=5, column=0, columnspan=2, sticky="se", padx=round(60*ratio), pady=(round(10*ratio), 0))
         return True 
     elif len(u_input) > 0 and len(u_input) <= 30:
         lname_label_error.grid_remove()
         if not phone_label_error.grid_info() and not email_label_error.grid_info() and not fname_label_error.grid_info() and not add_label_error.grid_info() and not city_label_error.grid_info(): 
-            btn_upd.config(state='normal')  
+            btn_upd.config(state='normal', cursor="hand2")  
         return True 
     elif (len(u_input)==0):
-        btn_upd.config(state='disabled')  
+        btn_upd.config(state='disabled', cursor="")  
         lname_label_error.configure(text="Invalid Empty Field!")
         lname_label_error.grid(row=5, column=0, columnspan=2, sticky="se", padx=round(60*ratio), pady=(round(10*ratio), 0))
         return True 
@@ -776,17 +818,17 @@ def lnamevalidation(u_input):
 # Limit address line entry box length function
 def addvalidation(u_input):
     if len(u_input) > 255: 
-        btn_upd.config(state='disabled')  
+        btn_upd.config(state='disabled', cursor="")  
         add_label_error.configure(text="Exceed 255 Characters Length Limit!")
         add_label_error.grid(row=7, column=0, columnspan=2, sticky="se", padx=round(60*ratio), pady=(round(10*ratio), 0))
         return True 
     elif len(u_input) > 0 and len(u_input) <= 255:
         add_label_error.grid_remove()
         if not phone_label_error.grid_info() and not email_label_error.grid_info() and not fname_label_error.grid_info() and not lname_label_error.grid_info() and not city_label_error.grid_info(): 
-            btn_upd.config(state='normal')  
+            btn_upd.config(state='normal', cursor="hand2")  
         return True 
     elif (len(u_input)==0):
-        btn_upd.config(state='disabled')  
+        btn_upd.config(state='disabled', cursor="")  
         add_label_error.configure(text="Invalid Empty Field!")
         add_label_error.grid(row=7, column=0, columnspan=2, sticky="se", padx=round(60*ratio), pady=(round(10*ratio), 0))
         return True 
@@ -794,17 +836,17 @@ def addvalidation(u_input):
 # Limit address line entry box length function
 def cityvalidation1(u_input):
     if len(u_input) > 30: 
-        btn_upd.config(state='disabled')  
+        btn_upd.config(state='disabled', cursor="")  
         city_label_error.configure(text="Exceed 30 Characters Length Limit!")
         city_label_error.grid(row=9, column=0, columnspan=2, sticky="se", padx=round(60*ratio), pady=(round(10*ratio), 0))
         return True 
     elif len(u_input) > 0 and len(u_input) <= 30:
         city_label_error.grid_remove()
         if not phone_label_error.grid_info() and not email_label_error.grid_info() and not fname_label_error.grid_info() and not add_label_error.grid_info() and not lname_label_error.grid_info(): 
-            btn_upd.config(state='normal')  
+            btn_upd.config(state='normal', cursor="hand2")  
         return True 
     elif (len(u_input)==0):
-        btn_upd.config(state='disabled')  
+        btn_upd.config(state='disabled', cursor="")  
         city_label_error.configure(text="Invalid Empty Field!")
         city_label_error.grid(row=9, column=0, columnspan=2, sticky="se", padx=round(60*ratio), pady=(round(10*ratio), 0))
         return True 
@@ -834,15 +876,15 @@ def validate_email(u_input):
     if(re.search(emailregex, u_input) and u_input.isalpha):
         email_label_error.grid_remove()
         if not phone_label_error.grid_info(): 
-            btn_upd.config(state='normal')  
+            btn_upd.config(state='normal', cursor="hand2")  
         return True  
     elif (len(u_input)==0):
-        btn_upd.config(state='disabled')  
+        btn_upd.config(state='disabled', cursor="")  
         email_label_error.configure(text="Invalid Empty Field!")
         email_label_error.grid(row=13, column=0, columnspan=2, sticky="se", padx=round(60*ratio), pady=(round(10*ratio), 0))
         return True    
     else:
-        btn_upd.config(state='disabled')  
+        btn_upd.config(state='disabled', cursor="")  
         email_label_error.configure(text="Improper Email Format!")
         email_label_error.grid(row=13, column=0, columnspan=2, sticky="se", padx=round(60*ratio), pady=(round(10*ratio), 0))
         return True
@@ -852,15 +894,15 @@ def validate_phone(u_input):
     if(re.search(phoneregex, u_input) and u_input.isalpha):
         phone_label_error.grid_remove()
         if not email_label_error.grid_info():
-            btn_upd.config(state='normal')  
+            btn_upd.config(state='normal', cursor="hand2")  
         return True        
     elif (len(u_input)==0):
-        btn_upd.config(state='disabled')  
+        btn_upd.config(state='disabled', cursor="")  
         phone_label_error.configure(text="Invalid Empty Field!")
         phone_label_error.grid(row=15, column=0, columnspan=2, sticky="se", padx=round(60*ratio), pady=(round(10*ratio), 0))
         return True    
     else:
-        btn_upd.config(state='disabled') 
+        btn_upd.config(state='disabled', cursor="") 
         phone_label_error.configure(text="Improper Phone Number Format!") 
         phone_label_error.grid(row=15, column=0, columnspan=2, sticky="se", padx=round(60*ratio), pady=(round(10*ratio), 0))
         return True
@@ -904,9 +946,9 @@ def validate_pass1(*args):
         
     if ((one_empty["foreground"] == 'green') and (two_length["foreground"] == 'green') and (three_lower["foreground"] == 'green') and (four_upper["foreground"] == 'green') and 
         (six_specialchar["foreground"] == 'green') and (seven_con["foreground"] == 'green')):
-        btn_passupd.config(state='normal')
+        btn_passupd.config(state='normal', cursor="hand2")
     else:
-        btn_passupd.config(state='disabled')
+        btn_passupd.config(state='disabled', cursor="")
 def validate_pass2(*args):
     if fnewpass_val.get and fconpass_val.get():
         fone_empty.configure(fg="green")
@@ -945,9 +987,9 @@ def validate_pass2(*args):
         
     if ((fone_empty["foreground"] == 'green') and (ftwo_length["foreground"] == 'green') and (fthree_lower["foreground"] == 'green') and (ffour_upper["foreground"] == 'green') and 
         (fsix_specialchar["foreground"] == 'green') and (fseven_con["foreground"] == 'green')):
-        fbtn_save.config(state='normal')
+        fbtn_save.config(state='normal', cursor="hand2")
     else:
-        fbtn_save.config(state='disabled')
+        fbtn_save.config(state='disabled', cursor="")
 
 # Search all user function
 def serachAllUser():
@@ -1065,6 +1107,87 @@ def usrmngcallback(eventObject):
         filterfield_text.config(state='normal')
         filterfield_text.focus()
     
+# Generate random password function
+def generate_temppassword():
+    temp_pass = ''.join((secrets.choice(string.ascii_letters + string.digits + string.punctuation) for i in range(8)))
+    return temp_pass
+
+# Reset password for user
+def reset_password(email, err_lbl):
+    email_con = email.get()
+    
+    if not email_con:
+        err_lbl.config(text="The email field should not be empty!")
+        email.focus()
+    elif not (re.search(emailregex, email_con) and email_con.isalpha):
+        err_lbl.config(text="Invalid email format!")
+        email.focus() 
+    else:
+        try:
+            mysql_con = MySqlConnector(sql_config) # Initial connection
+            sql = '''SELECT * FROM User WHERE user_email = (%s)'''
+            result_details = mysql_con.queryall(sql, (email_con))
+            if result_details:
+                global existed
+                existed = True
+                err_lbl.config(text="")
+            # If no existing data found
+            else:
+                existed = False
+                err_lbl.config(text="We cannot find your email!")
+        except pymysql.Error as e:
+            messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+            print("Error %d: %s" % (e.args[0], e.args[1]))
+            return False
+        finally:
+            # Close the connection
+            mysql_con.close()
+            
+        if existed:
+            loading(forgetpassWindow)
+            forgetpassWindow.update()
+            # Generate random pass
+            temp = generate_temppassword()
+            # Update the password
+            try:
+                mysql_con = MySqlConnector(sql_config) # Initial connection
+                sql = '''UPDATE User SET user_password = SHA2(%s, 256), user_firstLogin = 1 WHERE user_email = (%s)'''
+                update = mysql_con.update(sql, (temp, email_con))
+                if update > 0:
+                    # Send email to the user
+                    emailtxt = [email_con]
+                    send = mail_resetpass(emailtxt, temp)
+                    if send:
+                        messagebox.showinfo("Password Reset Successful", "Your password had been reset. Please check your email in order to login.")
+                        forgetpassWindow.attributes('-disabled', 0)
+                        loading_splash.destroy()    
+                        forgetpassWindow.destroy() # Close the interface
+                        root.attributes('-disabled', 0)
+                        root.focus_force()
+                    else:
+                        messagebox.showinfo("Password Reset Process Not Complete", "Your password had been reset but email was not generated due to server error! Please contact developer for help!")
+                        forgetpassWindow.attributes('-disabled', 0)
+                        loading_splash.destroy() 
+                        forgetpassWindow.destroy() # Close the interface
+                        root.attributes('-disabled', 0)
+                        root.focus_force()
+                # If error
+                else:
+                    messagebox.showerror("Passord Reset Failed", "Failed to reset your password! Please contact developer for help!")
+                    forgetpassWindow.attributes('-disabled', 0)
+                    loading_splash.destroy() 
+                    forgetpassWindow.destroy() # Close the interface
+                    root.attributes('-disabled', 0)
+                    root.focus_force()
+            except pymysql.Error as e:
+                messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                print("Error %d: %s" % (e.args[0], e.args[1]))
+                return False
+            finally:
+                # Close the connection
+                mysql_con.close()
+
+
 #==============================================================================================#
 #                                     Login Page (root)                                        #
 #==============================================================================================#
@@ -1105,6 +1228,7 @@ label = Label(login_banner, image=banner_img)
 label.config(highlightthickness=0, borderwidth=0)
 label.bind('<Configure>', resize_image)
 label.pack(fill=BOTH,expand=YES)
+
 # Right login components
 canva = ResizingCanvas(login_component, width=round(cscreen_width/2), height=round(cscreen_height), bg="#2b2f3b", highlightthickness=0)
 canva.pack(fill=BOTH, expand=YES)
@@ -1116,30 +1240,45 @@ frame.grid(row=0, column=1, padx=round(100*ratio), pady=(round(120*ratio),0), st
 img_label = Label(frame, image=img, bg="#2b2f3b")
 img_label.image = img
 img_label.pack()
-login_title = Label(root, text="Login to Account", font=("Lato bold", round(34*ratio)), bg="#2b2f3b", fg="white")
+login_title = Label(root, text="Login to Account", font=("Arial Rounded MT Bold", round(34*ratio)), bg="#2b2f3b", fg="white")
 login_title.grid(row=1, column=1, sticky="w", padx=round(100*ratio))
 login_desc = Label(root, text="Enter your login data created in below section", font=("Lato", round(12*ratio)), bg="#2b2f3b", fg="white")
 login_desc.grid(row=2, column=1, sticky="w", padx=round(100*ratio))
-lbl_email = Label(root, text="Email", font=("Lato bold", round(14*ratio)), bg="#2b2f3b", fg="white")
+lbl_email = Label(root, text="Email", font=("Arial Rounded MT Bold", round(14*ratio)), bg="#2b2f3b", fg="white")
 lbl_email.grid(row=3, column=1, sticky="w", padx=round(100*ratio), pady=(round(65*ratio),round(5*ratio)))
+emlerror_lbl = Label(root, text="", font=("Lato bold", round(10*ratio)), bg="#2b2f3b", fg="red")
+emlerror_lbl.grid(row=3, column=1, sticky="e", padx=round(100*ratio), pady=(round(65*ratio),round(5*ratio)))
 frame1 = Frame(root, highlightbackground="#d1d1d1", highlightthickness=1)
 frame1.grid(row=4, column=1, sticky="nsew", padx=round(100*ratio))
 txt_email = Entry(frame1, bd=round(17*ratio), relief=FLAT, font=("Lato", round(14*ratio)))
 txt_email.pack(expand=True, fill=BOTH)
-lbl_pass = Label(root, text="Password", font=("Lato bold", round(14*ratio)), bg="#2b2f3b", fg="white")
+lbl_pass = Label(root, text="Password", font=("Arial Rounded MT Bold", round(14*ratio)), bg="#2b2f3b", fg="white")
 lbl_pass.grid(row=5, column=1, sticky="w", padx=round(100*ratio), pady=round(5*ratio))
-frame2 = Frame(root, highlightbackground="#d1d1d1", highlightthickness=1)
+pserror_lbl = Label(root, text="", font=("Lato bold", round(10*ratio)), bg="#2b2f3b", fg="red")
+pserror_lbl.grid(row=5, column=1, sticky="e", padx=round(100*ratio), pady=round(5*ratio))
+frame2 = Frame(root, highlightbackground="#d1d1d1", highlightthickness=1, bg="white")
 frame2.grid(row=6, column=1, sticky="nsew", padx=round(100*ratio))
 txt_pass = Entry(frame2, bd=round(17*ratio), relief=FLAT, font=("Lato", round(14*ratio)), show="*", bg="white")
-txt_pass.pack(expand=True, fill=BOTH)
-var1 = IntVar()
+txt_pass.pack(expand=True, fill=BOTH, side=LEFT)
+passwordShown  = False
+hide_icon = Image.open('asset/hide_pass.png')
+hide_icon = hide_icon.resize((round(35*ratio),round(35*ratio)), Image.ANTIALIAS)
+hide_icon = ImageTk.PhotoImage(hide_icon)
+hide_pass = Button(frame2, image=hide_icon, bg="white", relief=FLAT, bd=0, activebackground="white", command=lambda:showpass(), cursor="hand2")
+hide_pass.image = hide_icon
+show_icon = Image.open('asset/show_pass.png')
+show_icon = show_icon.resize((round(35*ratio),round(35*ratio)), Image.ANTIALIAS)
+show_icon = ImageTk.PhotoImage(show_icon)
+show_pass = Button(frame2, image=show_icon, bg="white", relief=FLAT, bd=0, activebackground="white", command=lambda:showpass())
+show_pass.image = show_icon
+hide_pass.pack(side=RIGHT, padx=round(10*ratio), fill=BOTH)
+CreateToolTip(hide_pass, text = 'Show Password')
+CreateToolTip(show_pass, text = 'Hide Password')
 frame3 = Frame(root, bg="#2b2f3b")
-frame3.grid(row=7, column=1, sticky="nw", padx=round(100*ratio), pady=round(10*ratio))
-showpas = Checkbutton(frame3,variable=var1, onvalue=1, offvalue=0, font=("Lato", round(11*ratio)), command=lambda:showpass(), bg="#2b2f3b", activebackground="#2b2f3b")
-showpas.pack(side=LEFT)
-lbl_showpas = Label(frame3, text="Show Password", font=("Lato", round(11*ratio)), bg="#2b2f3b", fg="white")
-lbl_showpas.pack(side=LEFT)
-btn_login = Button(root, text="Login Account", command=lambda:login(txt_email, txt_pass), font=("Lato bold", round(16*ratio)), height=2, fg="white", bg="#0170e3", relief=RIDGE, bd=1, activebackground="#025BB7", activeforeground="white")
+frame3.grid(row=7, column=1, sticky="ne", padx=round(100*ratio), pady=round(10*ratio))
+forget_pass = Button(frame3, command=lambda:forgetpassPage(), text="Forget password?", font=("Arial Rounded MT Bold", round(11*ratio)), bg="#2b2f3b", activebackground="#2b2f3b", relief=FLAT, bd=0, fg="white", activeforeground="white", cursor="hand2")
+forget_pass.pack(side=RIGHT)
+btn_login = Button(root, text="Login Account", command=lambda:login(txt_email, txt_pass, emlerror_lbl, pserror_lbl), font=("Arial Rounded MT Bold", round(16*ratio)), height=2, fg="white", bg="#0170e3", relief=RIDGE, bd=1, activebackground="#025BB7", activeforeground="white", cursor="hand2")
 btn_login.grid(row=7, column=1, sticky="sew", padx=round(100*ratio), pady=(round(70*ratio),round(40*ratio)))
 lbl_reg = Label(root, text="Don't have account? Please contact company's Admin", font=("Lato", round(12*ratio)), bg="#2b2f3b", fg="white")
 lbl_reg.grid(row=8, column=1, sticky="w", padx=round(100*ratio))
@@ -1179,6 +1318,71 @@ mngstyle.theme_create('mngstyle', parent='clam', settings =
 #                                         Main Page                                            #
 #==============================================================================================#
 ## Main Page Interface
+def forgetpassPage():
+    global forgetpassWindow
+    
+    # Configure window attribute
+    root.attributes('-disabled', 1)
+    forgetpassWindow = Toplevel(root)
+    forgetpassWindow.grab_set()
+    forgetpassWindow.overrideredirect(True)
+    height = round(450*ratio)
+    width = round(1000*ratio)
+    x = (cscreen_width/2)-(width/2)
+    y = (cscreen_height/2)-(height/2)
+    forgetpassWindow.geometry(f'{width}x{height}+{round(x)}+{round(y)}')
+    style.theme_use('default')
+    
+    # Configure row column attribute
+    forgetpassWindow.grid_rowconfigure(5, weight=round(1*ratio))
+    
+    # Setup frames
+    overall = Frame(forgetpassWindow, highlightbackground="#A9A9A9", highlightthickness=1, relief=RIDGE)
+    overall.grid(row=0, column=0, rowspan=6, columnspan=2, sticky="nsew")
+    left_frame = Frame(forgetpassWindow, width=round(cscreen_width*0.3125), height=round(cscreen_height*0.417), bg="white")
+    left_frame.grid(row=0, column=0, rowspan=6, sticky="nsew", padx=(1,0), pady=1)
+    right_frame = Frame(forgetpassWindow, width=round(cscreen_width*0.2083), height=round(cscreen_height*0.417), bg="white")
+    right_frame.grid(row=0, column=1, rowspan=6, sticky="nsew", padx=(0,1), pady=1)
+    
+    # Left banner
+    left_banner = Image.open('asset/forgetpass_banner.png')
+    left_banner = left_banner.resize((round(600*ratio),round(450*ratio)), Image.ANTIALIAS)
+    left_banner = ImageTk.PhotoImage(left_banner)
+    leftb_lbl = Label(left_frame, image=left_banner, bg="white", relief=FLAT, bd=0)
+    leftb_lbl.image = left_banner
+    leftb_lbl.pack(expand=TRUE, fill=BOTH)
+    
+    # Right component
+    forgot_lbl = Label(forgetpassWindow, text="Forgot Password", font=("Arial Rounded MT Bold", round(18*ratio)), bg="white")
+    forgot_lbl.grid(row=0, column=1, sticky="nsew", padx=round(40*ratio), pady=(round(80*ratio), 0))
+    desc_lbl = Label(forgetpassWindow, text="Enter your email and we'll assist you to reset your password.", font=("Lato", round(10*ratio)), wraplength=round(300*ratio), bg="white", fg="#787a82")
+    desc_lbl.grid(row=1, column=1, sticky="nsew", padx=round(40*ratio), pady=round(15*ratio))
+    f0 = Frame(forgetpassWindow, highlightbackground="#71c577", highlightthickness=1, highlightcolor="#71c577", bg="#f6fff7")
+    f0.grid(row=2, column=1, padx=round(40*ratio), pady=(round(20*ratio),round(10*ratio)), sticky="nsew")
+    email_icon = Image.open('asset/email_icon.png')
+    email_icon = email_icon.resize((round(30*ratio),round(30*ratio)))
+    email_icon = ImageTk.PhotoImage(email_icon)
+    emailicon_lbl = Label(f0, image=email_icon, bg="#f6fff7")
+    emailicon_lbl.image = email_icon
+    emailicon_lbl.pack(side=LEFT, fill=BOTH, padx=(round(5*ratio),0))
+    eml_text = Entry(f0, bd=round(14*ratio), relief=FLAT, font=("Lato", round(11*ratio)), bg="#f6fff7")
+    eml_text.pack(side=RIGHT, expand=TRUE, fill=BOTH)
+    error_lbl = Label(forgetpassWindow, text="", font=("Lato bold", round(10*ratio)), bg="white", fg="red")
+    error_lbl.grid(row=3, column=1, padx=round(40*ratio), sticky="nsw")
+    f1 = Frame(forgetpassWindow, bd=round(8*ratio), bg="#71c577")
+    f1.grid(row=4, column=1, padx=round(40*ratio), pady=(round(25*ratio),round(10*ratio)), sticky="nsew")
+    reset_pass = Button(f1, text="Change Password", command=lambda:reset_password(eml_text, error_lbl), font=("Arial Rounded MT Bold", round(12*ratio)), fg="white", bg="#71c577", relief=FLAT, bd=0, activebackground="#71c577", activeforeground="white", cursor="hand2")
+    reset_pass.pack(expand=TRUE, fill=BOTH)
+    f2 = Frame(forgetpassWindow, bd=round(8*ratio), bg="white")
+    f2.grid(row=5, column=1, padx=round(40*ratio), sticky="new")
+    reset_pass = Button(f2, text="Back to Login", command=lambda:backlogin(forgetpassWindow), font=("Arial Rounded MT Bold", round(10*ratio)), fg="#71c577", bg="white", relief=FLAT, bd=0, activebackground="white", activeforeground="#71c577", cursor="hand2")
+    reset_pass.pack(expand=TRUE, fill=BOTH)
+
+
+#==============================================================================================#
+#                                         Main Page                                            #
+#==============================================================================================#
+## Main Page Interface
 def mainPage():
     global mainWindow
     
@@ -1211,7 +1415,7 @@ def mainPage():
         btn_mnguserimg = Image.open('asset/manageuser_btn.png')
         btn_mnguserimg = btn_mnguserimg.resize((round(182*ratio),round(50*ratio)), Image.ANTIALIAS)
         btn_mnguserimg = ImageTk.PhotoImage(btn_mnguserimg)
-        btn_mnguser = Button(btn_frame1, command=lambda:usermanagementPage(), image=btn_mnguserimg, bg="#EDF1F7", relief=FLAT, bd=0, highlightthickness=0, activebackground="#EDF1F7")
+        btn_mnguser = Button(btn_frame1, cursor="hand2", command=lambda:usermanagementPage(), image=btn_mnguserimg, bg="#EDF1F7", relief=FLAT, bd=0, highlightthickness=0, activebackground="#EDF1F7")
         btn_mnguser.image = btn_mnguserimg
         btn_mnguser.pack(pady=(round(10*ratio),0))
         btn_frame2 = Frame(mainWindow, bg="#EDF1F7")
@@ -1219,7 +1423,7 @@ def mainPage():
         btn_mngcamimg = Image.open('asset/managecam_btn.png')
         btn_mngcamimg = btn_mngcamimg.resize((round(182*ratio),round(50*ratio)), Image.ANTIALIAS)
         btn_mngcamimg = ImageTk.PhotoImage(btn_mngcamimg)
-        btn_mngcamera = Button(btn_frame2, image=btn_mngcamimg, bg="#EDF1F7", relief=FLAT, bd=0, highlightthickness=0, activebackground="#EDF1F7")
+        btn_mngcamera = Button(btn_frame2, cursor="hand2", image=btn_mngcamimg, bg="#EDF1F7", relief=FLAT, bd=0, highlightthickness=0, activebackground="#EDF1F7")
         btn_mngcamera.image = btn_mngcamimg
         btn_mngcamera.pack(pady=(round(10*ratio),0))
         btn_frame3 = Frame(mainWindow, bg="#EDF1F7")
@@ -1227,7 +1431,7 @@ def mainPage():
         btn_agncamimg = Image.open('asset/assigncam_btn.png')
         btn_agncamimg = btn_agncamimg.resize((round(182*ratio),round(50*ratio)), Image.ANTIALIAS)
         btn_agncamimg = ImageTk.PhotoImage(btn_agncamimg)
-        btn_asscamera = Button(btn_frame3, image=btn_agncamimg, bg="#EDF1F7", relief=FLAT, bd=0, highlightthickness=0, activebackground="#EDF1F7")
+        btn_asscamera = Button(btn_frame3, cursor="hand2", image=btn_agncamimg, bg="#EDF1F7", relief=FLAT, bd=0, highlightthickness=0, activebackground="#EDF1F7")
         btn_asscamera.image = btn_agncamimg
         btn_asscamera.pack(pady=(round(10*ratio),0))
     else:
@@ -1246,16 +1450,16 @@ def mainPage():
     img_label.grid(column=3, row=0, columnspan=2, sticky="nsew", pady=(round(30*ratio), round(5*ratio)))
     btn_frame4 = Frame(mainWindow, bg="#1D253D")
     btn_frame4.grid(row=1, column=3, sticky="nsew", padx=(round(30*ratio), round(5*ratio)), pady=round(10*ratio))
-    btn_profile = Button(btn_frame4, text="Profile", command=lambda:profilePage(), font=("Lato bold", round(13*ratio)), fg="white", bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB", activeforeground="white")
+    btn_profile = Button(btn_frame4, cursor="hand2", text="Profile", command=lambda:profilePage(), font=("Arial Rounded MT Bold", round(13*ratio)), fg="white", bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB", activeforeground="white")
     btn_profile.pack(fill='x')
     btn_frame5 = Frame(mainWindow, bg="#1D253D")
     btn_frame5.grid(row=1, column=4, sticky="nsew", padx=(round(5*ratio), round(30*ratio)), pady=round(10*ratio))
-    btn_logout = Button(btn_frame5, text="Logout", command=lambda:logout(), font=("Lato bold", round(13*ratio)), height=1, width=round(15*ratio), fg="white", bg="#FF0000", relief=RIDGE, bd=1, activebackground="#B50505", activeforeground="white")
+    btn_logout = Button(btn_frame5, cursor="hand2", text="Logout", command=lambda:logout(), font=("Arial Rounded MT Bold", round(13*ratio)), height=1, width=round(15*ratio), fg="white", bg="#FF0000", relief=RIDGE, bd=1, activebackground="#B50505", activeforeground="white")
     btn_logout.pack(fill='x')
     notebookstyle = ttk.Style()
     notebookstyle.theme_use('default')
     notebookstyle.configure('TNotebook', background="#1D253D", borderwidth=round(1*ratio), relief=FLAT)
-    notebookstyle.configure('TNotebook.Tab', font=("Lato bold", round(11*ratio)), background="#34415B", borderwidth=round(1*ratio), relief=FLAT, foreground="white", padding=(round(30*ratio),round(5*ratio),round(30*ratio),round(5*ratio)))
+    notebookstyle.configure('TNotebook.Tab', font=("Arial Rounded MT Bold", round(11*ratio)), background="#34415B", borderwidth=round(1*ratio), relief=FLAT, foreground="white", padding=(round(30*ratio),round(5*ratio),round(30*ratio),round(5*ratio)))
     notebookstyle.map("TNotebook.Tab", background=[("selected", "#8D9EC1")])
     notebookstyle.layout("Tab",
     [('Notebook.tab', {'sticky': 'nswe', 'children':
@@ -1274,15 +1478,15 @@ def mainPage():
     acci_tab.add(history_accif, text="Accident History")
     btn_frame6 = Frame(mainWindow, bg="#1D253D")
     btn_frame6.grid(row=3, column=3, columnspan=2, sticky="nsew", padx=round(30*ratio), pady=round(10*ratio))
-    btn_refresh = Button(btn_frame6, text="Refresh Accident List", font=("Lato bold", round(13*ratio)), height=1, width=round(32*ratio), fg="white", bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB", activeforeground="white")
+    btn_refresh = Button(btn_frame6, cursor="hand2", text="Refresh Accident List", font=("Arial Rounded MT Bold", round(13*ratio)), height=1, width=round(32*ratio), fg="white", bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB", activeforeground="white")
     btn_refresh.pack(fill='x')
     btn_frame7 = Frame(mainWindow, bg="#1D253D")
     btn_frame7.grid(row=4, column=3, sticky="nsew", padx=(round(30*ratio), round(5*ratio)), pady=(0, round(5*ratio)))
-    btn_init = Button(btn_frame7, text="Initiate", font=("Lato bold", round(13*ratio)), height=1, width=round(15*ratio), fg="white", bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB", activeforeground="white")
+    btn_init = Button(btn_frame7, cursor="hand2", text="Initiate", font=("Arial Rounded MT Bold", round(13*ratio)), height=1, width=round(15*ratio), fg="white", bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB", activeforeground="white")
     btn_init.pack(fill='x')
     btn_frame8 = Frame(mainWindow, bg="#1D253D")
     btn_frame8.grid(row=4, column=4, sticky="nsew", padx=(round(5*ratio), round(30*ratio)), pady=(0, round(5*ratio)))
-    btn_stop = Button(btn_frame8, text="Stop", font=("Lato bold", round(13*ratio)), height=1, width=round(15*ratio), fg="white", bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB", activeforeground="white")
+    btn_stop = Button(btn_frame8, cursor="hand2", text="Stop", font=("Arial Rounded MT Bold", round(13*ratio)), height=1, width=round(15*ratio), fg="white", bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB", activeforeground="white")
     btn_stop.pack(fill='x')
     camera_list = Label(mainWindow, text="Camera List: ", font=("Lato", round(13*ratio)), bg="#1D253D", fg="white")
     camera_list.grid(row=5, column=3, columnspan=2, sticky="w", padx=round(30*ratio), pady=(round(5*ratio),0))
@@ -1295,7 +1499,7 @@ def mainPage():
     icon_prev = Image.open('asset/previous_icon.png')
     icon_prev = icon_prev.resize((round(30*ratio),round(30*ratio)), Image.ANTIALIAS)
     icon_prev = ImageTk.PhotoImage(icon_prev)
-    btn_prev = Button(btn_frame9, image=icon_prev, height=round(30*ratio), width=round(150*ratio), bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB")
+    btn_prev = Button(btn_frame9, cursor="hand2", image=icon_prev, height=round(30*ratio), width=round(150*ratio), bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB")
     btn_prev.image = icon_prev
     btn_prev.pack(fill='x')
     btn_frame10 = Frame(mainWindow, bg="#1D253D")
@@ -1303,7 +1507,7 @@ def mainPage():
     icon_next = Image.open('asset/next_icon.png')
     icon_next = icon_next.resize((round(30*ratio),round(30*ratio)), Image.ANTIALIAS)
     icon_next = ImageTk.PhotoImage(icon_next)
-    btn_next = Button(btn_frame10, image=icon_next, height=round(30*ratio), width=round(150*ratio), bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB")
+    btn_next = Button(btn_frame10, cursor="hand2", image=icon_next, height=round(30*ratio), width=round(150*ratio), bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB")
     btn_next.image = icon_next
     btn_next.pack(fill='x')
     mainWindow.protocol("WM_DELETE_WINDOW", logout) # If click on close button of window
@@ -1324,7 +1528,7 @@ def mainPage():
         wel.grid_columnconfigure(1, weight=1)
         fr = Frame(wel, highlightbackground="black", highlightthickness=1, bg="white")
         fr.grid(row=0, column=0, rowspan=13, columnspan=2, sticky="nsew")
-        wel_lbl = Label(wel, text="Welcome!", font=("Lato bold", round(18*ratio)), bg="white")
+        wel_lbl = Label(wel, text="Welcome!", font=("Arial Rounded MT Bold", round(18*ratio)), bg="white")
         wel_lbl.grid(row=0, column=0, padx=round(40*ratio), pady=(round(25*ratio), round(10*ratio)), sticky="nsw")
         f1 = Frame(wel, bg="white")
         f1.grid(row=1, column=0, columnspan=2, padx=round(40*ratio), sticky="nsew")
@@ -1332,9 +1536,9 @@ def mainPage():
         desc_lbl.pack()
         desc_lbl.insert(INSERT, "To make your account secure, please create a new password to replace the temporary password given initially before continue.")
         desc_lbl.configure(state="disabled")
-        new_lbl = Label(wel, text="New Password", font=("Lato bold", round(13*ratio)), bg="white")
+        new_lbl = Label(wel, text="New Password", font=("Arial Rounded MT Bold", round(13*ratio)), bg="white")
         new_lbl.grid(row=2, column=0, padx=(round(40*ratio) ,0), pady=(0, round(10*ratio)), sticky="nsw")
-        connew_lbl = Label(wel, text="Confirm New Password", font=("Lato bold", round(13*ratio)), bg="white")
+        connew_lbl = Label(wel, text="Confirm New Password", font=("Arial Rounded MT Bold", round(13*ratio)), bg="white")
         connew_lbl.grid(row=3, column=0, padx=(round(40*ratio), 0), pady=(round(10*ratio),0), sticky="nsw")
         fnewpass_val = StringVar()
         fnewpass_val.trace("w", validate_pass2)
@@ -1347,23 +1551,23 @@ def mainPage():
         # Password validation display
         passpolicy_label = Label(wel, text="Password Policy Requirements (Red Indicated NOT Fulfiled):", font=("Lato", round(10*ratio)), bg="white", fg="black")
         passpolicy_label.grid(row=4, column=0, columnspan=2, sticky="nsw", padx=(round(40*ratio), 0), pady=(round(30*ratio), 0))
-        fone_empty = Label(wel, text="Password can't be empty!", font=("Lato bold", round(10*ratio)), bg="white", fg="red")
+        fone_empty = Label(wel, text="Password can't be empty!", font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
         fone_empty.grid(row=5, column=0, columnspan=2, sticky="nsw", padx=(round(40*ratio), 0))
-        ftwo_length = Label(wel, text="Password must have a minimum of 8 characters in length!", font=("Lato bold", round(10*ratio)), bg="white", fg="red")
+        ftwo_length = Label(wel, text="Password must have a minimum of 8 characters in length!", font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
         ftwo_length.grid(row=6, column=0, columnspan=2, sticky="nsw", padx=(round(40*ratio), 0))
-        fthree_lower = Label(wel, text="Password must have at least one lowercase English letter! (e.g. a-z)", font=("Lato bold", round(10*ratio)), bg="white", fg="red")
+        fthree_lower = Label(wel, text="Password must have at least one lowercase English letter! (e.g. a-z)", font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
         fthree_lower.grid(row=7, column=0, columnspan=2, sticky="nsw", padx=(round(40*ratio), 0))
-        ffour_upper = Label(wel, text="Password must have at least one uppercase English letter! (e.g. A-Z)", font=("Lato bold", round(10*ratio)), bg="white", fg="red")
+        ffour_upper = Label(wel, text="Password must have at least one uppercase English letter! (e.g. A-Z)", font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
         ffour_upper.grid(row=8, column=0, columnspan=2, sticky="nsw", padx=(round(40*ratio), 0))
-        ffive_digit = Label(wel, text="Password must have at least one digit! (e.g. 0-9)", font=("Lato bold", round(10*ratio)), bg="white", fg="red")
+        ffive_digit = Label(wel, text="Password must have at least one digit! (e.g. 0-9)", font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
         ffive_digit.grid(row=9, column=0, columnspan=2, sticky="nsw", padx=(round(40*ratio), 0))
-        fsix_specialchar = Label(wel, text="Password must have at least one accepted special character! (e.g. @$!%*?&)", font=("Lato bold", round(10*ratio)), bg="white", fg="red")
+        fsix_specialchar = Label(wel, text="Password must have at least one accepted special character! (e.g. @$!%*?&)", wraplength=round(400*ratio), justify=LEFT, font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
         fsix_specialchar.grid(row=10, column=0, columnspan=2, sticky="nsw", padx=(round(40*ratio), 0))
-        fseven_con = Label(wel, text="Confirm new password does not match new password", font=("Lato bold", round(10*ratio)), bg="white", fg="red")
+        fseven_con = Label(wel, text="Confirm new password does not match new password", font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
         fseven_con.grid(row=11, column=0, columnspan=2, sticky="nsw", padx=(round(40*ratio), 0))
-        fbtn_save = Button(wel, command=lambda:usession.firstchange(txt_newpas, txt_cpas), text="Save", font=("Lato bold", round(15*ratio)), height=1, fg="white", bg="#1F5192", relief=RIDGE, bd=1, activebackground="#173B6A", activeforeground="white")
+        fbtn_save = Button(wel, cursor="hand2", command=lambda:usession.firstchange(txt_newpas, txt_cpas), text="Save", font=("Arial Rounded MT Bold", round(15*ratio)), height=1, fg="white", bg="#1F5192", relief=RIDGE, bd=1, activebackground="#173B6A", activeforeground="white")
         fbtn_save.grid(row=12, column=0, columnspan=2, sticky="nsew", padx=round(40*ratio),  pady=round(30*ratio))
-        fbtn_save.config(state='disabled')  
+        fbtn_save.config(state='disabled', cursor="hand1")  
     
 #==============================================================================================#
 #                                         Profile Page                                         #
@@ -1410,11 +1614,11 @@ def profilePage():
     imgava_label = Label(profileWindow, image=img_avatar, bg="#1b1b23")
     imgava_label.image = img_avatar
     imgava_label.grid(column=0, row=1, rowspan=2, sticky="nsew")
-    page_title = Label(profileWindow, text="Personal Info", font=("Lato bold", round(18*ratio)), bg="#1b1b23", fg="white")
+    page_title = Label(profileWindow, text="Personal Info", font=("Arial Rounded MT Bold", round(18*ratio)), bg="#1b1b23", fg="white")
     page_title.grid(row=3, column=0, sticky="nsew", pady=round(10*ratio))
     btn_frame2 = Frame(profileWindow, bg="#1b1b23")
     btn_frame2.grid(row=4, column=0, sticky="nsew")
-    btn_upload = Button(btn_frame2, command=lambda:usession.upload_avatar(imgava_label), text="Upload New Avatar", font=("Lato bold", round(12*ratio)), height=1, width=round(20*ratio), fg="white", bg="#1F5192", relief=RIDGE, bd=1, activebackground="#173B6A", activeforeground="white")
+    btn_upload = Button(btn_frame2, cursor="hand2", command=lambda:usession.upload_avatar(imgava_label), text="Upload New Avatar", font=("Arial Rounded MT Bold", round(12*ratio)), height=1, width=round(24*ratio), fg="white", bg="#1F5192", relief=RIDGE, bd=1, activebackground="#173B6A", activeforeground="white")
     btn_upload.pack()
     CreateToolTip(btn_upload, text = 'Best fit image ratio is 50 50\n'
                  'Accept both PNG and JPG format\n'
@@ -1427,14 +1631,14 @@ def profilePage():
     banner_img = ImageTk.PhotoImage(banner_img)
     profileWindow.banner_img = banner_img
     banner_back = canvas.create_image(0,0, image=banner_img, anchor=NW)
-    sys_label = canvas.create_text(round(800*ratio), round(20*ratio),text="e-Vision", font=("Lato bold", round(14*ratio)), fill="black", anchor=NE)
-    name_label = canvas.create_text(round(65*ratio), round(215*ratio), text="{}".format(usession.user_firstname+" "+usession.user_lastname), font=("Lato bold", round(32*ratio)), fill="white", anchor=SW)
+    sys_label = canvas.create_text(round(800*ratio), round(20*ratio),text="e-Vision", font=("Arial Rounded MT Bold", round(14*ratio)), fill="black", anchor=NE)
+    name_label = canvas.create_text(round(65*ratio), round(215*ratio), text="{}".format(usession.user_firstname+" "+usession.user_lastname), font=("Arial Rounded MT Bold", round(32*ratio)), fill="white", anchor=SW)
     if (usession.user_role == 1):
         txt = 'Admin'
     else:
         txt = 'Monitoring Employee'
     role_label = canvas.create_text(round(65*ratio), round(240*ratio), text="{}".format(txt), font=("Lato", round(15*ratio)), fill="white", anchor=SW)
-    uid_label = Label(profileWindow, text="User ID", font=("Lato bold", round(16*ratio)), bg="#2b2f3b", fg="white")
+    uid_label = Label(profileWindow, text="User ID", font=("Arial Rounded MT Bold", round(16*ratio)), bg="#2b2f3b", fg="white")
     uid_label.grid(row=3, column=1, sticky="sw", padx=(round(60*ratio), 0), pady=(round(40*ratio), 0))
     f0 = Frame(profileWindow, bg="#2b2f3b")
     f0.grid(row=4, column=1, padx=(round(60*ratio), 0), sticky="nw")
@@ -1442,7 +1646,7 @@ def profilePage():
     uid_con.pack()
     uid_con.insert(INSERT, "{}".format(usession.user_id))
     uid_con.configure(state="disabled")
-    add_label = Label(profileWindow, text="Address", font=("Lato bold", round(16*ratio)), bg="#2b2f3b", fg="white")
+    add_label = Label(profileWindow, text="Address", font=("Arial Rounded MT Bold", round(16*ratio)), bg="#2b2f3b", fg="white")
     add_label.grid(row=5, column=1, sticky="sw", padx=(round(60*ratio), 0), pady=(round(30*ratio),0))
     f1 = Frame(profileWindow, bg="#2b2f3b")
     f1.grid(row=6, column=1, padx=(round(60*ratio), 0), sticky="nw")
@@ -1450,7 +1654,7 @@ def profilePage():
     add_con.pack()
     add_con.insert(INSERT, "{}, {} {}, {}.".format(usession.user_addressline, usession.user_postcode, usession.user_city, usession.user_state))
     add_con.configure(state="disabled")
-    email_label = Label(profileWindow, text="Email", font=("Lato bold", round(16*ratio)), bg="#2b2f3b", fg="white")
+    email_label = Label(profileWindow, text="Email", font=("Arial Rounded MT Bold", round(16*ratio)), bg="#2b2f3b", fg="white")
     email_label.grid(row=3, column=2, sticky="sw", padx=(round(15*ratio), round(35*ratio)), pady=(round(40*ratio), 0))
     f2 = Frame(profileWindow, bg="#2b2f3b")
     f2.grid(row=4, column=2, padx=(round(15*ratio), round(25*ratio)), sticky="nw")
@@ -1458,7 +1662,7 @@ def profilePage():
     email_con.pack()
     email_con.insert(INSERT, "{}".format(usession.user_email))
     email_con.configure(state="disabled")
-    phone_label = Label(profileWindow, text="Phone Number", font=("Lato bold", round(16*ratio)), bg="#2b2f3b", fg="white")
+    phone_label = Label(profileWindow, text="Phone Number", font=("Arial Rounded MT Bold", round(16*ratio)), bg="#2b2f3b", fg="white")
     phone_label.grid(row=5, column=2, sticky="sw", padx=(round(15*ratio), round(35*ratio)), pady=(round(30*ratio),0))
     f3 = Frame(profileWindow, bg="#2b2f3b")
     f3.grid(row=6, column=2, padx=(round(15*ratio), round(25*ratio)), sticky="nw")
@@ -1468,11 +1672,11 @@ def profilePage():
     phone_con.configure(state="disabled")
     btn_frame3 = Frame(profileWindow, bg="#2b2f3b")
     btn_frame3.grid(row=7, column=1, sticky="nse", padx=round(30*ratio), pady=round(10*ratio))
-    btn_edit = Button(btn_frame3, command=lambda:updateprofilePage(), text="Edit Profile", font=("Lato bold", round(12*ratio)), height=1, width=round(20*ratio), fg="white", bg="#1F5192", relief=RIDGE, bd=1, activebackground="#173B6A", activeforeground="white")
+    btn_edit = Button(btn_frame3, cursor="hand2", command=lambda:updateprofilePage(), text="Edit Profile", font=("Arial Rounded MT Bold", round(12*ratio)), height=1, width=round(20*ratio), fg="white", bg="#1F5192", relief=RIDGE, bd=1, activebackground="#173B6A", activeforeground="white")
     btn_edit.pack()
     btn_frame4 = Frame(profileWindow, bg="#2b2f3b")
     btn_frame4.grid(row=7, column=2, sticky="nsw", padx=round(30*ratio), pady=round(10*ratio))
-    btn_chgpas = Button(btn_frame4, command=lambda:updatepassPage(), text="Change Password", font=("Lato bold", round(12*ratio)), height=1, width=round(20*ratio), fg="black", bg="white", relief=RIDGE, bd=1, activebackground="#DCDCDC", activeforeground="black")
+    btn_chgpas = Button(btn_frame4, cursor="hand2", command=lambda:updatepassPage(), text="Change Password", font=("Arial Rounded MT Bold", round(12*ratio)), height=1, width=round(20*ratio), fg="black", bg="white", relief=RIDGE, bd=1, activebackground="#DCDCDC", activeforeground="black")
     btn_chgpas.pack()
     
 #==============================================================================================#
@@ -1509,7 +1713,7 @@ def updateprofilePage():
     proupdtile_label.image = proupdtile
     proupdtile_label.grid(column=0, row=0, columnspan=2, sticky="nsew", pady=(round(30*ratio), round(20*ratio)))
     # Contents
-    uid_label = Label(updprofileWindow, text="User ID", font=("Lato bold", round(13*ratio)), bg="white", fg="black")
+    uid_label = Label(updprofileWindow, text="User ID", font=("Arial Rounded MT Bold", round(13*ratio)), bg="white", fg="black")
     uid_label.grid(row=1, column=0, columnspan=2, sticky="sw", padx=round(60*ratio))
     f0 = Frame(updprofileWindow, borderwidth=round(2*ratio), relief=SUNKEN)
     f0.grid(row=2, column=0, columnspan=2, padx=round(60*ratio), sticky="new")
@@ -1517,9 +1721,9 @@ def updateprofilePage():
     uid_text.pack(fill=BOTH, expand=True)
     uid_text.insert(INSERT, "{}".format(usession.user_id))
     uid_text.configure(state="disabled")
-    ufname_label = Label(updprofileWindow, text="First Name", font=("Lato bold", round(13*ratio)), bg="white", fg="black")
+    ufname_label = Label(updprofileWindow, text="First Name", font=("Arial Rounded MT Bold", round(13*ratio)), bg="white", fg="black")
     ufname_label.grid(row=3, column=0, columnspan=2, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
-    fname_label_error = Label(updprofileWindow, text="Invalid Empty Field!", font=("Lato bold", round(9*ratio)), bg="white", fg="red")
+    fname_label_error = Label(updprofileWindow, text="Invalid Empty Field!", font=("Arial Rounded MT Bold", round(9*ratio)), bg="white", fg="red")
     f1 = Frame(updprofileWindow, borderwidth=round(2*ratio), relief=SUNKEN)
     f1.grid(row=4, column=0, columnspan=2, padx=round(60*ratio), sticky="new")
     ufname_val = StringVar()
@@ -1529,9 +1733,9 @@ def updateprofilePage():
     ufname_text.insert(INSERT, "{}".format(usession.user_firstname))
     ufname_text.config(validate="key", validatecommand=(my_valid3, '%P'))
     CreateToolTip(ufname_text, text = 'Max length should only be 30 characters')
-    ulname_label = Label(updprofileWindow, text="Last Name", font=("Lato bold", round(13*ratio)), bg="white", fg="black")
+    ulname_label = Label(updprofileWindow, text="Last Name", font=("Arial Rounded MT Bold", round(13*ratio)), bg="white", fg="black")
     ulname_label.grid(row=5, column=0, columnspan=2, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
-    lname_label_error = Label(updprofileWindow, text="Invalid Empty Field!", font=("Lato bold", round(9*ratio)), bg="white", fg="red")
+    lname_label_error = Label(updprofileWindow, text="Invalid Empty Field!", font=("Arial Rounded MT Bold", round(9*ratio)), bg="white", fg="red")
     f2 = Frame(updprofileWindow, borderwidth=round(2*ratio), relief=SUNKEN)
     f2.grid(row=6, column=0, columnspan=2, padx=round(60*ratio), sticky="new")
     ulname_val = StringVar()
@@ -1541,9 +1745,9 @@ def updateprofilePage():
     ulname_text.insert(INSERT, "{}".format(usession.user_lastname))
     ulname_text.config(validate="key", validatecommand=(my_valid4, '%P'))
     CreateToolTip(ulname_text, text = 'Max length should only be 30 characters')
-    add_label = Label(updprofileWindow, text="Address Line", font=("Lato bold", round(13*ratio)), bg="white", fg="black")
+    add_label = Label(updprofileWindow, text="Address Line", font=("Arial Rounded MT Bold", round(13*ratio)), bg="white", fg="black")
     add_label.grid(row=7, column=0, columnspan=2, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
-    add_label_error = Label(updprofileWindow, text="Invalid Empty Field!", font=("Lato bold", round(9*ratio)), bg="white", fg="red")
+    add_label_error = Label(updprofileWindow, text="Invalid Empty Field!", font=("Arial Rounded MT Bold", round(9*ratio)), bg="white", fg="red")
     f3 = Frame(updprofileWindow, borderwidth=round(2*ratio), relief=SUNKEN)
     f3.grid(row=8, column=0, columnspan=2, padx=round(60*ratio), sticky="new")
     add_val = StringVar()
@@ -1553,9 +1757,9 @@ def updateprofilePage():
     add_text.insert(INSERT, "{}".format(usession.user_addressline))
     add_text.config(validate="key", validatecommand=(my_valid5, '%P'))
     CreateToolTip(add_text, text = 'Max length should only be 255 characters')
-    city_label = Label(updprofileWindow, text="City", font=("Lato bold", round(13*ratio)), bg="white", fg="black")
+    city_label = Label(updprofileWindow, text="City", font=("Arial Rounded MT Bold", round(13*ratio)), bg="white", fg="black")
     city_label.grid(row=9, column=0, columnspan=2, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
-    city_label_error = Label(updprofileWindow, text="Invalid Empty Field!", font=("Lato bold", round(9*ratio)), bg="white", fg="red")
+    city_label_error = Label(updprofileWindow, text="Invalid Empty Field!", font=("Arial Rounded MT Bold", round(9*ratio)), bg="white", fg="red")
     f4 = Frame(updprofileWindow, borderwidth=round(2*ratio), relief=SUNKEN)
     f4.grid(row=10, column=0, columnspan=2, padx=round(60*ratio), sticky="new")
     city_val = StringVar()
@@ -1566,7 +1770,7 @@ def updateprofilePage():
     myvalid6 = updprofileWindow.register(cityvalidation1)
     city_text.config(validate="key", validatecommand=(myvalid6, '%P'))
     CreateToolTip(city_text, text = 'Max length should only be 30 characters')
-    post_label = Label(updprofileWindow, text="Postal Code", font=("Lato bold", round(13*ratio)), bg="white", fg="black")
+    post_label = Label(updprofileWindow, text="Postal Code", font=("Arial Rounded MT Bold", round(13*ratio)), bg="white", fg="black")
     post_label.grid(row=11, column=0, sticky="sw", padx=(round(60*ratio), 0), pady=(round(10*ratio), 0))
     f4a = Frame(updprofileWindow, borderwidth=round(2*ratio), relief=SUNKEN)
     f4a.grid(row=12, column=0, padx=(round(60*ratio), round(10*ratio)), sticky="nw")
@@ -1578,7 +1782,7 @@ def updateprofilePage():
     reg = updprofileWindow.register(postvalidation1)
     post_text.config(validate="key", validatecommand=(reg, '%P'))
     CreateToolTip(post_text, text = 'Max length should only be 5 numeric')
-    state_label = Label(updprofileWindow, text="State", font=("Lato bold", round(13*ratio)), bg="white", fg="black")
+    state_label = Label(updprofileWindow, text="State", font=("Arial Rounded MT Bold", round(13*ratio)), bg="white", fg="black")
     state_label.grid(row=11, column=1, sticky="sw", padx=(round(15*ratio), round(60*ratio)), pady=(round(10*ratio), 0))
     f5 = Frame(updprofileWindow, relief=SUNKEN)
     f5.grid(row=12, column=1, padx=(round(10*ratio), round(60*ratio)), sticky="ne")
@@ -1635,9 +1839,9 @@ def updateprofilePage():
         state_text.current(14)
     else:
         state_text.current(15)
-    email_label = Label(updprofileWindow, text="Email", font=("Lato bold", round(13*ratio)), bg="white", fg="black")
+    email_label = Label(updprofileWindow, text="Email", font=("Arial Rounded MT Bold", round(13*ratio)), bg="white", fg="black")
     email_label.grid(row=13, column=0, columnspan=2, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
-    email_label_error = Label(updprofileWindow, text="Improper Email Format!", font=("Lato bold", round(9*ratio)), bg="white", fg="red")
+    email_label_error = Label(updprofileWindow, text="Improper Email Format!", font=("Arial Rounded MT Bold", round(9*ratio)), bg="white", fg="red")
     f6 = Frame(updprofileWindow, borderwidth=round(2*ratio), relief=SUNKEN)
     f6.grid(row=14, column=0, columnspan=2, padx=round(60*ratio), sticky="new")
     email_val = StringVar()
@@ -1647,9 +1851,9 @@ def updateprofilePage():
     email_text.insert(INSERT, "{}".format(usession.user_email))
     email_text.config(validate="key", validatecommand=(my_valid, '%P'))
     CreateToolTip(email_text, text = 'e.g. dummy@xyz.com')
-    phone_label = Label(updprofileWindow, text="Phone Number", font=("Lato bold", round(13*ratio)), bg="white", fg="black")
+    phone_label = Label(updprofileWindow, text="Phone Number", font=("Arial Rounded MT Bold", round(13*ratio)), bg="white", fg="black")
     phone_label.grid(row=15, column=0, columnspan=2, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
-    phone_label_error = Label(updprofileWindow, text="Improper Phone Number Format!", font=("Lato bold", round(9*ratio)), bg="white", fg="red")
+    phone_label_error = Label(updprofileWindow, text="Improper Phone Number Format!", font=("Arial Rounded MT Bold", round(9*ratio)), bg="white", fg="red")
     f7 = Frame(updprofileWindow, borderwidth=round(2*ratio), relief=SUNKEN)
     f7.grid(row=16, column=0, columnspan=2, padx=round(60*ratio), sticky="new")
     phone_val = StringVar()
@@ -1661,11 +1865,11 @@ def updateprofilePage():
     CreateToolTip(phone_text, text = 'e.g. 012-3456789')
     f8 = Frame(updprofileWindow ,bg="white")
     f8.grid(row=17, column=0, sticky="nse", padx=(0,round(20*ratio)), pady=round(15*ratio))
-    btn_upd = Button(f8, text="Update", command=lambda:usession.updateprofile(ufname_text, ulname_text, add_text, city_text, state_text, post_text, email_text, phone_text), font=("Lato bold", round(12*ratio)), height=1, width=round(13*ratio), fg="white", bg="#1F5192", relief=RIDGE, bd=1, activebackground="#173B6A", activeforeground="white")
+    btn_upd = Button(f8, cursor="hand2", text="Update", command=lambda:usession.updateprofile(ufname_text, ulname_text, add_text, city_text, state_text, post_text, email_text, phone_text), font=("Arial Rounded MT Bold", round(12*ratio)), height=1, width=round(13*ratio), fg="white", bg="#1F5192", relief=RIDGE, bd=1, activebackground="#173B6A", activeforeground="white")
     btn_upd.pack()
     f9 = Frame(updprofileWindow, bg="white")
     f9.grid(row=17, column=1, sticky="nsw", padx=(round(50*ratio),0), pady=round(15*ratio))
-    btn_close = Button(f9, text="Close", command=lambda:closeupdprofile(), font=("Lato bold", round(12*ratio)), height=1, width=round(13*ratio), fg="black", bg="white", relief=RIDGE, bd=1, activebackground="#DCDCDC", activeforeground="black")
+    btn_close = Button(f9, cursor="hand2", text="Close", command=lambda:closeupdprofile(), font=("Arial Rounded MT Bold", round(12*ratio)), height=1, width=round(13*ratio), fg="black", bg="white", relief=RIDGE, bd=1, activebackground="#DCDCDC", activeforeground="black")
     btn_close.pack()
     
 #==============================================================================================#
@@ -1705,7 +1909,7 @@ def updatepassPage():
     # Contents
     f1a = Frame(updpassWindow, bg="white")
     f1a.grid(row=1, column=0, sticky="nsw", padx=(round(40*ratio), 0))
-    oldpass_label = Label(f1a, text="Old Password", font=("Lato bold", round(13*ratio)), bg="white", fg="black")
+    oldpass_label = Label(f1a, text="Old Password", font=("Arial Rounded MT Bold", round(13*ratio)), bg="white", fg="black")
     oldpass_label.pack()
     f1 = Frame(updpassWindow, borderwidth=round(2*ratio), relief=SUNKEN)
     f1.grid(row=1, column=1, sticky="nse", padx=(0, round(40*ratio)))
@@ -1715,7 +1919,7 @@ def updatepassPage():
     oldpass_text.pack()
     f2a = Frame(updpassWindow, bg="white")
     f2a.grid(row=2, column=0, sticky="nsw", padx=(round(40*ratio), 0), pady=round(20*ratio))
-    newpass_label = Label(f2a, text="New Password", font=("Lato bold", round(13*ratio)), bg="white", fg="black")
+    newpass_label = Label(f2a, text="New Password", font=("Arial Rounded MT Bold", round(13*ratio)), bg="white", fg="black")
     newpass_label.pack()
     f2 = Frame(updpassWindow, borderwidth=round(2*ratio), relief=SUNKEN)
     f2.grid(row=2, column=1, sticky="nse", pady=round(20*ratio), padx=(0, round(40*ratio)))
@@ -1725,7 +1929,7 @@ def updatepassPage():
     newpass_text.pack()
     f3a = Frame(updpassWindow, bg="white")
     f3a.grid(row=3, column=0, sticky="nsw", padx=(round(40*ratio), 0))
-    connewpass_label = Label(f3a, text="Confirm New Password", font=("Lato bold", round(13*ratio)), bg="white", fg="black")
+    connewpass_label = Label(f3a, text="Confirm New Password", font=("Arial Rounded MT Bold", round(13*ratio)), bg="white", fg="black")
     connewpass_label.pack()
     f3 = Frame(updpassWindow, borderwidth=round(2*ratio), relief=SUNKEN)
     f3.grid(row=3, column=1, sticky="nse", padx=(0, round(40*ratio)))
@@ -1735,28 +1939,28 @@ def updatepassPage():
     connewpass_text.pack()
     passpolicy_label = Label(updpassWindow, text="Password Policy Requirements (Red Indicated NOT Fulfiled):", font=("Lato", round(10*ratio)), bg="white", fg="black")
     passpolicy_label.grid(row=4, column=0, columnspan=2, sticky="nsw", padx=(round(40*ratio), 0), pady=(round(30*ratio), 0))
-    one_empty = Label(updpassWindow, text="Password can't be empty!", font=("Lato bold", round(10*ratio)), bg="white", fg="red")
+    one_empty = Label(updpassWindow, text="Password can't be empty!", font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
     one_empty.grid(row=5, column=0, columnspan=2, sticky="nsw", padx=(round(40*ratio), 0))
-    two_length = Label(updpassWindow, text="Password must have a minimum of 8 characters in length!", font=("Lato bold", round(10*ratio)), bg="white", fg="red")
+    two_length = Label(updpassWindow, text="Password must have a minimum of 8 characters in length!", font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
     two_length.grid(row=6, column=0, columnspan=2, sticky="nsw", padx=(round(40*ratio), 0))
-    three_lower = Label(updpassWindow, text="Password must have at least one lowercase English letter! (e.g. a-z)", font=("Lato bold", round(10*ratio)), bg="white", fg="red")
+    three_lower = Label(updpassWindow, text="Password must have at least one lowercase English letter! (e.g. a-z)", font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
     three_lower.grid(row=7, column=0, columnspan=2, sticky="nsw", padx=(round(40*ratio), 0))
-    four_upper = Label(updpassWindow, text="Password must have at least one uppercase English letter! (e.g. A-Z)", font=("Lato bold", round(10*ratio)), bg="white", fg="red")
+    four_upper = Label(updpassWindow, text="Password must have at least one uppercase English letter! (e.g. A-Z)", font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
     four_upper.grid(row=8, column=0, columnspan=2, sticky="nsw", padx=(round(40*ratio), 0))
-    five_digit = Label(updpassWindow, text="Password must have at least one digit! (e.g. 0-9)", font=("Lato bold", round(10*ratio)), bg="white", fg="red")
+    five_digit = Label(updpassWindow, text="Password must have at least one digit! (e.g. 0-9)", font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
     five_digit.grid(row=9, column=0, columnspan=2, sticky="nsw", padx=(round(40*ratio), 0))
-    six_specialchar = Label(updpassWindow, text="Password must have at least one accepted special character! (e.g. @$!%*?&)", font=("Lato bold", round(10*ratio)), bg="white", fg="red")
+    six_specialchar = Label(updpassWindow, text="Password must have at least one accepted special character! (e.g. @$!%*?&)", wraplength=round(400*ratio), justify="left", font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
     six_specialchar.grid(row=10, column=0, columnspan=2, sticky="nsw", padx=(round(40*ratio)))
-    seven_con = Label(updpassWindow, text="Confirm new password does not match new password", font=("Lato bold", round(10*ratio)), bg="white", fg="red")
+    seven_con = Label(updpassWindow, text="Confirm new password does not match new password!", font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
     seven_con.grid(row=11, column=0, columnspan=2, sticky="nsw", padx=(round(40*ratio), 0))
     f4 = Frame(updpassWindow ,bg="white")
     f4.grid(row=12, column=0, sticky="nse", pady=round(30*ratio), padx=(0, round(30*ratio)))
-    btn_passupd = Button(f4, text="Update", command=lambda:usession.updatepass(oldpass_text, newpass_text, connewpass_text), font=("Lato bold", round(12*ratio)), height=1, width=round(13*ratio), fg="white", bg="#1F5192", relief=RIDGE, bd=1, activebackground="#173B6A", activeforeground="white")
+    btn_passupd = Button(f4, text="Update", command=lambda:usession.updatepass(oldpass_text, newpass_text, connewpass_text), font=("Arial Rounded MT Bold", round(12*ratio)), height=1, width=round(13*ratio), fg="white", bg="#1F5192", relief=RIDGE, bd=1, activebackground="#173B6A", activeforeground="white")
     btn_passupd.pack()
     btn_passupd.config(state='disabled')
     f5 = Frame(updpassWindow, bg="white")
     f5.grid(row=12, column=1, sticky="nsw", pady=round(30*ratio), padx=(round(45*ratio), 0))
-    btn_passclose = Button(f5, text="Close", command=lambda:closechgpass(), font=("Lato bold", round(12*ratio)), height=1, width=round(13*ratio), fg="black", bg="white", relief=RIDGE, bd=1, activebackground="#DCDCDC", activeforeground="black")
+    btn_passclose = Button(f5, cursor="hand2", text="Close", command=lambda:closechgpass(), font=("Arial Rounded MT Bold", round(12*ratio)), height=1, width=round(13*ratio), fg="black", bg="white", relief=RIDGE, bd=1, activebackground="#DCDCDC", activeforeground="black")
     btn_passclose.pack()
 
 #==============================================================================================#
@@ -1806,7 +2010,7 @@ def usermanagementPage():
     usrmngtile_label.image = usrmngtile
     usrmngtile_label.grid(column=1, row=0, columnspan=2, rowspan=2, sticky="nsw", pady=(round(30*ratio), round(5*ratio)), padx=(round(20*ratio), 0))
     # User detail fields
-    uid_label = Label(usermanageWindow, text="User ID", font=("Lato bold", round(13*ratio)), bg="#EDF1F7", fg="black")
+    uid_label = Label(usermanageWindow, text="User ID", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
     uid_label.grid(row=2, column=0, columnspan=3, sticky="sw", padx=round(60*ratio))
     f0 = Frame(usermanageWindow, borderwidth=round(2*ratio), relief=SUNKEN)
     f0.grid(row=3, column=0, columnspan=3, padx=round(60*ratio), sticky="new")
@@ -1816,7 +2020,7 @@ def usermanagementPage():
     CreateToolTip(uid_text, text = 'Add New User: Leave this field blank as system will auto generate the user ID\n'
                   'Update User: Select the user to be updated in the list, user ID field will be automatically filled\n'
                   'Delete User: Select the user to be deleted in the list before pressing on the button')
-    ufname_label = Label(usermanageWindow, text="First Name", font=("Lato bold", round(13*ratio)), bg="#EDF1F7", fg="black")
+    ufname_label = Label(usermanageWindow, text="First Name", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
     ufname_label.grid(row=4, column=0, columnspan=3, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
     f1 = Frame(usermanageWindow, borderwidth=round(2*ratio), relief=SUNKEN)
     f1.grid(row=5, column=0, columnspan=3, padx=round(60*ratio), sticky="new")
@@ -1825,7 +2029,7 @@ def usermanagementPage():
     ufname_text = Entry(f1, bd=round(4*ratio), relief=FLAT, font=("Lato", round(13*ratio)), width=round(38*ratio), textvariable=ufname_val)
     ufname_text.pack(fill=BOTH, expand=True)
     CreateToolTip(ufname_text, text = 'Max length should only be 30 characters')
-    ulname_label = Label(usermanageWindow, text="Last Name", font=("Lato bold", round(13*ratio)), bg="#EDF1F7", fg="black")
+    ulname_label = Label(usermanageWindow, text="Last Name", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
     ulname_label.grid(row=6, column=0, columnspan=3, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
     f2 = Frame(usermanageWindow, borderwidth=round(2*ratio), relief=SUNKEN)
     f2.grid(row=7, column=0, columnspan=3, padx=round(60*ratio), sticky="new")
@@ -1834,11 +2038,11 @@ def usermanagementPage():
     ulname_text = Entry(f2, bd=round(4*ratio), relief=FLAT, font=("Lato", round(13*ratio)), width=round(38*ratio), textvariable=ulname_val)
     ulname_text.pack(fill=BOTH, expand=True)
     CreateToolTip(ulname_text, text = 'Max length should only be 30 characters')
-    pas_label = Label(usermanageWindow, text="Password", font=("Lato bold", round(13*ratio)), bg="#EDF1F7", fg="black")
+    pas_label = Label(usermanageWindow, text="Password", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
     pas_label.grid(row=8, column=0, columnspan=3, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
     fpas = Frame(usermanageWindow, bg="#EDF1F7")
     fpas.grid(row=9, column=0, columnspan=3, padx=round(60*ratio), sticky="new")
-    resetpas_btn = Button(fpas, text="Reset Password", font=("Lato bold", round(13*ratio)), width=round(20*ratio), relief=RIDGE, bd=1, bg="#6c757d", fg="white", activebackground="#4D5358", activeforeground="white")
+    resetpas_btn = Button(fpas, cursor="hand2", text="Reset Password", font=("Arial Rounded MT Bold", round(13*ratio)), width=round(20*ratio), relief=RIDGE, bd=1, bg="#6c757d", fg="white", activebackground="#4D5358", activeforeground="white")
     resetpas_btn.pack(side=LEFT)
     # pas_val = StringVar()
     # # pas_val.trace('w', addvalidation)
@@ -1850,7 +2054,7 @@ def usermanagementPage():
     #               '\t3. At least one uppercase English letter (A-Z)\n'
     #               '\t4. At least one digit (0-9)\n'
     #               '\t5. At least one accepted special character (@$!%*?&')
-    add_label = Label(usermanageWindow, text="Address Line", font=("Lato bold", round(13*ratio)), bg="#EDF1F7", fg="black")
+    add_label = Label(usermanageWindow, text="Address Line", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
     add_label.grid(row=10, column=0, columnspan=3, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
     f3 = Frame(usermanageWindow, borderwidth=round(2*ratio), relief=SUNKEN)
     f3.grid(row=11, column=0, columnspan=3, padx=round(60*ratio), sticky="new")
@@ -1859,7 +2063,7 @@ def usermanagementPage():
     add_text = Entry(f3, bd=round(4*ratio), relief=FLAT, font=("Lato", round(13*ratio)), width=round(38*ratio), textvariable=add_val)
     add_text.pack(fill=BOTH, expand=True)
     CreateToolTip(add_text, text = 'Max length should only be 255 characters')
-    city_label = Label(usermanageWindow, text="City", font=("Lato bold", round(13*ratio)), bg="#EDF1F7", fg="black")
+    city_label = Label(usermanageWindow, text="City", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
     city_label.grid(row=12, column=0, columnspan=3, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
     f4 = Frame(usermanageWindow, borderwidth=round(2*ratio), relief=SUNKEN)
     f4.grid(row=13, column=0, columnspan=3, padx=round(60*ratio), sticky="new")
@@ -1868,7 +2072,7 @@ def usermanagementPage():
     city_text = Entry(f4, bd=round(4*ratio), relief=FLAT, font=("Lato", round(13*ratio)), width=round(38*ratio), textvariable=city_val)
     city_text.pack(fill=BOTH, expand=True)
     CreateToolTip(city_text, text = 'Max length should only be 30 characters')
-    post_label = Label(usermanageWindow, text="Postal Code", font=("Lato bold", round(13*ratio)), bg="#EDF1F7", fg="black")
+    post_label = Label(usermanageWindow, text="Postal Code", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
     post_label.grid(row=14, column=0, columnspan=2, sticky="sw", padx=(round(60*ratio), 0), pady=(round(10*ratio), 0))
     f4a = Frame(usermanageWindow, borderwidth=round(2*ratio), relief=SUNKEN)
     f4a.grid(row=15, column=0, columnspan=2, padx=(round(60*ratio), round(10*ratio)), sticky="nw")
@@ -1879,7 +2083,7 @@ def usermanagementPage():
     # reg = updprofileWindow.register(postvalidation1)
     # post_text.config(validate="key", validatecommand=(reg, '%P'))
     CreateToolTip(post_text, text = 'Max length should only be 5 numeric')
-    state_label = Label(usermanageWindow, text="State", font=("Lato bold", round(13*ratio)), bg="#EDF1F7", fg="black")
+    state_label = Label(usermanageWindow, text="State", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
     state_label.grid(row=14, column=2, sticky="sw", padx=(round(15*ratio), round(60*ratio)), pady=(round(10*ratio), 0))
     f5 = Frame(usermanageWindow, relief=SUNKEN)
     f5.grid(row=15, column=2, padx=(round(10*ratio), round(60*ratio)), sticky="ne")
@@ -1903,9 +2107,9 @@ def usermanagementPage():
     state_text.pack(fill=BOTH, expand=True)
     state_text.current(0)
     state_text['state'] = 'readonly'
-    email_label = Label(usermanageWindow, text="Email", font=("Lato bold", round(13*ratio)), bg="#EDF1F7", fg="black")
+    email_label = Label(usermanageWindow, text="Email", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
     email_label.grid(row=16, column=0, columnspan=3, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
-    um_email_label_error = Label(usermanageWindow, text="Improper Email Format!", font=("Lato bold", round(9*ratio)), bg="#EDF1F7", fg="red")
+    um_email_label_error = Label(usermanageWindow, text="Improper Email Format!", font=("Arial Rounded MT Bold", round(9*ratio)), bg="#EDF1F7", fg="red")
     f6 = Frame(usermanageWindow, borderwidth=round(2*ratio), relief=SUNKEN)
     f6.grid(row=17, column=0, columnspan=3, padx=round(60*ratio), sticky="new")
     email_val = StringVar()
@@ -1914,9 +2118,9 @@ def usermanagementPage():
     email_text.pack(fill=BOTH, expand=True)
     # email_text.config(validate="key", validatecommand=(my_valid, '%P'))
     CreateToolTip(email_text, text = 'e.g. dummy@xyz.com')
-    phone_label = Label(usermanageWindow, text="Phone Number", font=("Lato bold", round(13*ratio)), bg="#EDF1F7", fg="black")
+    phone_label = Label(usermanageWindow, text="Phone Number", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
     phone_label.grid(row=18, column=0, columnspan=3, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
-    um_phone_label_error = Label(usermanageWindow, text="Improper Phone Number Format!", font=("Lato bold", round(9*ratio)), bg="white", fg="red")
+    um_phone_label_error = Label(usermanageWindow, text="Improper Phone Number Format!", font=("Arial Rounded MT Bold", round(9*ratio)), bg="white", fg="red")
     f7 = Frame(usermanageWindow, borderwidth=round(2*ratio), relief=SUNKEN)
     f7.grid(row=19, column=0, columnspan=3, padx=round(60*ratio), sticky="new")
     phone_val = StringVar()
@@ -1927,19 +2131,19 @@ def usermanagementPage():
     CreateToolTip(phone_text, text = 'e.g. 012-3456789')
     f8 = Frame(usermanageWindow, bg="#EDF1F7")
     f8.grid(row=20, column=0, columnspan=3, sticky="nsew", padx=round(60*ratio), pady=(round(20*ratio), round(5*ratio)))
-    add_userbtn = Button(f8, text="Add New User", font=("Lato bold", round(13*ratio)), width=round(43*ratio), bg="#f2c40e", fg="white", relief=RIDGE, bd=1, activebackground="#C19C0C", activeforeground="white")
+    add_userbtn = Button(f8, cursor="hand2", text="Add New User", font=("Arial Rounded MT Bold", round(13*ratio)), width=round(43*ratio), bg="#f2c40e", fg="white", relief=RIDGE, bd=1, activebackground="#C19C0C", activeforeground="white")
     add_userbtn.pack()
     f9 = Frame(usermanageWindow, bg="#EDF1F7")
     f9.grid(row=21, column=0, columnspan=3, sticky="nsew", padx=round(60*ratio), pady= round(5*ratio))
-    upd_userbtn = Button(f9, text="Update User Info", font=("Lato bold", round(13*ratio)), width=round(43*ratio), bg="#18bc9b", fg="white", relief=RIDGE, bd=1, activebackground="#17856F", activeforeground="white")
+    upd_userbtn = Button(f9, cursor="hand2", text="Update User Info", font=("Arial Rounded MT Bold", round(13*ratio)), width=round(43*ratio), bg="#18bc9b", fg="white", relief=RIDGE, bd=1, activebackground="#17856F", activeforeground="white")
     upd_userbtn.pack()
     f10 = Frame(usermanageWindow, bg="#EDF1F7")
     f10.grid(row=22, column=0, columnspan=3, sticky="nsew", padx=round(60*ratio), pady=round(5*ratio))
-    del_userbtn = Button(f10, text="Delete User", font=("Lato bold", round(13*ratio)), width=round(43*ratio), bg="#dc3545", fg="white", relief=RIDGE, bd=1, activebackground="#A72A36", activeforeground="white")
+    del_userbtn = Button(f10, cursor="hand2", text="Delete User", font=("Arial Rounded MT Bold", round(13*ratio)), width=round(43*ratio), bg="#dc3545", fg="white", relief=RIDGE, bd=1, activebackground="#A72A36", activeforeground="white")
     del_userbtn.pack()
     
     # Right components
-    sys_label = Label(usermanageWindow, text="e-Vision", font=("Lato bold", round(14*ratio)), bg="#293e50", fg="white")
+    sys_label = Label(usermanageWindow, text="e-Vision", font=("Arial Rounded MT Bold", round(14*ratio)), bg="#293e50", fg="white")
     sys_label.grid(row=0, column=4, sticky="ne", padx=round(30*ratio), pady=round(15*ratio))
     # Search components
     f11 = Frame(usermanageWindow, bg="#293e50")
@@ -1963,7 +2167,7 @@ def usermanagementPage():
     filter_opt.bind("<<ComboboxSelected>>", usrmngcallback)
     f11c = Frame(f11)
     f11c.pack(side=LEFT)
-    search_userbtn = Button(f11c, text="Search", command=lambda:searchUserByFilter(filterfield_text.get(), filter_opt.get()), font=("Lato bold", round(11*ratio)), width=round(12*ratio), bg="#E6E6E6", fg="black", relief=RIDGE, bd=1, activebackground="#B4B1B1", activeforeground="black")
+    search_userbtn = Button(f11c, cursor="hand2", text="Search", command=lambda:searchUserByFilter(filterfield_text.get(), filter_opt.get()), font=("Arial Rounded MT Bold", round(11*ratio)), width=round(12*ratio), bg="#E6E6E6", fg="black", relief=RIDGE, bd=1, activebackground="#B4B1B1", activeforeground="black")
     search_userbtn.pack()
     # Treeview frame
     usrmng_tree_frame = Frame(usermanageWindow)
@@ -2018,9 +2222,9 @@ def usermanagementPage():
     # Clear selected btn
     f12 = Frame(usermanageWindow, bg="#293e50")
     f12.grid(row=22, column=3, columnspan=2, sticky="nsew", padx=round(60*ratio), pady=round(5*ratio))
-    clr_selectedbtn = Button(f12, text="Clear Selected User", font=("Lato bold", round(11*ratio)), width=round(25*ratio), bg="#E6E6E6", fg="black", relief=RIDGE, bd=1, activebackground="#B4B1B1", activeforeground="black")
+    clr_selectedbtn = Button(f12, cursor="hand2", text="Clear Selected User", font=("Arial Rounded MT Bold", round(11*ratio)), width=round(25*ratio), bg="#E6E6E6", fg="black", relief=RIDGE, bd=1, activebackground="#B4B1B1", activeforeground="black")
     clr_selectedbtn.pack(side=LEFT)
-    refresh_userbtn = Button(f12, text="Refresh User List", font=("Lato bold", round(11*ratio)), width=round(25*ratio), bg="#E6E6E6", fg="black", relief=RIDGE, bd=1, activebackground="#B4B1B1", activeforeground="black")
+    refresh_userbtn = Button(f12, cursor="hand2", text="Refresh User List", font=("Arial Rounded MT Bold", round(11*ratio)), width=round(25*ratio), bg="#E6E6E6", fg="black", relief=RIDGE, bd=1, activebackground="#B4B1B1", activeforeground="black")
     refresh_userbtn.pack(side=RIGHT)
 
 root.mainloop()
