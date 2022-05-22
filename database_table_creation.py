@@ -70,7 +70,7 @@ if(exist == FALSE):
     SET NEW.user_id = CONCAT('U', LPAD(LAST_INSERT_ID(), 4, '0'));
   END;
   INSERT INTO User (user_firstname, user_lastname, user_password, user_addressline, user_city, user_state, user_postcode, user_email, user_phone, user_role, user_firstLogin)
-  SELECT * FROM (SELECT 'Admin', 'Default', 'admin1010', 'Level 20, Axiata Tower, Jalan Stesen Sentral 5', 'Kuala Lumpur Sentral', 'Kuala Lumpur', '50470', 'evisionmalaysia@gmail.com', '012-3456789', 1, 0) AS tmp
+  SELECT * FROM (SELECT 'Admin', 'Default', SHA2('admin1010', 256), 'Level 20, Axiata Tower, Jalan Stesen Sentral 5', 'Kuala Lumpur Sentral', 'Kuala Lumpur', '50470', 'evisionmalaysia@gmail.com', '012-3456789', 1, 0) AS tmp
   WHERE NOT EXISTS (
       SELECT user_firstname FROM User WHERE user_firstname = 'Admin'
   ) LIMIT 1;

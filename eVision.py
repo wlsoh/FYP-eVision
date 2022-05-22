@@ -2,12 +2,8 @@
 # Intake: UC3F2111CS(IS)
 # Program Name: Main GUI Integration
 # Date Created: 05/05/2022
-import os
-import io
-import re
-import secrets
-import string
-import pymysql
+import os, io, re, secrets, string, pymysql
+from cv2 import exp
 import pandas as pd
 from tkinter import *
 from tkinter import messagebox
@@ -778,7 +774,7 @@ def fnamevalidation(u_input):
     if len(u_input) > 30: 
         btn_upd.config(state='disabled', cursor="")  
         fname_label_error.configure(text="Exceed 30 Characters Length Limit!")
-        fname_label_error.grid(row=3, column=0, columnspan=2, sticky="se", padx=round(60*ratio), pady=(round(10*ratio), 0))
+        fname_label_error.grid(row=3, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
         return True 
     elif len(u_input) > 0 and len(u_input) <= 30:
         fname_label_error.grid_remove()
@@ -788,7 +784,7 @@ def fnamevalidation(u_input):
     elif (len(u_input)==0):
         btn_upd.config(state='disabled', cursor="")  
         fname_label_error.configure(text="Invalid Empty Field!")
-        fname_label_error.grid(row=3, column=0, columnspan=2, sticky="se", padx=round(60*ratio), pady=(round(10*ratio), 0))
+        fname_label_error.grid(row=3, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
         return True 
 
 # Limit last name entry box length function
@@ -796,7 +792,7 @@ def lnamevalidation(u_input):
     if len(u_input) > 30: 
         btn_upd.config(state='disabled', cursor="")  
         lname_label_error.configure(text="Exceed 30 Characters Length Limit!")
-        lname_label_error.grid(row=5, column=0, columnspan=2, sticky="se", padx=round(60*ratio), pady=(round(10*ratio), 0))
+        lname_label_error.grid(row=5, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
         return True 
     elif len(u_input) > 0 and len(u_input) <= 30:
         lname_label_error.grid_remove()
@@ -806,7 +802,7 @@ def lnamevalidation(u_input):
     elif (len(u_input)==0):
         btn_upd.config(state='disabled', cursor="")  
         lname_label_error.configure(text="Invalid Empty Field!")
-        lname_label_error.grid(row=5, column=0, columnspan=2, sticky="se", padx=round(60*ratio), pady=(round(10*ratio), 0))
+        lname_label_error.grid(row=5, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
         return True 
 
 # Limit address line entry box length function
@@ -814,7 +810,7 @@ def addvalidation(u_input):
     if len(u_input) > 255: 
         btn_upd.config(state='disabled', cursor="")  
         add_label_error.configure(text="Exceed 255 Characters Length Limit!")
-        add_label_error.grid(row=7, column=0, columnspan=2, sticky="se", padx=round(60*ratio), pady=(round(10*ratio), 0))
+        add_label_error.grid(row=7, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
         return True 
     elif len(u_input) > 0 and len(u_input) <= 255:
         add_label_error.grid_remove()
@@ -824,7 +820,7 @@ def addvalidation(u_input):
     elif (len(u_input)==0):
         btn_upd.config(state='disabled', cursor="")  
         add_label_error.configure(text="Invalid Empty Field!")
-        add_label_error.grid(row=7, column=0, columnspan=2, sticky="se", padx=round(60*ratio), pady=(round(10*ratio), 0))
+        add_label_error.grid(row=7, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
         return True 
 
 # Limit address line entry box length function
@@ -832,7 +828,7 @@ def cityvalidation1(u_input):
     if len(u_input) > 30: 
         btn_upd.config(state='disabled', cursor="")  
         city_label_error.configure(text="Exceed 30 Characters Length Limit!")
-        city_label_error.grid(row=9, column=0, columnspan=2, sticky="se", padx=round(60*ratio), pady=(round(10*ratio), 0))
+        city_label_error.grid(row=9, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
         return True 
     elif len(u_input) > 0 and len(u_input) <= 30:
         city_label_error.grid_remove()
@@ -842,7 +838,7 @@ def cityvalidation1(u_input):
     elif (len(u_input)==0):
         btn_upd.config(state='disabled', cursor="")  
         city_label_error.configure(text="Invalid Empty Field!")
-        city_label_error.grid(row=9, column=0, columnspan=2, sticky="se", padx=round(60*ratio), pady=(round(10*ratio), 0))
+        city_label_error.grid(row=9, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
         return True 
 def cityvalidation2(*args):
     value = city_val.get()
@@ -869,36 +865,36 @@ def postvalidation2(*args):
 def validate_email(u_input):
     if(re.search(emailregex, u_input) and u_input.isalpha):
         email_label_error.grid_remove()
-        if not phone_label_error.grid_info(): 
+        if not city_label_error.grid_info() and not phone_label_error.grid_info() and not fname_label_error.grid_info() and not add_label_error.grid_info() and not lname_label_error.grid_info(): 
             btn_upd.config(state='normal', cursor="hand2")  
         return True  
     elif (len(u_input)==0):
         btn_upd.config(state='disabled', cursor="")  
         email_label_error.configure(text="Invalid Empty Field!")
-        email_label_error.grid(row=13, column=0, columnspan=2, sticky="se", padx=round(60*ratio), pady=(round(10*ratio), 0))
+        email_label_error.grid(row=13, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
         return True    
     else:
         btn_upd.config(state='disabled', cursor="")  
         email_label_error.configure(text="Improper Email Format!")
-        email_label_error.grid(row=13, column=0, columnspan=2, sticky="se", padx=round(60*ratio), pady=(round(10*ratio), 0))
+        email_label_error.grid(row=13, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
         return True
 
 # Validate phone entry box function
 def validate_phone(u_input):
     if(re.search(phoneregex, u_input) and u_input.isalpha):
         phone_label_error.grid_remove()
-        if not email_label_error.grid_info():
+        if not city_label_error.grid_info() and not email_label_error.grid_info() and not fname_label_error.grid_info() and not add_label_error.grid_info() and not lname_label_error.grid_info(): 
             btn_upd.config(state='normal', cursor="hand2")  
         return True        
     elif (len(u_input)==0):
         btn_upd.config(state='disabled', cursor="")  
         phone_label_error.configure(text="Invalid Empty Field!")
-        phone_label_error.grid(row=15, column=0, columnspan=2, sticky="se", padx=round(60*ratio), pady=(round(10*ratio), 0))
+        phone_label_error.grid(row=15, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
         return True    
     else:
         btn_upd.config(state='disabled', cursor="") 
         phone_label_error.configure(text="Improper Phone Number Format!") 
-        phone_label_error.grid(row=15, column=0, columnspan=2, sticky="se", padx=round(60*ratio), pady=(round(10*ratio), 0))
+        phone_label_error.grid(row=15, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
         return True
 
 # Change password validation function
@@ -1263,7 +1259,7 @@ hide_pass.image = hide_icon
 show_icon = Image.open('asset/show_pass.png')
 show_icon = show_icon.resize((round(35*ratio),round(35*ratio)), Image.ANTIALIAS)
 show_icon = ImageTk.PhotoImage(show_icon)
-show_pass = Button(frame2, image=show_icon, bg="white", relief=FLAT, bd=0, activebackground="white", command=lambda:showpass())
+show_pass = Button(frame2, image=show_icon, bg="white", relief=FLAT, bd=0, activebackground="white", command=lambda:showpass(), cursor="hand2")
 show_pass.image = show_icon
 hide_pass.pack(side=RIGHT, padx=round(10*ratio), fill=BOTH)
 CreateToolTip(hide_pass, text = 'Show Password')
@@ -1365,7 +1361,7 @@ def forgetpassPage():
     error_lbl.grid(row=3, column=1, padx=round(40*ratio), sticky="nsw")
     f1 = Frame(forgetpassWindow, bd=round(8*ratio), bg="#71c577")
     f1.grid(row=4, column=1, padx=round(40*ratio), pady=(round(25*ratio),round(10*ratio)), sticky="nsew")
-    reset_pass = Button(f1, text="Change Password", command=lambda:reset_password(eml_text, error_lbl), font=("Arial Rounded MT Bold", round(12*ratio)), fg="white", bg="#71c577", relief=FLAT, bd=0, activebackground="#71c577", activeforeground="white", cursor="hand2")
+    reset_pass = Button(f1, text="Reset Password", command=lambda:reset_password(eml_text, error_lbl), font=("Arial Rounded MT Bold", round(12*ratio)), fg="white", bg="#71c577", relief=FLAT, bd=0, activebackground="#71c577", activeforeground="white", cursor="hand2")
     reset_pass.pack(expand=TRUE, fill=BOTH)
     f2 = Frame(forgetpassWindow, bd=round(8*ratio), bg="white")
     f2.grid(row=5, column=1, padx=round(40*ratio), sticky="new")
@@ -1772,7 +1768,7 @@ def updateprofilePage():
     updprofileWindow.grab_set()
     updprofileWindow.overrideredirect(True)
     height = round(800*ratio)
-    width = round(500*ratio)
+    width = round(1100*ratio)
     x = (cscreen_width/2)-(width/2)
     y = (cscreen_height/2)-(height/2)
     updprofileWindow.geometry(f'{width}x{height}+{round(x)}+{round(y)}')
@@ -1780,95 +1776,133 @@ def updateprofilePage():
     
     # Configure row column attribute
     updprofileWindow.grid_columnconfigure(0, weight=round(1*ratio))
-    updprofileWindow.grid_columnconfigure(1, weight=round(1*ratio))
-    updprofileWindow.grid_rowconfigure(17, weight=round(1*ratio))
     
     # Background frame
-    f0 = Frame(updprofileWindow, bg="white")
-    f0.grid(row=0, column=0, rowspan=18, columnspan=2, sticky="nsew")
+    frameoverall = Frame(updprofileWindow, highlightbackground="#A9A9A9", highlightthickness=1, relief=RIDGE)
+    frameoverall.grid(row=0, column=0, rowspan=19, columnspan=3, sticky="nsew")
+    left_frame = Frame(updprofileWindow, width=round(cscreen_width*0.3125), height=round(cscreen_height*0.7407), bg="white")
+    left_frame.grid(row=0, column=0, rowspan=19, sticky="nsew", padx=(1,0), pady=1)
+    right_frame = Frame(updprofileWindow, width=round(cscreen_width*0.2604), height=round(cscreen_height*0.7407), bg="white")
+    right_frame.grid(row=0, column=1, rowspan=19, columnspan=2, sticky="nsew", padx=(1,0), pady=1)
+    
+    # Left banner
+    left_banner = Image.open('asset/editpro_banner.png')
+    left_banner = left_banner.resize((round(600*ratio),round(800*ratio)), Image.ANTIALIAS)
+    left_banner = ImageTk.PhotoImage(left_banner)
+    leftb_lbl = Label(left_frame, image=left_banner, bg="white", relief=FLAT, bd=0)
+    leftb_lbl.image = left_banner
+    leftb_lbl.pack(expand=TRUE, fill=BOTH)
+    
+    # Right component
     # Header title
     proupdtile = Image.open('asset/update_profile.png')
     proupdtile = proupdtile.resize((round(250*ratio),round(90*ratio)))
     proupdtile = ImageTk.PhotoImage(proupdtile)
     proupdtile_label = Label(updprofileWindow, image=proupdtile, bg="white")
     proupdtile_label.image = proupdtile
-    proupdtile_label.grid(column=0, row=0, columnspan=2, sticky="nsew", pady=(round(30*ratio), round(20*ratio)))
+    proupdtile_label.grid(column=1, row=0, columnspan=2, sticky="nsew", pady=(round(20*ratio), round(10*ratio)))
     # Contents
-    uid_label = Label(updprofileWindow, text="User ID", font=("Arial Rounded MT Bold", round(13*ratio)), bg="white", fg="black")
-    uid_label.grid(row=1, column=0, columnspan=2, sticky="sw", padx=round(60*ratio))
+    uid_label = Label(updprofileWindow, text="User ID", font=("Arial Rounded MT Bold", round(12*ratio)), bg="white", fg="black")
+    uid_label.grid(row=1, column=1, columnspan=2, sticky="sw", padx=round(40*ratio))
     f0 = Frame(updprofileWindow, borderwidth=round(2*ratio), relief=SUNKEN)
-    f0.grid(row=2, column=0, columnspan=2, padx=round(60*ratio), sticky="new")
-    uid_text = Entry(f0, bd=round(3*ratio), relief=FLAT, font=("Lato", round(13*ratio)), width=round(38*ratio))
-    uid_text.pack(fill=BOTH, expand=True)
+    f0.grid(row=2, column=1, columnspan=2, padx=round(40*ratio), sticky="new")
+    uid_icon = Image.open('asset/employeeid.png')
+    uid_icon = uid_icon.resize((round(25*ratio),round(25*ratio)))
+    uid_icon = ImageTk.PhotoImage(uid_icon)
+    uidicon_lbl = Label(f0, image=uid_icon, bg="#f0f0f0")
+    uidicon_lbl.image = uid_icon
+    uidicon_lbl.pack(side=LEFT, fill=BOTH, padx=(round(10*ratio),round(5*ratio)))
+    uid_text = Entry(f0, bd=round(3*ratio), relief=FLAT, font=("Lato", round(12*ratio)))
+    uid_text.pack(side=RIGHT, fill=BOTH, expand=TRUE)
     uid_text.insert(INSERT, "{}".format(usession.user_id))
     uid_text.configure(state="disabled")
-    ufname_label = Label(updprofileWindow, text="First Name", font=("Arial Rounded MT Bold", round(13*ratio)), bg="white", fg="black")
-    ufname_label.grid(row=3, column=0, columnspan=2, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
+    ufname_label = Label(updprofileWindow, text="First Name", font=("Arial Rounded MT Bold", round(12*ratio)), bg="white", fg="black")
+    ufname_label.grid(row=3, column=1, columnspan=2, sticky="sw", padx=round(40*ratio), pady=(round(5*ratio), 0))
     fname_label_error = Label(updprofileWindow, text="Invalid Empty Field!", font=("Arial Rounded MT Bold", round(9*ratio)), bg="white", fg="red")
-    f1 = Frame(updprofileWindow, borderwidth=round(2*ratio), relief=SUNKEN)
-    f1.grid(row=4, column=0, columnspan=2, padx=round(60*ratio), sticky="new")
+    f1 = Frame(updprofileWindow, borderwidth=round(2*ratio), relief=SUNKEN, bg="white")
+    f1.grid(row=4, column=1, columnspan=2, padx=round(40*ratio), sticky="new")
+    ufname_icon = Image.open('asset/name.png')
+    ufname_icon = ufname_icon.resize((round(25*ratio),round(25*ratio)))
+    ufname_icon = ImageTk.PhotoImage(ufname_icon)
+    ufname_lbl = Label(f1, image=ufname_icon, bg="white")
+    ufname_lbl.image = ufname_icon
+    ufname_lbl.pack(side=LEFT, fill=BOTH, padx=(round(10*ratio),round(5*ratio)))
     ufname_val = StringVar()
     my_valid3 = updprofileWindow.register(fnamevalidation)
-    ufname_text = Entry(f1, bd=round(4*ratio), relief=FLAT, font=("Lato", round(13*ratio)), width=round(38*ratio), textvariable=ufname_val)
-    ufname_text.pack(fill=BOTH, expand=True)
+    ufname_text = Entry(f1, bd=round(3*ratio), relief=FLAT, font=("Lato", round(12*ratio)), textvariable=ufname_val)
+    ufname_text.pack(side=RIGHT, fill=BOTH, expand=TRUE)
     ufname_text.insert(INSERT, "{}".format(usession.user_firstname))
     ufname_text.config(validate="key", validatecommand=(my_valid3, '%P'))
     CreateToolTip(ufname_text, text = 'Max length should only be 30 characters')
-    ulname_label = Label(updprofileWindow, text="Last Name", font=("Arial Rounded MT Bold", round(13*ratio)), bg="white", fg="black")
-    ulname_label.grid(row=5, column=0, columnspan=2, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
+    ulname_label = Label(updprofileWindow, text="Last Name", font=("Arial Rounded MT Bold", round(12*ratio)), bg="white", fg="black")
+    ulname_label.grid(row=5, column=1, columnspan=2, sticky="sw", padx=round(40*ratio), pady=(round(5*ratio), 0))
     lname_label_error = Label(updprofileWindow, text="Invalid Empty Field!", font=("Arial Rounded MT Bold", round(9*ratio)), bg="white", fg="red")
-    f2 = Frame(updprofileWindow, borderwidth=round(2*ratio), relief=SUNKEN)
-    f2.grid(row=6, column=0, columnspan=2, padx=round(60*ratio), sticky="new")
+    f2 = Frame(updprofileWindow, borderwidth=round(2*ratio), relief=SUNKEN, bg="white")
+    f2.grid(row=6, column=1, columnspan=2, padx=round(40*ratio), sticky="new")
+    ulname_lbl = Label(f2, image=ufname_icon, bg="white")
+    ulname_lbl.image = ufname_icon
+    ulname_lbl.pack(side=LEFT, fill=BOTH, padx=(round(10*ratio),round(5*ratio)))
     ulname_val = StringVar()
     my_valid4 = updprofileWindow.register(lnamevalidation)
-    ulname_text = Entry(f2, bd=round(4*ratio), relief=FLAT, font=("Lato", round(13*ratio)), width=round(38*ratio), textvariable=ulname_val)
-    ulname_text.pack(fill=BOTH, expand=True)
+    ulname_text = Entry(f2, bd=round(4*ratio), relief=FLAT, font=("Lato", round(12*ratio)), textvariable=ulname_val)
+    ulname_text.pack(side=RIGHT, fill=BOTH, expand=TRUE)
     ulname_text.insert(INSERT, "{}".format(usession.user_lastname))
     ulname_text.config(validate="key", validatecommand=(my_valid4, '%P'))
     CreateToolTip(ulname_text, text = 'Max length should only be 30 characters')
-    add_label = Label(updprofileWindow, text="Address Line", font=("Arial Rounded MT Bold", round(13*ratio)), bg="white", fg="black")
-    add_label.grid(row=7, column=0, columnspan=2, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
+    add_label = Label(updprofileWindow, text="Address Line", font=("Arial Rounded MT Bold", round(12*ratio)), bg="white", fg="black")
+    add_label.grid(row=7, column=1, columnspan=2, sticky="sw", padx=round(40*ratio), pady=(round(5*ratio), 0))
     add_label_error = Label(updprofileWindow, text="Invalid Empty Field!", font=("Arial Rounded MT Bold", round(9*ratio)), bg="white", fg="red")
-    f3 = Frame(updprofileWindow, borderwidth=round(2*ratio), relief=SUNKEN)
-    f3.grid(row=8, column=0, columnspan=2, padx=round(60*ratio), sticky="new")
+    f3 = Frame(updprofileWindow, borderwidth=round(2*ratio), relief=SUNKEN, bg="white")
+    f3.grid(row=8, column=1, columnspan=2, padx=round(40*ratio), sticky="new")
+    add_icon = Image.open('asset/addressline.png')
+    add_icon = add_icon.resize((round(25*ratio),round(25*ratio)))
+    add_icon = ImageTk.PhotoImage(add_icon)
+    add_lbl = Label(f3, image=add_icon, bg="white")
+    add_lbl.image = add_icon
+    add_lbl.pack(side=LEFT, fill=BOTH, padx=(round(10*ratio),round(5*ratio)))
     add_val = StringVar()
     my_valid5 = updprofileWindow.register(addvalidation)
-    add_text = Entry(f3, bd=round(4*ratio), relief=FLAT, font=("Lato", round(13*ratio)), width=round(38*ratio), textvariable=add_val)
-    add_text.pack(fill=BOTH, expand=True)
+    add_text = Entry(f3, bd=round(3*ratio), relief=FLAT, font=("Lato", round(12*ratio)), textvariable=add_val)
+    add_text.pack(side=RIGHT, fill=BOTH, expand=True)
     add_text.insert(INSERT, "{}".format(usession.user_addressline))
     add_text.config(validate="key", validatecommand=(my_valid5, '%P'))
     CreateToolTip(add_text, text = 'Max length should only be 255 characters')
-    city_label = Label(updprofileWindow, text="City", font=("Arial Rounded MT Bold", round(13*ratio)), bg="white", fg="black")
-    city_label.grid(row=9, column=0, columnspan=2, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
+    city_label = Label(updprofileWindow, text="City", font=("Arial Rounded MT Bold", round(12*ratio)), bg="white", fg="black")
+    city_label.grid(row=9, column=1, columnspan=2, sticky="sw", padx=round(40*ratio), pady=(round(5*ratio), 0))
     city_label_error = Label(updprofileWindow, text="Invalid Empty Field!", font=("Arial Rounded MT Bold", round(9*ratio)), bg="white", fg="red")
-    f4 = Frame(updprofileWindow, borderwidth=round(2*ratio), relief=SUNKEN)
-    f4.grid(row=10, column=0, columnspan=2, padx=round(60*ratio), sticky="new")
+    f4 = Frame(updprofileWindow, borderwidth=round(2*ratio), relief=SUNKEN, bg="white")
+    f4.grid(row=10, column=1, columnspan=2, padx=round(40*ratio), sticky="new")
+    city_icon = Image.open('asset/city.png')
+    city_icon = city_icon.resize((round(25*ratio),round(25*ratio)))
+    city_icon = ImageTk.PhotoImage(city_icon)
+    city_lbl = Label(f4, image=city_icon, bg="white")
+    city_lbl.image = city_icon
+    city_lbl.pack(side=LEFT, fill=BOTH, padx=(round(10*ratio),round(5*ratio)))
     city_val = StringVar()
     city_val.trace('w', cityvalidation2)
-    city_text = Entry(f4, bd=round(4*ratio), relief=FLAT, font=("Lato", round(13*ratio)), width=round(38*ratio), textvariable=city_val)
+    city_text = Entry(f4, bd=round(3*ratio), relief=FLAT, font=("Lato", round(12*ratio)), textvariable=city_val)
     city_text.pack(fill=BOTH, expand=True)
     city_text.insert(INSERT, "{}".format(usession.user_city))
     myvalid6 = updprofileWindow.register(cityvalidation1)
     city_text.config(validate="key", validatecommand=(myvalid6, '%P'))
     CreateToolTip(city_text, text = 'Max length should only be 30 characters')
-    post_label = Label(updprofileWindow, text="Postal Code", font=("Arial Rounded MT Bold", round(13*ratio)), bg="white", fg="black")
-    post_label.grid(row=11, column=0, sticky="sw", padx=(round(60*ratio), 0), pady=(round(10*ratio), 0))
-    f4a = Frame(updprofileWindow, borderwidth=round(2*ratio), relief=SUNKEN)
-    f4a.grid(row=12, column=0, padx=(round(60*ratio), round(10*ratio)), sticky="nw")
+    post_label = Label(updprofileWindow, text="Postal Code", font=("Arial Rounded MT Bold", round(12*ratio)), bg="white", fg="black")
+    post_label.grid(row=11, column=1, sticky="sw", padx=(round(40*ratio), 0), pady=(round(5*ratio), 0))
+    f4a = Frame(updprofileWindow, borderwidth=round(2*ratio), relief=SUNKEN, bg="white")
+    f4a.grid(row=12, column=1, padx=(round(40*ratio), round(10*ratio)), sticky="nsew")
     post_val = StringVar()
     post_val.trace("w", postvalidation2)
-    post_text = Entry(f4a, bd=round(4*ratio), relief=FLAT, font=("Lato", round(13*ratio)), textvariable=post_val)
-    post_text.pack(fill=BOTH, expand=True)
+    post_text = Entry(f4a, bd=round(3*ratio), relief=FLAT, font=("Lato", round(12*ratio)), textvariable=post_val)
+    post_text.pack(side=RIGHT, fill=BOTH, expand=True)
     post_text.insert(INSERT, "{}".format(usession.user_postcode))
     reg = updprofileWindow.register(postvalidation1)
     post_text.config(validate="key", validatecommand=(reg, '%P'))
     CreateToolTip(post_text, text = 'Max length should only be 5 numeric')
-    state_label = Label(updprofileWindow, text="State", font=("Arial Rounded MT Bold", round(13*ratio)), bg="white", fg="black")
-    state_label.grid(row=11, column=1, sticky="sw", padx=(round(15*ratio), round(60*ratio)), pady=(round(10*ratio), 0))
-    f5 = Frame(updprofileWindow, relief=SUNKEN)
-    f5.grid(row=12, column=1, padx=(round(10*ratio), round(60*ratio)), sticky="ne")
-    state_val = StringVar()
-    state_text = ttk.Combobox(f5, font=("Lato", round(13*ratio)), textvariable=state_val, state='readonly', background="white")
+    state_label = Label(updprofileWindow, text="State", font=("Arial Rounded MT Bold", round(12*ratio)), bg="white", fg="black")
+    state_label.grid(row=11, column=2, sticky="sw", padx=(round(10*ratio), round(40*ratio)), pady=(round(5*ratio), 0))
+    f5 = Frame(updprofileWindow, relief=SUNKEN, bg="white")
+    f5.grid(row=12, column=2, padx=(round(10*ratio), round(40*ratio)), sticky="nsew")
+    state_text = ttk.Combobox(f5, font=("Lato", round(12*ratio)), state='readonly', background="white")
     state_text['values'] = ('Johor', 
                           'Kedah',
                           'Kelantan',
@@ -1885,7 +1919,7 @@ def updateprofilePage():
                           'Kuala Lumpur',
                           'Labuan',
                           'Putrajaya')
-    state_text.pack(fill=BOTH, expand=True)
+    state_text.pack(side=RIGHT, fill=BOTH, expand=True)
     state_text.current(0)
     ustate = usession.user_state
     if ustate == 'Johor':
@@ -1920,38 +1954,51 @@ def updateprofilePage():
         state_text.current(14)
     else:
         state_text.current(15)
-    email_label = Label(updprofileWindow, text="Email", font=("Arial Rounded MT Bold", round(13*ratio)), bg="white", fg="black")
-    email_label.grid(row=13, column=0, columnspan=2, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
+    email_label = Label(updprofileWindow, text="Email", font=("Arial Rounded MT Bold", round(12*ratio)), bg="white", fg="black")
+    email_label.grid(row=13, column=1, columnspan=2, sticky="sw", padx=round(40*ratio), pady=(round(5*ratio), 0))
     email_label_error = Label(updprofileWindow, text="Improper Email Format!", font=("Arial Rounded MT Bold", round(9*ratio)), bg="white", fg="red")
-    f6 = Frame(updprofileWindow, borderwidth=round(2*ratio), relief=SUNKEN)
-    f6.grid(row=14, column=0, columnspan=2, padx=round(60*ratio), sticky="new")
+    f6 = Frame(updprofileWindow, borderwidth=round(2*ratio), relief=SUNKEN, bg="white")
+    f6.grid(row=14, column=1, columnspan=2, padx=round(40*ratio), sticky="new")
+    email_icon = Image.open('asset/email.png')
+    email_icon = email_icon.resize((round(25*ratio),round(25*ratio)))
+    email_icon = ImageTk.PhotoImage(email_icon)
+    email_lbl = Label(f6, image=email_icon, bg="white")
+    email_lbl.image = email_icon
+    email_lbl.pack(side=LEFT, fill=BOTH, padx=(round(10*ratio),round(5*ratio)))
     email_val = StringVar()
     my_valid = updprofileWindow.register(validate_email)
-    email_text = Entry(f6, bd=round(4*ratio), relief=FLAT, font=("Lato", round(13*ratio)), width=round(38*ratio), textvariable=email_val)
-    email_text.pack(fill=BOTH, expand=True)
+    email_text = Entry(f6, bd=round(3*ratio), relief=FLAT, font=("Lato", round(12*ratio)), textvariable=email_val)
+    email_text.pack(side=RIGHT, fill=BOTH, expand=True)
     email_text.insert(INSERT, "{}".format(usession.user_email))
     email_text.config(validate="key", validatecommand=(my_valid, '%P'))
     CreateToolTip(email_text, text = 'e.g. dummy@xyz.com')
-    phone_label = Label(updprofileWindow, text="Phone Number", font=("Arial Rounded MT Bold", round(13*ratio)), bg="white", fg="black")
-    phone_label.grid(row=15, column=0, columnspan=2, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
+    phone_label = Label(updprofileWindow, text="Phone Number", font=("Arial Rounded MT Bold", round(12*ratio)), bg="white", fg="black")
+    phone_label.grid(row=15, column=1, columnspan=2, sticky="sw", padx=round(40*ratio), pady=(round(5*ratio), 0))
     phone_label_error = Label(updprofileWindow, text="Improper Phone Number Format!", font=("Arial Rounded MT Bold", round(9*ratio)), bg="white", fg="red")
-    f7 = Frame(updprofileWindow, borderwidth=round(2*ratio), relief=SUNKEN)
-    f7.grid(row=16, column=0, columnspan=2, padx=round(60*ratio), sticky="new")
+    f7 = Frame(updprofileWindow, borderwidth=round(2*ratio), relief=SUNKEN, bg="white")
+    f7.grid(row=16, column=1, columnspan=2, padx=round(40*ratio), sticky="new")
+    phone_icon = Image.open('asset/phone.png')
+    phone_icon = phone_icon.resize((round(25*ratio),round(25*ratio)))
+    phone_icon = ImageTk.PhotoImage(phone_icon)
+    phone_lbl = Label(f7, image=phone_icon, bg="white")
+    phone_lbl.image = phone_icon
+    phone_lbl.pack(side=LEFT, fill=BOTH, padx=(round(10*ratio),round(5*ratio)))
     phone_val = StringVar()
     phone_valid = updprofileWindow.register(validate_phone)
-    phone_text = Entry(f7, bd=round(4*ratio), relief=FLAT, font=("Lato", round(13*ratio)), width=round(38*ratio), textvariable=phone_val)
-    phone_text.pack(fill=BOTH, expand=True)
+    phone_text = Entry(f7, bd=round(3*ratio), relief=FLAT, font=("Lato", round(12*ratio)), textvariable=phone_val)
+    phone_text.pack(side=RIGHT, fill=BOTH, expand=True)
     phone_text.insert(INSERT, "{}".format(usession.user_phone))
     phone_text.config(validate="key", validatecommand=(phone_valid, '%P'))
     CreateToolTip(phone_text, text = 'e.g. 012-3456789')
-    f8 = Frame(updprofileWindow ,bg="white")
-    f8.grid(row=17, column=0, sticky="nse", padx=(0,round(20*ratio)), pady=round(15*ratio))
-    btn_upd = Button(f8, cursor="hand2", text="Update", command=lambda:usession.updateprofile(ufname_text, ulname_text, add_text, city_text, state_text, post_text, email_text, phone_text), font=("Arial Rounded MT Bold", round(12*ratio)), height=1, width=round(13*ratio), fg="white", bg="#1F5192", relief=RIDGE, bd=1, activebackground="#173B6A", activeforeground="white")
-    btn_upd.pack()
-    f9 = Frame(updprofileWindow, bg="white")
-    f9.grid(row=17, column=1, sticky="nsw", padx=(round(50*ratio),0), pady=round(15*ratio))
-    btn_close = Button(f9, cursor="hand2", text="Close", command=lambda:closeupdprofile(), font=("Arial Rounded MT Bold", round(12*ratio)), height=1, width=round(13*ratio), fg="black", bg="white", relief=RIDGE, bd=1, activebackground="#DCDCDC", activeforeground="black")
-    btn_close.pack()
+    f8 = Frame(updprofileWindow, bd=round(4*ratio), bg="#71c577")
+    f8.grid(row=17, column=1, columnspan=2, padx=round(120*ratio), pady=(round(25*ratio),0), sticky="nsew")
+    btn_upd = Button(f8, text="Update Info", command=lambda:usession.updateprofile(ufname_text, ulname_text, add_text, city_text, state_text, post_text, email_text, phone_text), font=("Arial Rounded MT Bold", round(12*ratio)), fg="white", bg="#71c577", relief=FLAT, bd=0, activebackground="#71c577", activeforeground="white", cursor="hand2")
+    btn_upd.pack(expand=TRUE, fill=BOTH)
+    f9 = Frame(updprofileWindow, bd=round(4*ratio), bg="white")
+    f9.grid(row=18, column=1, columnspan=2, padx=round(120*ratio), pady=(0,round(15*ratio)), sticky="nsew")
+    btn_close = Button(f9, text="Back to Profile", command=lambda:closeupdprofile(), font=("Arial Rounded MT Bold", round(10*ratio)), fg="#71c577", bg="white", relief=FLAT, bd=0, activebackground="white", activeforeground="#71c577", cursor="hand2")
+    btn_close.pack(expand=TRUE, fill=BOTH)
+
     
 #==============================================================================================#
 #                                     Update Profile Page                                      #
@@ -1965,8 +2012,8 @@ def updatepassPage():
     updpassWindow = Toplevel(profileWindow)
     updpassWindow.grab_set()
     updpassWindow.overrideredirect(True)
-    height = round(630*ratio)
-    width = round(520*ratio)
+    height = round(650*ratio)
+    width = round(1005*ratio)
     x = (cscreen_width/2)-(width/2)
     y = (cscreen_height/2)-(height/2)
     updpassWindow.geometry(f'{width}x{height}+{round(x)}+{round(y)}')
@@ -1978,71 +2025,98 @@ def updatepassPage():
     updpassWindow.grid_rowconfigure(12, weight=round(1*ratio))
     
     # Background frame
-    f0 = Frame(updpassWindow, bg="white")
-    f0.grid(row=0, column=0, rowspan=13, columnspan=2, sticky="nsew")
+    frameoverall = Frame(updpassWindow, highlightbackground="#A9A9A9", highlightthickness=1, relief=RIDGE)
+    frameoverall.grid(row=0, column=0, rowspan=13, columnspan=3, sticky="nsew")
+    left_frame = Frame(updpassWindow, width=round(cscreen_width*0.2604), height=round(cscreen_height*0.6019), bg="white")
+    left_frame.grid(row=0, column=0, rowspan=13, sticky="nsew", padx=(1,0), pady=1)
+    right_frame = Frame(updpassWindow, width=round(cscreen_width*0.2604), height=round(cscreen_height*0.6019), bg="white")
+    right_frame.grid(row=0, column=1, rowspan=13, columnspan=2, sticky="nsew", padx=(1,0), pady=1)
+    
+    # Left banner
+    left_banner = Image.open('asset/changepass_left.png')
+    left_banner = left_banner.resize((round(500*ratio),round(650*ratio)), Image.ANTIALIAS)
+    left_banner = ImageTk.PhotoImage(left_banner)
+    leftb_lbl = Label(left_frame, image=left_banner, bg="white", relief=FLAT, bd=0)
+    leftb_lbl.image = left_banner
+    leftb_lbl.pack(expand=TRUE, fill=BOTH)
+    
     # Header title
     passupdtile = Image.open('asset/change_password.png')
-    passupdtile = passupdtile.resize((round(290*ratio),round(90*ratio)), Image.ANTIALIAS)
+    passupdtile = passupdtile.resize((round(280*ratio),round(90*ratio)), Image.ANTIALIAS)
     passupdtile = ImageTk.PhotoImage(passupdtile)
     passupdtile_label = Label(updpassWindow, image=passupdtile, bg="white")
     passupdtile_label.image = passupdtile
-    passupdtile_label.grid(column=0, row=0, columnspan=2, sticky="nsew", pady=(round(40*ratio),round(30*ratio))) 
+    passupdtile_label.grid(row=0, column=1, columnspan=2, sticky="nsew", pady=(round(40*ratio),round(20*ratio))) 
     # Contents
-    f1a = Frame(updpassWindow, bg="white")
-    f1a.grid(row=1, column=0, sticky="nsw", padx=(round(40*ratio), 0))
+    f1a = Frame(updpassWindow, bg="white", pady=round(5*ratio))
+    f1a.grid(row=1, column=1, columnspan=2, sticky="nesw", padx=round(40*ratio))
     oldpass_label = Label(f1a, text="Old Password", font=("Arial Rounded MT Bold", round(13*ratio)), bg="white", fg="black")
-    oldpass_label.pack()
-    f1 = Frame(updpassWindow, borderwidth=round(2*ratio), relief=SUNKEN)
-    f1.grid(row=1, column=1, sticky="nse", padx=(0, round(40*ratio)))
+    oldpass_label.pack(side=LEFT)
+    f1 = Frame(f1a, borderwidth=round(2*ratio), relief=SUNKEN)
+    f1.pack(side=RIGHT, padx=(round(60*ratio), 0))
     oldpass_val = StringVar()
     oldpass_val.trace("w", validate_pass1)
-    oldpass_text = Entry(f1, bd=round(4*ratio), relief=FLAT, font=("Lato", round(13*ratio)), width=round(20*ratio), show="*", textvariable=oldpass_val)
+    oldpass_text = Entry(f1, bd=round(4*ratio), relief=FLAT, font=("Lato", round(12*ratio)), show="*", textvariable=oldpass_val)
     oldpass_text.pack()
-    f2a = Frame(updpassWindow, bg="white")
-    f2a.grid(row=2, column=0, sticky="nsw", padx=(round(40*ratio), 0), pady=round(20*ratio))
+    f2a = Frame(updpassWindow, bg="white", pady=round(5*ratio))
+    f2a.grid(row=2, column=1, columnspan=2, sticky="nesw", padx=round(40*ratio))
     newpass_label = Label(f2a, text="New Password", font=("Arial Rounded MT Bold", round(13*ratio)), bg="white", fg="black")
-    newpass_label.pack()
-    f2 = Frame(updpassWindow, borderwidth=round(2*ratio), relief=SUNKEN)
-    f2.grid(row=2, column=1, sticky="nse", pady=round(20*ratio), padx=(0, round(40*ratio)))
+    newpass_label.pack(side=LEFT)
+    f2 = Frame(f2a, borderwidth=round(2*ratio), relief=SUNKEN)
+    f2.pack(side=RIGHT, padx=(round(60*ratio), 0))
     newpass_val = StringVar()
     newpass_val.trace("w", validate_pass1)
-    newpass_text = Entry(f2, bd=round(4*ratio), relief=FLAT, font=("Lato", round(13*ratio)), width=round(20*ratio), show="*", textvariable=newpass_val)
+    newpass_text = Entry(f2, bd=round(4*ratio), relief=FLAT, font=("Lato", round(12*ratio)), show="*", textvariable=newpass_val)
     newpass_text.pack()
-    f3a = Frame(updpassWindow, bg="white")
-    f3a.grid(row=3, column=0, sticky="nsw", padx=(round(40*ratio), 0))
+    f3a = Frame(updpassWindow, bg="white", pady=round(5*ratio))
+    f3a.grid(row=3, column=1, columnspan=2, sticky="nesw", padx=round(40*ratio))
     connewpass_label = Label(f3a, text="Confirm New Password", font=("Arial Rounded MT Bold", round(13*ratio)), bg="white", fg="black")
-    connewpass_label.pack()
-    f3 = Frame(updpassWindow, borderwidth=round(2*ratio), relief=SUNKEN)
-    f3.grid(row=3, column=1, sticky="nse", padx=(0, round(40*ratio)))
+    connewpass_label.pack(side=LEFT)
+    f3 = Frame(f3a, borderwidth=round(2*ratio), relief=SUNKEN)
+    f3.pack(side=RIGHT, padx=(round(20*ratio), 0))
     conpass_val = StringVar()
     conpass_val.trace("w", validate_pass1)
-    connewpass_text = Entry(f3, bd=round(4*ratio), relief=FLAT, font=("Lato", round(13*ratio)), width=round(20*ratio), show="*", textvariable=conpass_val)
+    connewpass_text = Entry(f3, bd=round(4*ratio), relief=FLAT, font=("Lato", round(12*ratio)), show="*", textvariable=conpass_val)
     connewpass_text.pack()
-    passpolicy_label = Label(updpassWindow, text="Password Policy Requirements (Red Indicated NOT Fulfiled):", font=("Lato", round(10*ratio)), bg="white", fg="black")
-    passpolicy_label.grid(row=4, column=0, columnspan=2, sticky="nsw", padx=(round(40*ratio), 0), pady=(round(30*ratio), 0))
-    one_empty = Label(updpassWindow, text="Password can't be empty!", font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
-    one_empty.grid(row=5, column=0, columnspan=2, sticky="nsw", padx=(round(40*ratio), 0))
-    two_length = Label(updpassWindow, text="Password must have a minimum of 8 characters in length!", font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
-    two_length.grid(row=6, column=0, columnspan=2, sticky="nsw", padx=(round(40*ratio), 0))
-    three_lower = Label(updpassWindow, text="Password must have at least one lowercase English letter! (e.g. a-z)", font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
-    three_lower.grid(row=7, column=0, columnspan=2, sticky="nsw", padx=(round(40*ratio), 0))
-    four_upper = Label(updpassWindow, text="Password must have at least one uppercase English letter! (e.g. A-Z)", font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
-    four_upper.grid(row=8, column=0, columnspan=2, sticky="nsw", padx=(round(40*ratio), 0))
-    five_digit = Label(updpassWindow, text="Password must have at least one digit! (e.g. 0-9)", font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
-    five_digit.grid(row=9, column=0, columnspan=2, sticky="nsw", padx=(round(40*ratio), 0))
-    six_specialchar = Label(updpassWindow, text="Password must have at least one accepted special character! (e.g. @$!%*?&)", wraplength=round(400*ratio), justify="left", font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
-    six_specialchar.grid(row=10, column=0, columnspan=2, sticky="nsw", padx=(round(40*ratio)))
-    seven_con = Label(updpassWindow, text="Confirm new password does not match new password!", font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
-    seven_con.grid(row=11, column=0, columnspan=2, sticky="nsw", padx=(round(40*ratio), 0))
-    f4 = Frame(updpassWindow ,bg="white")
-    f4.grid(row=12, column=0, sticky="nse", pady=round(30*ratio), padx=(0, round(30*ratio)))
-    btn_passupd = Button(f4, text="Update", command=lambda:usession.updatepass(oldpass_text, newpass_text, connewpass_text), font=("Arial Rounded MT Bold", round(12*ratio)), height=1, width=round(13*ratio), fg="white", bg="#1F5192", relief=RIDGE, bd=1, activebackground="#173B6A", activeforeground="white")
-    btn_passupd.pack()
+    # Password validation display
+    f4 = Frame(updpassWindow, bg="white")
+    f4.grid(row=4, column=1, columnspan=2, padx=round(40*ratio), pady=(round(25*ratio),round(5*ratio)), sticky="nsew")
+    passpolicy_label = Label(f4, text="Password Policy Requirements (Red Indicated NOT Fulfiled):", wraplength=round(400*ratio), justify=LEFT, font=("Lato", round(10*ratio)), bg="white", fg="black")
+    passpolicy_label.pack(anchor="w")
+    one_empty = Label(f4, text="Password can't be empty!", wraplength=round(400*ratio), justify=LEFT, font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
+    one_empty.pack(anchor="w")
+    two_length = Label(f4, text="Password must have a minimum of 8 characters in length!", wraplength=round(400*ratio), justify=LEFT, font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
+    two_length.pack(anchor="w")
+    three_lower = Label(f4, text="Password must have at least one lowercase English letter! (e.g. a-z)", wraplength=round(400*ratio), justify=LEFT, font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
+    three_lower.pack(anchor="w")
+    four_upper = Label(f4, text="Password must have at least one uppercase English letter! (e.g. A-Z)", wraplength=round(400*ratio), justify=LEFT, font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
+    four_upper.pack(anchor="w")
+    five_digit = Label(f4, text="Password must have at least one digit! (e.g. 0-9)", wraplength=round(400*ratio), justify=LEFT, font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
+    five_digit.pack(anchor="w")
+    six_specialchar = Label(f4, text="Password must have at least one accepted special character! (e.g. @$!%*?&)", wraplength=round(400*ratio), justify=LEFT, font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
+    six_specialchar.pack(anchor="w")
+    seven_con = Label(f4, text="Confirm new password does not match new password", wraplength=round(400*ratio), justify=LEFT, font=("Arial Rounded MT Bold", round(10*ratio)), bg="white", fg="red")
+    seven_con.pack(anchor="w")
+    f5 = Frame(updpassWindow, bd=round(4*ratio), bg="#9ba5f4")
+    f5.grid(row=5, column=1, columnspan=2, padx=round(120*ratio), pady=(round(20*ratio),round(5*ratio)), sticky="nsew")
+    btn_passupd = Button(f5, text="Change Password", command=lambda:usession.updatepass(oldpass_text, newpass_text, connewpass_text), font=("Arial Rounded MT Bold", round(12*ratio)), fg="white", bg="#9ba5f4", relief=FLAT, bd=0, activebackground="#9ba5f4", activeforeground="white")
+    btn_passupd.pack(expand=TRUE, fill=BOTH)
     btn_passupd.config(state='disabled')
-    f5 = Frame(updpassWindow, bg="white")
-    f5.grid(row=12, column=1, sticky="nsw", pady=round(30*ratio), padx=(round(45*ratio), 0))
-    btn_passclose = Button(f5, cursor="hand2", text="Close", command=lambda:closechgpass(), font=("Arial Rounded MT Bold", round(12*ratio)), height=1, width=round(13*ratio), fg="black", bg="white", relief=RIDGE, bd=1, activebackground="#DCDCDC", activeforeground="black")
-    btn_passclose.pack()
+    f6 = Frame(updpassWindow, bd=round(4*ratio), bg="white")
+    f6.grid(row=6, column=1, columnspan=2, padx=round(120*ratio), pady=(0,round(15*ratio)), sticky="nsew")
+    btn_close = Button(f6, text="Back to Profile", command=lambda:closechgpass(), font=("Arial Rounded MT Bold", round(10*ratio)), fg="#9ba5f4", bg="white", relief=FLAT, bd=0, activebackground="white", activeforeground="#9ba5f4", cursor="hand2")
+    btn_close.pack(expand=TRUE, fill=BOTH)
+   
+   
+   
+    # btn_passupd = Button(f4, text="Update", command=lambda:usession.updatepass(oldpass_text, newpass_text, connewpass_text), font=("Arial Rounded MT Bold", round(12*ratio)), height=1, width=round(13*ratio), fg="white", bg="#1F5192", relief=RIDGE, bd=1, activebackground="#173B6A", activeforeground="white")
+    # btn_passupd.pack()
+    # btn_passupd.config(state='disabled')
+    # f5 = Frame(updpassWindow, bg="white")
+    # f5.grid(row=12, column=1, sticky="nsw", pady=round(30*ratio), padx=(round(45*ratio), 0))
+    # btn_passclose = Button(f5, cursor="hand2", text="Close", command=lambda:closechgpass(), font=("Arial Rounded MT Bold", round(12*ratio)), height=1, width=round(13*ratio), fg="black", bg="white", relief=RIDGE, bd=1, activebackground="#DCDCDC", activeforeground="black")
+    # btn_passclose.pack()
+
 
 #==============================================================================================#
 #                                   Admin - Manage User Page                                   #
