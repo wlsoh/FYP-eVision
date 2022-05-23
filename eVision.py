@@ -469,7 +469,7 @@ class ToolTip(object):
 
 
 #==============================================================================================#
-#                                         Functions                                            #
+#                                  General Usage Functions                                     #
 #==============================================================================================#
 # Loading screen function
 def loading(win):
@@ -501,129 +501,22 @@ def loading(win):
     txt2 = Label(loading_splash, text="Let's wait & chill", font=("Arial Rounded MT Bold", round(15*ratio)), bg="#242426", fg='#FFBD09')
     txt2.grid(row=1, column=1, columnspan=2, sticky="new")
 
-# Dynamically resize login left image
-def resize_image(event):
-    new_width = event.width
-    new_height = event.height
-    image = copy_img.resize((new_width, new_height), Image.ANTIALIAS)
-    photo = ImageTk.PhotoImage(image)
-    label.config(image = photo)
-    label.image = photo #avoid garbage collection
-
-# Hide/Show password function
-def showpass():
-    global passwordShown
-    
+# Logout function
+def logout():
+    global usession, passwordShown
+    del usession # Delete user session
+    # Clear all files in temp folder
+    dir = './temp'
+    for f in os.listdir(dir):
+        os.remove(os.path.join(dir, f))
+    mainWindow.destroy() # Destroy current winfow
+    root.deiconify() # Show login page again
+    root.geometry(f'{width1}x{height1}+{round(x1)}+{round(y1)}')
     if passwordShown:
         passwordShown = False
         txt_pass.configure(show="*")
         show_pass.pack_forget()
         hide_pass.pack(side=RIGHT, padx=round(10*ratio), fill=BOTH)
-        
-    else:
-        passwordShown = True
-        txt_pass.configure(show="")
-        hide_pass.pack_forget()
-        show_pass.pack(side=RIGHT, padx=round(10*ratio), fill=BOTH)
-
-# Login function
-def login(eloc, ploc, eml_error, pas_error):
-    uname = eloc.get()
-    pas = ploc.get()
-    global usession
-    
-    # If both fields empty
-    if not uname and not pas:
-        eml_error.config(text="Invalid empty field!")
-        pas_error.config(text="Invalid empty field!")
-        eloc.focus()
-    # If email field empty
-    elif not uname and pas:
-        eml_error.config(text="Invalid empty field!")
-        pas_error.config(text="")
-        eloc.focus()
-    # If password field empty
-    elif not pas and uname:
-        eml_error.config(text="")
-        pas_error.config(text="Invalid empty field!")
-        ploc.focus()
-    # If password minimum length not satisfied
-    elif len(pas) < 8:
-        eml_error.config(text="")
-        pas_error.config(text="Password length should not less than 8 characters!")
-        ploc.focus()
-    else:
-        eml_error.config(text="")
-        pas_error.config(text="")
-        try:
-            mysql_con = MySqlConnector(sql_config) # Initial connection
-            sql = '''SELECT * FROM User WHERE user_email = (%s) AND BINARY user_password = SHA2(%s, 256)'''
-            result_details = mysql_con.queryall(sql, (uname.lower(), pas))
-            if result_details:
-                loading(root)
-                root.update()
-                usession = Usersession(
-                    result_details[0][0], 
-                    result_details[0][1], 
-                    result_details[0][2],  
-                    result_details[0][4], 
-                    result_details[0][5], 
-                    result_details[0][6], 
-                    result_details[0][7], 
-                    result_details[0][8], 
-                    result_details[0][9], 
-                    result_details[0][10], 
-                    result_details[0][11], 
-                    result_details[0][12], 
-                    result_details[0][13]
-                )
-                now = datetime.now() # Get current date time
-                dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-                sql = '''UPDATE User SET user_lastlogin_datetime = (%s) WHERE user_id = (%s)''' # Update last login
-                mysql_con.update(sql, (dt_string, usession.user_id))
-                usession.user_lastlogin = dt_string
-                # Get avatar
-                getimg(usession.user_avatar)
-                root.attributes('-disabled', 0)
-                loading_splash.destroy()
-                eloc.delete(0, END)
-                ploc.delete(0, END)
-                eloc.focus()
-                messagebox.showinfo("Login Successful", "Hi {0}, welcome back to e-Vision!".format(usession.user_firstname))
-                mainPage() # Invoke the main page
-                root.withdraw() # Withdraw the login page
-            # If no such user found
-            else:
-                messagebox.showerror("Login Failed", "Invalid email/password! Please try to login again with valid email and password created!")
-                eloc.delete(0, END)
-                ploc.delete(0, END)
-                eloc.focus()
-        except pymysql.Error as e:
-            messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
-            print("Error %d: %s" % (e.args[0], e.args[1]))
-            return False
-        finally:
-            # Close the connection
-            mysql_con.close()
- 
-# Logout function
-def logout():
-    confirmbox = messagebox.askquestion('e-Vision Logout', 'Are you sure to logout the system?', icon='warning')
-    if confirmbox == 'yes':
-        global usession, passwordShown
-        del usession # Delete user session
-        # Clear all files in temp folder
-        dir = './temp'
-        for f in os.listdir(dir):
-            os.remove(os.path.join(dir, f))
-        mainWindow.destroy() # Destroy current winfow
-        root.deiconify() # Show login page again
-        root.geometry(f'{width1}x{height1}+{round(x1)}+{round(y1)}')
-        if passwordShown:
-            passwordShown = False
-            txt_pass.configure(show="*")
-            show_pass.pack_forget()
-            hide_pass.pack(side=RIGHT, padx=round(10*ratio), fill=BOTH)
 
 # Do nothing function
 def disable_event():
@@ -645,13 +538,6 @@ def backmain(cur):
     style.theme_use("default")
     mainWindow.deiconify()
     mainWindow.state('zoomed')
-    
-# Back to Login function
-def backlogin(cur):
-    cur.destroy()
-    style.theme_use("default")
-    root.attributes('-disabled', 0)
-    root.focus_force()
 
 # Download image from cloud storage function
 def getimg(fileid):
@@ -757,374 +643,111 @@ def CreateToolTip(widget, text):
     widget.bind('<Enter>', enter)
     widget.bind('<Leave>', leave)
 
-# Close update profile page function
-def closeupdprofile():
-    updprofileWindow.destroy()
-    profileWindow.attributes('-disabled', 0)
-    profileWindow.focus_force()
-
-# Close change password page function
-def closechgpass():
-    updpassWindow.destroy()
-    profileWindow.attributes('-disabled', 0)
-    profileWindow.focus_force()
-
-# Limit first name entry box length function
-def fnamevalidation(u_input):
-    if len(u_input) > 30: 
-        btn_upd.config(state='disabled', cursor="")  
-        fname_label_error.configure(text="Exceed 30 Characters Length Limit!")
-        fname_label_error.grid(row=3, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
-        return True 
-    elif len(u_input) > 0 and len(u_input) <= 30:
-        fname_label_error.grid_remove()
-        if not phone_label_error.grid_info() and not email_label_error.grid_info() and not lname_label_error.grid_info() and not add_label_error.grid_info() and not city_label_error.grid_info(): 
-            btn_upd.config(state='normal', cursor="hand2")  
-        return True 
-    elif (len(u_input)==0):
-        btn_upd.config(state='disabled', cursor="")  
-        fname_label_error.configure(text="Invalid Empty Field!")
-        fname_label_error.grid(row=3, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
-        return True 
-
-# Limit last name entry box length function
-def lnamevalidation(u_input):
-    if len(u_input) > 30: 
-        btn_upd.config(state='disabled', cursor="")  
-        lname_label_error.configure(text="Exceed 30 Characters Length Limit!")
-        lname_label_error.grid(row=5, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
-        return True 
-    elif len(u_input) > 0 and len(u_input) <= 30:
-        lname_label_error.grid_remove()
-        if not phone_label_error.grid_info() and not email_label_error.grid_info() and not fname_label_error.grid_info() and not add_label_error.grid_info() and not city_label_error.grid_info(): 
-            btn_upd.config(state='normal', cursor="hand2")  
-        return True 
-    elif (len(u_input)==0):
-        btn_upd.config(state='disabled', cursor="")  
-        lname_label_error.configure(text="Invalid Empty Field!")
-        lname_label_error.grid(row=5, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
-        return True 
-
-# Limit address line entry box length function
-def addvalidation(u_input):
-    if len(u_input) > 255: 
-        btn_upd.config(state='disabled', cursor="")  
-        add_label_error.configure(text="Exceed 255 Characters Length Limit!")
-        add_label_error.grid(row=7, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
-        return True 
-    elif len(u_input) > 0 and len(u_input) <= 255:
-        add_label_error.grid_remove()
-        if not phone_label_error.grid_info() and not email_label_error.grid_info() and not fname_label_error.grid_info() and not lname_label_error.grid_info() and not city_label_error.grid_info(): 
-            btn_upd.config(state='normal', cursor="hand2")  
-        return True 
-    elif (len(u_input)==0):
-        btn_upd.config(state='disabled', cursor="")  
-        add_label_error.configure(text="Invalid Empty Field!")
-        add_label_error.grid(row=7, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
-        return True 
-
-# Limit address line entry box length function
-def cityvalidation1(u_input):
-    if len(u_input) > 30: 
-        btn_upd.config(state='disabled', cursor="")  
-        city_label_error.configure(text="Exceed 30 Characters Length Limit!")
-        city_label_error.grid(row=9, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
-        return True 
-    elif len(u_input) > 0 and len(u_input) <= 30:
-        city_label_error.grid_remove()
-        if not phone_label_error.grid_info() and not email_label_error.grid_info() and not fname_label_error.grid_info() and not add_label_error.grid_info() and not lname_label_error.grid_info(): 
-            btn_upd.config(state='normal', cursor="hand2")  
-        return True 
-    elif (len(u_input)==0):
-        btn_upd.config(state='disabled', cursor="")  
-        city_label_error.configure(text="Invalid Empty Field!")
-        city_label_error.grid(row=9, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
-        return True 
-def cityvalidation2(*args):
-    value = city_val.get()
-    
-    whitelist = set('abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ')
-    if not (value.isalpha() & value.isspace()):
-        corrected = ''.join(filter(whitelist.__contains__, value))
-        if len(corrected) > 30: 
-            corrected = corrected[:30]
-        city_val.set(corrected)
-
-# Limit postal code entry box length and numeric only function    
-def postvalidation1(input):
-    if input.isdigit():
-        return True
-    else:
-        return False
-def postvalidation2(*args):
-    value = post_val.get()
-    if len(value) > 5: 
-        post_val.set(value[:5])
-
-# Validate email entry box function
-def validate_email(u_input):
-    if(re.search(emailregex, u_input) and u_input.isalpha):
-        email_label_error.grid_remove()
-        if not city_label_error.grid_info() and not phone_label_error.grid_info() and not fname_label_error.grid_info() and not add_label_error.grid_info() and not lname_label_error.grid_info(): 
-            btn_upd.config(state='normal', cursor="hand2")  
-        return True  
-    elif (len(u_input)==0):
-        btn_upd.config(state='disabled', cursor="")  
-        email_label_error.configure(text="Invalid Empty Field!")
-        email_label_error.grid(row=13, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
-        return True    
-    else:
-        btn_upd.config(state='disabled', cursor="")  
-        email_label_error.configure(text="Improper Email Format!")
-        email_label_error.grid(row=13, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
-        return True
-
-# Validate phone entry box function
-def validate_phone(u_input):
-    if(re.search(phoneregex, u_input) and u_input.isalpha):
-        phone_label_error.grid_remove()
-        if not city_label_error.grid_info() and not email_label_error.grid_info() and not fname_label_error.grid_info() and not add_label_error.grid_info() and not lname_label_error.grid_info(): 
-            btn_upd.config(state='normal', cursor="hand2")  
-        return True        
-    elif (len(u_input)==0):
-        btn_upd.config(state='disabled', cursor="")  
-        phone_label_error.configure(text="Invalid Empty Field!")
-        phone_label_error.grid(row=15, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
-        return True    
-    else:
-        btn_upd.config(state='disabled', cursor="") 
-        phone_label_error.configure(text="Improper Phone Number Format!") 
-        phone_label_error.grid(row=15, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
-        return True
-
-# Change password validation function
-def validate_pass1(*args):
-    if oldpass_val.get() and newpass_val.get and conpass_val.get():
-        one_empty.configure(fg="green")
-    else:
-        one_empty.configure(fg="red")
-        
-    if(len(newpass_val.get()) >= 8):
-        two_length.configure(fg="green")
-    else:
-        two_length.configure(fg="red")
-        
-    if(re.search('[a-z]+', newpass_val.get())):
-        three_lower.configure(fg="green")
-    else:
-        three_lower.configure(fg="red")
-        
-    if(re.search('[A-Z]+', newpass_val.get())):
-        four_upper.configure(fg="green")
-    else:
-        four_upper.configure(fg="red")
-        
-    if(re.search('\d', newpass_val.get())):
-        five_digit.configure(fg="green")
-    else:
-        five_digit.configure(fg="red")
-        
-    if(re.search('[@$!%*?&]', newpass_val.get())):
-        six_specialchar.configure(fg="green")
-    else:
-        six_specialchar.configure(fg="red")
-        
-    if((newpass_val.get() == conpass_val.get()) and newpass_val.get() and conpass_val.get()):
-        seven_con.configure(fg="green")
-    else:
-        seven_con.configure(fg="red")
-        
-    if ((one_empty["foreground"] == 'green') and (two_length["foreground"] == 'green') and (three_lower["foreground"] == 'green') and (four_upper["foreground"] == 'green') and 
-        (six_specialchar["foreground"] == 'green') and (seven_con["foreground"] == 'green')):
-        btn_passupd.config(state='normal', cursor="hand2")
-    else:
-        btn_passupd.config(state='disabled', cursor="")
-def validate_pass2(*args):
-    if fnewpass_val.get and fconpass_val.get():
-        fone_empty.configure(fg="green")
-    else:
-        fone_empty.configure(fg="red")
-        
-    if(len(fnewpass_val.get()) >= 8):
-        ftwo_length.configure(fg="green")
-    else:
-        ftwo_length.configure(fg="red")
-        
-    if(re.search('[a-z]+', fnewpass_val.get())):
-        fthree_lower.configure(fg="green")
-    else:
-        fthree_lower.configure(fg="red")
-        
-    if(re.search('[A-Z]+', fnewpass_val.get())):
-        ffour_upper.configure(fg="green")
-    else:
-        ffour_upper.configure(fg="red")
-        
-    if(re.search('\d', fnewpass_val.get())):
-        ffive_digit.configure(fg="green")
-    else:
-        ffive_digit.configure(fg="red")
-        
-    if(re.search('[@$!%*?&]', fnewpass_val.get())):
-        fsix_specialchar.configure(fg="green")
-    else:
-        fsix_specialchar.configure(fg="red")
-        
-    if((fnewpass_val.get() == fconpass_val.get()) and fnewpass_val.get() and fconpass_val.get()):
-        fseven_con.configure(fg="green")
-    else:
-        fseven_con.configure(fg="red")
-        
-    if ((fone_empty["foreground"] == 'green') and (ftwo_length["foreground"] == 'green') and (fthree_lower["foreground"] == 'green') and (ffour_upper["foreground"] == 'green') and 
-        (fsix_specialchar["foreground"] == 'green') and (fseven_con["foreground"] == 'green')):
-        fbtn_save.config(state='normal', cursor="hand2")
-    else:
-        fbtn_save.config(state='disabled', cursor="")
-
-# Search all user function
-def serachAllUser():
-    loading(usermanageWindow)
-    try:
-        mysql_con = MySqlConnector(sql_config) # Initial connection
-        sql = '''SELECT * FROM User WHERE user_role = 2'''
-        result_details = mysql_con.queryall(sql)
-        if result_details:
-            usermanageWindow.attributes('-disabled', 0)
-            loading_splash.destroy()
-            return result_details
-        # If no existing data found
-        else:
-            result = None
-            usermanageWindow.attributes('-disabled', 0)
-            loading_splash.destroy()
-            messagebox.showinfo("No User Data Found", "There was no existing monitoring employee found in the system!")
-            return result_details
-    except pymysql.Error as e:
-        messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
-        print("Error %d: %s" % (e.args[0], e.args[1]))
-        return False
-    finally:
-        # Close the connection
-        mysql_con.close()
-
-# Search user based on filter function
-def searchUserByFilter(value, opt):
-    if opt == 'All':
-        try:
-            mysql_con = MySqlConnector(sql_config) # Initial connection
-            loading(usermanageWindow)
-            sql = '''SELECT * FROM User WHERE user_role = 2'''
-            result_details = mysql_con.queryall(sql)
-            if result_details:
-                usrmng_tree.delete(*usrmng_tree.get_children())
-                usrmng_count = 0
-                for dt in result_details:
-                    if usrmng_count % 2 == 0:
-                        usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('evenrow',))
-                    else:
-                        usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('oddrow',))
-                    usrmng_count +=1
-                usermanageWindow.attributes('-disabled', 0)
-                loading_splash.destroy()
-            # If no existing data found
-            else:
-                result_details = None
-                usrmng_tree.delete(*usrmng_tree.get_children())
-                usrmng_count = 0
-                usermanageWindow.attributes('-disabled', 0)
-                loading_splash.destroy()
-                messagebox.showinfo("No User Data Found", "There was no existing monitoring employee found in the system!")
-        except pymysql.Error as e:
-            messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
-            print("Error %d: %s" % (e.args[0], e.args[1]))
-            return False
-        finally:
-            # Close the connection
-            mysql_con.close()
-    else:
-        if not value:
-            message = "The value field should not be empty for " + opt + " fitlration option!"
-            messagebox.showerror("Invalid Empty Field", message)
-            filterfield_text.focus()
-        else:
-            try:
-                mysql_con = MySqlConnector(sql_config) # Initial connection
-                loading(usermanageWindow)
-                if opt == 'User ID':
-                    sql = '''SELECT * FROM User WHERE user_role = 2 AND user_id LIKE CONCAT('%%', %s, '%%')'''
-                elif opt == 'First Name':
-                    sql = '''SELECT * FROM User WHERE user_role = 2 AND user_firstname LIKE CONCAT('%%', %s, '%%')'''
-                elif opt == 'Last Name':
-                    sql = '''SELECT * FROM User WHERE user_role = 2 AND user_lastname LIKE CONCAT('%%', %s, '%%')'''
-                elif opt == 'Email':
-                    sql = '''SELECT * FROM User WHERE user_role = 2 AND user_email LIKE CONCAT('%%', %s, '%%')'''
-                else:
-                    sql = '''SELECT * FROM User WHERE user_role = 2 AND user_phone LIKE CONCAT('%%', %s, '%%')'''
-                result_details1 = mysql_con.queryall(sql, (value))
-                if result_details1:
-                    usrmng_tree.delete(*usrmng_tree.get_children())
-                    usrmng_count = 0
-                    for dt in result_details1:
-                        if usrmng_count % 2 == 0:
-                            usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('evenrow',))
-                        else:
-                            usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('oddrow',))
-                        usrmng_count +=1
-                    usermanageWindow.attributes('-disabled', 0)
-                    loading_splash.destroy()
-                # If no existing data found
-                else:
-                    result_details1 = None
-                    usrmng_tree.delete(*usrmng_tree.get_children())
-                    usrmng_count = 0
-                    usermanageWindow.attributes('-disabled', 0)
-                    loading_splash.destroy()
-                    messagebox.showinfo("No User Data Found", "There was no such monitoring employee found based on the filtration value!")
-            except pymysql.Error as e:
-                messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
-                print("Error %d: %s" % (e.args[0], e.args[1]))
-                return False
-            finally:
-                # Close the connection
-                mysql_con.close()
-       
-# Filter user callback fucntion
-def usrmngcallback(eventObject):
-    if filter_opt.get() == 'All':
-        filterfield_text.delete(0, 'end')
-        filterfield_text.config(state='disabled')
-    else:
-        filterfield_text.config(state='normal')
-        filterfield_text.focus()
-    
 # Generate random password function
 def generate_temppassword():
     temp_pass = ''.join((secrets.choice(string.ascii_letters + string.digits + string.punctuation) for i in range(8)))
     return temp_pass
 
-# Reset password for user
-def reset_password(email, err_lbl):
-    email_con = email.get()
+
+#==============================================================================================#
+#                                     Login Page (root)                                        #
+#==============================================================================================#
+## Function List for Login Page
+# Dynamically resize login left image
+def resize_image(event):
+    new_width = event.width
+    new_height = event.height
+    image = copy_img.resize((new_width, new_height), Image.ANTIALIAS)
+    photo = ImageTk.PhotoImage(image)
+    label.config(image = photo)
+    label.image = photo #avoid garbage collection
+# Hide/Show password function
+def showpass():
+    global passwordShown
     
-    if not email_con:
-        err_lbl.config(text="The email field should not be empty!")
-        email.focus()
-    elif not (re.search(emailregex, email_con) and email_con.isalpha):
-        err_lbl.config(text="Invalid email format!")
-        email.focus() 
+    if passwordShown:
+        passwordShown = False
+        txt_pass.configure(show="*")
+        show_pass.pack_forget()
+        hide_pass.pack(side=RIGHT, padx=round(10*ratio), fill=BOTH)
+        
     else:
+        passwordShown = True
+        txt_pass.configure(show="")
+        hide_pass.pack_forget()
+        show_pass.pack(side=RIGHT, padx=round(10*ratio), fill=BOTH)
+# Login function
+def login(eloc, ploc, eml_error, pas_error):
+    uname = eloc.get()
+    pas = ploc.get()
+    global usession
+    
+    # If both fields empty
+    if not uname and not pas:
+        eml_error.config(text="Invalid empty field!")
+        pas_error.config(text="Invalid empty field!")
+        eloc.focus()
+    # If email field empty
+    elif not uname and pas:
+        eml_error.config(text="Invalid empty field!")
+        pas_error.config(text="")
+        eloc.focus()
+    # If password field empty
+    elif not pas and uname:
+        eml_error.config(text="")
+        pas_error.config(text="Invalid empty field!")
+        ploc.focus()
+    # If password minimum length not satisfied
+    elif len(pas) < 8:
+        eml_error.config(text="")
+        pas_error.config(text="Password length should not less than 8 characters!")
+        ploc.focus()
+    else:
+        eml_error.config(text="")
+        pas_error.config(text="")
         try:
             mysql_con = MySqlConnector(sql_config) # Initial connection
-            sql = '''SELECT * FROM User WHERE user_email = (%s)'''
-            result_details = mysql_con.queryall(sql, (email_con))
+            sql = '''SELECT * FROM User WHERE user_email = (%s) AND BINARY user_password = SHA2(%s, 256)'''
+            result_details = mysql_con.queryall(sql, (uname.lower(), pas))
             if result_details:
-                global existed
-                existed = True
-                err_lbl.config(text="")
-            # If no existing data found
+                loading(root)
+                root.update()
+                usession = Usersession(
+                    result_details[0][0], 
+                    result_details[0][1], 
+                    result_details[0][2],  
+                    result_details[0][4], 
+                    result_details[0][5], 
+                    result_details[0][6], 
+                    result_details[0][7], 
+                    result_details[0][8], 
+                    result_details[0][9], 
+                    result_details[0][10], 
+                    result_details[0][11], 
+                    result_details[0][12], 
+                    result_details[0][13]
+                )
+                now = datetime.now() # Get current date time
+                dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
+                sql = '''UPDATE User SET user_lastlogin_datetime = (%s) WHERE user_id = (%s)''' # Update last login
+                mysql_con.update(sql, (dt_string, usession.user_id))
+                usession.user_lastlogin = dt_string
+                # Get avatar
+                getimg(usession.user_avatar)
+                root.attributes('-disabled', 0)
+                loading_splash.destroy()
+                eloc.delete(0, END)
+                ploc.delete(0, END)
+                eloc.focus()
+                messagebox.showinfo("Login Successful", "Hi {0}, welcome back to e-Vision!".format(usession.user_firstname))
+                mainPage() # Invoke the main page
+                root.withdraw() # Withdraw the login page
+            # If no such user found
             else:
-                existed = False
-                err_lbl.config(text="We cannot find your email!")
+                messagebox.showerror("Login Failed", "Invalid email/password! Please try to login again with valid email and password created!")
+                eloc.delete(0, END)
+                ploc.delete(0, END)
+                eloc.focus()
         except pymysql.Error as e:
             messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
             print("Error %d: %s" % (e.args[0], e.args[1]))
@@ -1132,55 +755,7 @@ def reset_password(email, err_lbl):
         finally:
             # Close the connection
             mysql_con.close()
-            
-        if existed:
-            loading(forgetpassWindow)
-            forgetpassWindow.update()
-            # Generate random pass
-            temp = generate_temppassword()
-            # Update the password
-            try:
-                mysql_con = MySqlConnector(sql_config) # Initial connection
-                sql = '''UPDATE User SET user_password = SHA2(%s, 256), user_firstLogin = 1 WHERE user_email = (%s)'''
-                update = mysql_con.update(sql, (temp, email_con))
-                if update > 0:
-                    # Send email to the user
-                    emailtxt = [email_con]
-                    send = mail_resetpass(emailtxt, temp)
-                    if send:
-                        messagebox.showinfo("Password Reset Successful", "Your password had been reset. Please check your email in order to login.")
-                        forgetpassWindow.attributes('-disabled', 0)
-                        loading_splash.destroy()    
-                        forgetpassWindow.destroy() # Close the interface
-                        root.attributes('-disabled', 0)
-                        root.focus_force()
-                    else:
-                        messagebox.showinfo("Password Reset Process Not Complete", "Your password had been reset but email was not generated due to server error! Please contact developer for help!")
-                        forgetpassWindow.attributes('-disabled', 0)
-                        loading_splash.destroy() 
-                        forgetpassWindow.destroy() # Close the interface
-                        root.attributes('-disabled', 0)
-                        root.focus_force()
-                # If error
-                else:
-                    messagebox.showerror("Passord Reset Failed", "Failed to reset your password! Please contact developer for help!")
-                    forgetpassWindow.attributes('-disabled', 0)
-                    loading_splash.destroy() 
-                    forgetpassWindow.destroy() # Close the interface
-                    root.attributes('-disabled', 0)
-                    root.focus_force()
-            except pymysql.Error as e:
-                messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
-                print("Error %d: %s" % (e.args[0], e.args[1]))
-                return False
-            finally:
-                # Close the connection
-                mysql_con.close()
-
-
-#==============================================================================================#
-#                                     Login Page (root)                                        #
-#==============================================================================================#
+ 
 ## Login Page Interface (Root)
 root = Tk()
 
@@ -1305,11 +880,91 @@ mngstyle.theme_create('mngstyle', parent='clam', settings =
 
 
 #==============================================================================================#
-#                                         Main Page                                            #
+#                                   Forget Password Page                                       #
 #==============================================================================================#
 ## Main Page Interface
 def forgetpassPage():
-    global forgetpassWindow
+    ## Function List for Forget Password Page
+    # Reset password for user
+    def reset_password(email, err_lbl):
+        email_con = email.get()
+        
+        if not email_con:
+            err_lbl.config(text="The email field should not be empty!")
+            email.focus()
+        elif not (re.search(emailregex, email_con) and email_con.isalpha):
+            err_lbl.config(text="Invalid email format!")
+            email.focus() 
+        else:
+            try:
+                mysql_con = MySqlConnector(sql_config) # Initial connection
+                sql = '''SELECT * FROM User WHERE user_email = (%s)'''
+                result_details = mysql_con.queryall(sql, (email_con))
+                if result_details:
+                    global existed
+                    existed = True
+                    err_lbl.config(text="")
+                # If no existing data found
+                else:
+                    existed = False
+                    err_lbl.config(text="We cannot find your email!")
+            except pymysql.Error as e:
+                messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                print("Error %d: %s" % (e.args[0], e.args[1]))
+                return False
+            finally:
+                # Close the connection
+                mysql_con.close()
+                
+            if existed:
+                loading(forgetpassWindow)
+                forgetpassWindow.update()
+                # Generate random pass
+                temp = generate_temppassword()
+                # Update the password
+                try:
+                    mysql_con = MySqlConnector(sql_config) # Initial connection
+                    sql = '''UPDATE User SET user_password = SHA2(%s, 256), user_firstLogin = 1 WHERE user_email = (%s)'''
+                    update = mysql_con.update(sql, (temp, email_con))
+                    if update > 0:
+                        # Send email to the user
+                        emailtxt = [email_con]
+                        send = mail_resetpass(emailtxt, temp)
+                        if send:
+                            messagebox.showinfo("Password Reset Successful", "Your password had been reset. Please check your email in order to login.")
+                            forgetpassWindow.attributes('-disabled', 0)
+                            loading_splash.destroy()    
+                            forgetpassWindow.destroy() # Close the interface
+                            root.attributes('-disabled', 0)
+                            root.focus_force()
+                        else:
+                            messagebox.showinfo("Password Reset Process Not Complete", "Your password had been reset but email was not generated due to server error! Please contact developer for help!")
+                            forgetpassWindow.attributes('-disabled', 0)
+                            loading_splash.destroy() 
+                            forgetpassWindow.destroy() # Close the interface
+                            root.attributes('-disabled', 0)
+                            root.focus_force()
+                    # If error
+                    else:
+                        messagebox.showerror("Passord Reset Failed", "Failed to reset your password! Please contact developer for help!")
+                        forgetpassWindow.attributes('-disabled', 0)
+                        loading_splash.destroy() 
+                        forgetpassWindow.destroy() # Close the interface
+                        root.attributes('-disabled', 0)
+                        root.focus_force()
+                except pymysql.Error as e:
+                    messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                    print("Error %d: %s" % (e.args[0], e.args[1]))
+                    return False
+                finally:
+                    # Close the connection
+                    mysql_con.close()
+    # Back to Login function
+    def backlogin(cur):
+        cur.destroy()
+        style.theme_use("default")
+        root.attributes('-disabled', 0)
+        root.focus_force()
     
     # Configure window attribute
     root.attributes('-disabled', 1)
@@ -1374,6 +1029,55 @@ def forgetpassPage():
 #==============================================================================================#
 ## Main Page Interface
 def mainPage():
+    ## Function & Validation List for Main Page
+    # Logout function
+    def mainlogout():
+        confirmbox = messagebox.askquestion('e-Vision Logout', 'Are you sure to logout the system?', icon='warning')
+        if confirmbox == 'yes':
+            logout()
+    # First change password validation function
+    def validate_pass2(*args):
+        if fnewpass_val.get and fconpass_val.get():
+            fone_empty.configure(fg="green")
+        else:
+            fone_empty.configure(fg="red")
+            
+        if(len(fnewpass_val.get()) >= 8):
+            ftwo_length.configure(fg="green")
+        else:
+            ftwo_length.configure(fg="red")
+            
+        if(re.search('[a-z]+', fnewpass_val.get())):
+            fthree_lower.configure(fg="green")
+        else:
+            fthree_lower.configure(fg="red")
+            
+        if(re.search('[A-Z]+', fnewpass_val.get())):
+            ffour_upper.configure(fg="green")
+        else:
+            ffour_upper.configure(fg="red")
+            
+        if(re.search('\d', fnewpass_val.get())):
+            ffive_digit.configure(fg="green")
+        else:
+            ffive_digit.configure(fg="red")
+            
+        if(re.search('[@$!%*?&]', fnewpass_val.get())):
+            fsix_specialchar.configure(fg="green")
+        else:
+            fsix_specialchar.configure(fg="red")
+            
+        if((fnewpass_val.get() == fconpass_val.get()) and fnewpass_val.get() and fconpass_val.get()):
+            fseven_con.configure(fg="green")
+        else:
+            fseven_con.configure(fg="red")
+            
+        if ((fone_empty["foreground"] == 'green') and (ftwo_length["foreground"] == 'green') and (fthree_lower["foreground"] == 'green') and (ffour_upper["foreground"] == 'green') and 
+            (fsix_specialchar["foreground"] == 'green') and (fseven_con["foreground"] == 'green')):
+            fbtn_save.config(state='normal', cursor="hand2")
+        else:
+            fbtn_save.config(state='disabled', cursor="")
+    
     global mainWindow
     
     # Configure window attribute
@@ -1444,7 +1148,7 @@ def mainPage():
     btn_profile.pack(fill='x')
     btn_frame5 = Frame(mainWindow, bg="#1D253D")
     btn_frame5.grid(row=1, column=4, sticky="nsew", padx=(round(5*ratio), round(30*ratio)), pady=round(10*ratio))
-    btn_logout = Button(btn_frame5, cursor="hand2", text="Logout", command=lambda:logout(), font=("Arial Rounded MT Bold", round(13*ratio)), height=1, width=round(15*ratio), fg="white", bg="#FF0000", relief=RIDGE, bd=1, activebackground="#B50505", activeforeground="white")
+    btn_logout = Button(btn_frame5, cursor="hand2", text="Logout", command=lambda:mainlogout(), font=("Arial Rounded MT Bold", round(13*ratio)), height=1, width=round(15*ratio), fg="white", bg="#FF0000", relief=RIDGE, bd=1, activebackground="#B50505", activeforeground="white")
     btn_logout.pack(fill='x')
     notebookstyle = ttk.Style()
     notebookstyle.theme_use('default')
@@ -1500,11 +1204,11 @@ def mainPage():
     btn_next = Button(btn_frame10, cursor="hand2", image=icon_next, height=round(30*ratio), width=round(150*ratio), bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB")
     btn_next.image = icon_next
     btn_next.pack(fill='x')
-    mainWindow.protocol("WM_DELETE_WINDOW", logout) # If click on close button of window
+    mainWindow.protocol("WM_DELETE_WINDOW", mainlogout) # If click on close button of window
     # Check for first time login
     if(usession.user_firstlogin == 1):
         mainWindow.attributes('-disabled', 1)
-        global wel, fnewpass_val, fconpass_val, fone_empty, ftwo_length, fthree_lower,ffour_upper, ffive_digit, fsix_specialchar, fseven_con, fbtn_save
+        global wel
         wel = Toplevel(mainWindow)
         wel.grab_set()
         wel.overrideredirect(True)
@@ -1761,7 +1465,136 @@ def profilePage():
 #==============================================================================================#
 ## Update Profile Page Interface
 def updateprofilePage():
-    global updprofileWindow, ufname_val, ulname_val, add_val, city_val, post_val, state_val, email_label_error, email_val, phone_label_error, phone_val, btn_upd, fname_label_error, lname_label_error, add_label_error, city_label_error
+    ## Function & Validation List for Update Profile Page
+    # Close update profile page function
+    def closeupdprofile():
+        updprofileWindow.destroy()
+        profileWindow.attributes('-disabled', 0)
+        profileWindow.focus_force()
+    # Limit first name entry box length function
+    def fnamevalidation(u_input):
+        if len(u_input) > 30: 
+            btn_upd.config(state='disabled', cursor="")  
+            fname_label_error.configure(text="Exceed 30 Characters Length Limit!")
+            fname_label_error.grid(row=3, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
+            return True 
+        elif len(u_input) > 0 and len(u_input) <= 30:
+            fname_label_error.grid_remove()
+            if not phone_label_error.grid_info() and not email_label_error.grid_info() and not lname_label_error.grid_info() and not add_label_error.grid_info() and not city_label_error.grid_info(): 
+                btn_upd.config(state='normal', cursor="hand2")  
+            return True 
+        elif (len(u_input)==0):
+            btn_upd.config(state='disabled', cursor="")  
+            fname_label_error.configure(text="Invalid Empty Field!")
+            fname_label_error.grid(row=3, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
+            return True 
+    # Limit last name entry box length function
+    def lnamevalidation(u_input):
+        if len(u_input) > 30: 
+            btn_upd.config(state='disabled', cursor="")  
+            lname_label_error.configure(text="Exceed 30 Characters Length Limit!")
+            lname_label_error.grid(row=5, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
+            return True 
+        elif len(u_input) > 0 and len(u_input) <= 30:
+            lname_label_error.grid_remove()
+            if not phone_label_error.grid_info() and not email_label_error.grid_info() and not fname_label_error.grid_info() and not add_label_error.grid_info() and not city_label_error.grid_info(): 
+                btn_upd.config(state='normal', cursor="hand2")  
+            return True 
+        elif (len(u_input)==0):
+            btn_upd.config(state='disabled', cursor="")  
+            lname_label_error.configure(text="Invalid Empty Field!")
+            lname_label_error.grid(row=5, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
+            return True 
+    # Limit address line entry box length function
+    def addvalidation(u_input):
+        if len(u_input) > 255: 
+            btn_upd.config(state='disabled', cursor="")  
+            add_label_error.configure(text="Exceed 255 Characters Length Limit!")
+            add_label_error.grid(row=7, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
+            return True 
+        elif len(u_input) > 0 and len(u_input) <= 255:
+            add_label_error.grid_remove()
+            if not phone_label_error.grid_info() and not email_label_error.grid_info() and not fname_label_error.grid_info() and not lname_label_error.grid_info() and not city_label_error.grid_info(): 
+                btn_upd.config(state='normal', cursor="hand2")  
+            return True 
+        elif (len(u_input)==0):
+            btn_upd.config(state='disabled', cursor="")  
+            add_label_error.configure(text="Invalid Empty Field!")
+            add_label_error.grid(row=7, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
+            return True 
+    # Limit address line entry box length function
+    def cityvalidation1(u_input):
+        if len(u_input) > 30: 
+            btn_upd.config(state='disabled', cursor="")  
+            city_label_error.configure(text="Exceed 30 Characters Length Limit!")
+            city_label_error.grid(row=9, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
+            return True 
+        elif len(u_input) > 0 and len(u_input) <= 30:
+            city_label_error.grid_remove()
+            if not phone_label_error.grid_info() and not email_label_error.grid_info() and not fname_label_error.grid_info() and not add_label_error.grid_info() and not lname_label_error.grid_info(): 
+                btn_upd.config(state='normal', cursor="hand2")  
+            return True 
+        elif (len(u_input)==0):
+            btn_upd.config(state='disabled', cursor="")  
+            city_label_error.configure(text="Invalid Empty Field!")
+            city_label_error.grid(row=9, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
+            return True 
+    def cityvalidation2(*args):
+        value = city_val.get()
+        
+        whitelist = set('abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+        if not (value.isalpha() & value.isspace()):
+            corrected = ''.join(filter(whitelist.__contains__, value))
+            if len(corrected) > 30: 
+                corrected = corrected[:30]
+            city_val.set(corrected)
+    # Limit postal code entry box length and numeric only function    
+    def postvalidation1(input):
+        if input.isdigit():
+            return True
+        else:
+            return False
+    def postvalidation2(*args):
+        value = post_val.get()
+        if len(value) > 5: 
+            post_val.set(value[:5])
+    # Validate email entry box function
+    def validate_email(u_input):
+        if(re.search(emailregex, u_input) and u_input.isalpha):
+            email_label_error.grid_remove()
+            if not city_label_error.grid_info() and not phone_label_error.grid_info() and not fname_label_error.grid_info() and not add_label_error.grid_info() and not lname_label_error.grid_info(): 
+                btn_upd.config(state='normal', cursor="hand2")  
+            return True  
+        elif (len(u_input)==0):
+            btn_upd.config(state='disabled', cursor="")  
+            email_label_error.configure(text="Invalid Empty Field!")
+            email_label_error.grid(row=13, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
+            return True    
+        else:
+            btn_upd.config(state='disabled', cursor="")  
+            email_label_error.configure(text="Improper Email Format!")
+            email_label_error.grid(row=13, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
+            return True
+    # Validate phone entry box function
+    def validate_phone(u_input):
+        if(re.search(phoneregex, u_input) and u_input.isalpha):
+            phone_label_error.grid_remove()
+            if not city_label_error.grid_info() and not email_label_error.grid_info() and not fname_label_error.grid_info() and not add_label_error.grid_info() and not lname_label_error.grid_info(): 
+                btn_upd.config(state='normal', cursor="hand2")  
+            return True        
+        elif (len(u_input)==0):
+            btn_upd.config(state='disabled', cursor="")  
+            phone_label_error.configure(text="Invalid Empty Field!")
+            phone_label_error.grid(row=15, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
+            return True    
+        else:
+            btn_upd.config(state='disabled', cursor="") 
+            phone_label_error.configure(text="Improper Phone Number Format!") 
+            phone_label_error.grid(row=15, column=1, columnspan=2, sticky="se", padx=round(40*ratio), pady=(round(10*ratio), 0))
+            return True
+    
+    global updprofileWindow
+    
     # Configure window attribute
     profileWindow.attributes('-disabled', 1)
     updprofileWindow = Toplevel(profileWindow)
@@ -1800,7 +1633,7 @@ def updateprofilePage():
     proupdtile = ImageTk.PhotoImage(proupdtile)
     proupdtile_label = Label(updprofileWindow, image=proupdtile, bg="white")
     proupdtile_label.image = proupdtile
-    proupdtile_label.grid(column=1, row=0, columnspan=2, sticky="nsew", pady=(round(20*ratio), round(10*ratio)))
+    proupdtile_label.grid(column=1, row=0, columnspan=2, sticky="nsew", pady=(round(20*ratio), round(10*ratio)), padx=round(20*ratio))
     # Contents
     uid_label = Label(updprofileWindow, text="User ID", font=("Arial Rounded MT Bold", round(12*ratio)), bg="white", fg="black")
     uid_label.grid(row=1, column=1, columnspan=2, sticky="sw", padx=round(40*ratio))
@@ -2005,7 +1838,56 @@ def updateprofilePage():
 #==============================================================================================#
 ## Update Password Page Interface
 def updatepassPage():
-    global updpassWindow, oldpass_val, newpass_val, conpass_val, one_empty, two_length, three_lower, four_upper, five_digit, six_specialchar, seven_con, btn_passupd
+    ## Function & Validation List for Update Password Page
+    # Change password validation function
+    def validate_pass1(*args):
+        if oldpass_val.get() and newpass_val.get and conpass_val.get():
+            one_empty.configure(fg="green")
+        else:
+            one_empty.configure(fg="red")
+            
+        if(len(newpass_val.get()) >= 8):
+            two_length.configure(fg="green")
+        else:
+            two_length.configure(fg="red")
+            
+        if(re.search('[a-z]+', newpass_val.get())):
+            three_lower.configure(fg="green")
+        else:
+            three_lower.configure(fg="red")
+            
+        if(re.search('[A-Z]+', newpass_val.get())):
+            four_upper.configure(fg="green")
+        else:
+            four_upper.configure(fg="red")
+            
+        if(re.search('\d', newpass_val.get())):
+            five_digit.configure(fg="green")
+        else:
+            five_digit.configure(fg="red")
+            
+        if(re.search('[@$!%*?&]', newpass_val.get())):
+            six_specialchar.configure(fg="green")
+        else:
+            six_specialchar.configure(fg="red")
+            
+        if((newpass_val.get() == conpass_val.get()) and newpass_val.get() and conpass_val.get()):
+            seven_con.configure(fg="green")
+        else:
+            seven_con.configure(fg="red")
+            
+        if ((one_empty["foreground"] == 'green') and (two_length["foreground"] == 'green') and (three_lower["foreground"] == 'green') and (four_upper["foreground"] == 'green') and 
+            (six_specialchar["foreground"] == 'green') and (seven_con["foreground"] == 'green')):
+            btn_passupd.config(state='normal', cursor="hand2")
+        else:
+            btn_passupd.config(state='disabled', cursor="")
+    # Close change password page function
+    def closechgpass():
+        updpassWindow.destroy()
+        profileWindow.attributes('-disabled', 0)
+        profileWindow.focus_force()
+
+    global updpassWindow
     
     # Configure window attribute
     profileWindow.attributes('-disabled', 1)
@@ -2046,7 +1928,7 @@ def updatepassPage():
     passupdtile = ImageTk.PhotoImage(passupdtile)
     passupdtile_label = Label(updpassWindow, image=passupdtile, bg="white")
     passupdtile_label.image = passupdtile
-    passupdtile_label.grid(row=0, column=1, columnspan=2, sticky="nsew", pady=(round(40*ratio),round(20*ratio))) 
+    passupdtile_label.grid(row=0, column=1, columnspan=2, sticky="nsew", pady=(round(40*ratio),round(20*ratio)), padx=round(20*ratio)) 
     # Contents
     f1a = Frame(updpassWindow, bg="white", pady=round(5*ratio))
     f1a.grid(row=1, column=1, columnspan=2, sticky="nesw", padx=round(40*ratio))
@@ -2106,16 +1988,6 @@ def updatepassPage():
     f6.grid(row=6, column=1, columnspan=2, padx=round(120*ratio), pady=(0,round(15*ratio)), sticky="nsew")
     btn_close = Button(f6, text="Back to Profile", command=lambda:closechgpass(), font=("Arial Rounded MT Bold", round(10*ratio)), fg="#9ba5f4", bg="white", relief=FLAT, bd=0, activebackground="white", activeforeground="#9ba5f4", cursor="hand2")
     btn_close.pack(expand=TRUE, fill=BOTH)
-   
-   
-   
-    # btn_passupd = Button(f4, text="Update", command=lambda:usession.updatepass(oldpass_text, newpass_text, connewpass_text), font=("Arial Rounded MT Bold", round(12*ratio)), height=1, width=round(13*ratio), fg="white", bg="#1F5192", relief=RIDGE, bd=1, activebackground="#173B6A", activeforeground="white")
-    # btn_passupd.pack()
-    # btn_passupd.config(state='disabled')
-    # f5 = Frame(updpassWindow, bg="white")
-    # f5.grid(row=12, column=1, sticky="nsw", pady=round(30*ratio), padx=(round(45*ratio), 0))
-    # btn_passclose = Button(f5, cursor="hand2", text="Close", command=lambda:closechgpass(), font=("Arial Rounded MT Bold", round(12*ratio)), height=1, width=round(13*ratio), fg="black", bg="white", relief=RIDGE, bd=1, activebackground="#DCDCDC", activeforeground="black")
-    # btn_passclose.pack()
 
 
 #==============================================================================================#
@@ -2123,17 +1995,604 @@ def updatepassPage():
 #==============================================================================================#
 ## Admin - Manage User Page Interface
 def usermanagementPage():
-    global usermanageWindow, filterfield_text, filter_opt, usrmng_tree
+    ## Function & Validation list for User Management Page
+    # Limit first name entry box length function
+    def fnamevalidation(u_input):
+        if len(u_input) > 30: 
+            um_fname_label_error.config(text="Exceed 30 Characters Length Limit!")
+            if len(uid_text.get()) == 0:
+                add_userbtn.config(state='disabled', cursor="")
+            else:
+                upd_userbtn.config(state='disabled', cursor="")
+                del_userbtn.config(state='disabled', cursor="")
+            return True 
+        elif len(u_input) > 0 and len(u_input) <= 30:
+            um_fname_label_error.config(text="")
+            if len(uid_text.get()) == 0 and len(um_phone_label_error['text']) == 0 and len(um_email_label_error['text']) == 0 and len(um_lname_label_error['text']) == 0 and len(um_add_label_error['text']) == 0 and len(um_city_label_error['text']) == 0 and len(um_post_label_error['text']) == 0: 
+                add_userbtn.config(state='normal', cursor="hand2")
+            elif not (len(uid_text.get()) == 0) and len(um_phone_label_error['text']) == 0 and len(um_email_label_error['text']) == 0 and len(um_lname_label_error['text']) == 0 and len(um_add_label_error['text']) == 0 and len(um_city_label_error['text']) == 0 and len(um_post_label_error['text']) == 0: 
+                upd_userbtn.config(state='normal', cursor="hand2")
+                del_userbtn.config(state='normal', cursor="hand2")
+            return True 
+        elif (len(u_input)==0):
+            um_fname_label_error.config(text="Invalid Empty Field!")
+            if len(uid_text.get()) == 0:
+                add_userbtn.config(state='disabled', cursor="")
+            else:
+                upd_userbtn.config(state='disabled', cursor="")
+                del_userbtn.config(state='disabled', cursor="")
+            return True 
+    # Limit last name entry box length function
+    def lnamevalidation(u_input):
+        if len(u_input) > 30: 
+            um_lname_label_error.config(text="Exceed 30 Characters Length Limit!")
+            if len(uid_text.get()) == 0:
+                add_userbtn.config(state='disabled', cursor="")
+            else:
+                upd_userbtn.config(state='disabled', cursor="")
+                del_userbtn.config(state='disabled', cursor="")
+            return True 
+        elif len(u_input) > 0 and len(u_input) <= 30:
+            um_lname_label_error.config(text="")
+            if len(uid_text.get()) == 0 and len(um_phone_label_error['text']) == 0 and len(um_email_label_error['text']) == 0 and len(um_fname_label_error['text']) == 0 and len(um_add_label_error['text']) == 0 and len(um_city_label_error['text']) == 0 and len(um_post_label_error['text']) == 0: 
+                add_userbtn.config(state='normal', cursor="hand2")
+            elif not (len(uid_text.get()) == 0) and len(um_phone_label_error['text']) == 0 and len(um_email_label_error['text']) == 0 and len(um_fname_label_error['text']) == 0 and len(um_add_label_error['text']) == 0 and len(um_city_label_error['text']) == 0 and len(um_post_label_error['text']) == 0: 
+                upd_userbtn.config(state='normal', cursor="hand2")
+                del_userbtn.config(state='normal', cursor="hand2")
+            return True 
+        elif (len(u_input)==0):
+            um_lname_label_error.config(text="Invalid Empty Field!")
+            if len(uid_text.get()) == 0:
+                add_userbtn.config(state='disabled', cursor="")
+            else:
+                upd_userbtn.config(state='disabled', cursor="")
+                del_userbtn.config(state='disabled', cursor="")
+            return True 
+    # Limit address line entry box length function
+    def addvalidation(u_input):
+        if len(u_input) > 255: 
+            um_add_label_error.config(text="Exceed 255 Characters Length Limit!")
+            if len(uid_text.get()) == 0:
+                add_userbtn.config(state='disabled', cursor="")
+            else:
+                upd_userbtn.config(state='disabled', cursor="")
+                del_userbtn.config(state='disabled', cursor="")
+            return True 
+        elif len(u_input) > 0 and len(u_input) <= 255:
+            um_add_label_error.config(text="")
+            if len(uid_text.get()) == 0 and len(um_phone_label_error['text']) == 0 and len(um_email_label_error['text']) == 0 and len(um_fname_label_error['text']) == 0 and len(um_lname_label_error['text']) == 0 and len(um_city_label_error['text']) == 0 and len(um_post_label_error['text']) == 0: 
+                add_userbtn.config(state='normal', cursor="hand2")
+            elif not (len(uid_text.get()) == 0) and len(um_phone_label_error['text']) == 0 and len(um_email_label_error['text']) == 0 and len(um_fname_label_error['text']) == 0 and len(um_lname_label_error['text']) == 0 and len(um_city_label_error['text']) == 0 and len(um_post_label_error['text']) == 0: 
+                upd_userbtn.config(state='normal', cursor="hand2")
+                del_userbtn.config(state='normal', cursor="hand2")
+            return True 
+        elif (len(u_input)==0):
+            um_add_label_error.config(text="Invalid Empty Field!")
+            if len(uid_text.get()) == 0:
+                add_userbtn.config(state='disabled', cursor="")
+            else:
+                upd_userbtn.config(state='disabled', cursor="")
+                del_userbtn.config(state='disabled', cursor="")
+            return True 
+    # Limit city line entry box length function
+    def cityvalidation1(u_input):
+        if len(u_input) > 30: 
+            um_city_label_error.config(text="Exceed 30 Characters Length Limit!")
+            if len(uid_text.get()) == 0:
+                add_userbtn.config(state='disabled', cursor="")
+            else:
+                upd_userbtn.config(state='disabled', cursor="")
+                del_userbtn.config(state='disabled', cursor="")
+            return True 
+        elif len(u_input) > 0 and len(u_input) <= 30:
+            um_city_label_error.config(text="")
+            if len(uid_text.get()) == 0 and len(um_phone_label_error['text']) == 0 and len(um_email_label_error['text']) == 0 and len(um_fname_label_error['text']) == 0 and len(um_lname_label_error['text']) == 0 and len(um_add_label_error['text']) == 0 and len(um_post_label_error['text']) == 0: 
+                add_userbtn.config(state='normal', cursor="hand2")
+            elif not (len(uid_text.get()) == 0) and len(um_phone_label_error['text']) == 0 and len(um_email_label_error['text']) == 0 and len(um_fname_label_error['text']) == 0 and len(um_lname_label_error['text']) == 0 and len(um_add_label_error['text']) == 0 and len(um_post_label_error['text']) == 0: 
+                upd_userbtn.config(state='normal', cursor="hand2")
+                del_userbtn.config(state='normal', cursor="hand2") 
+            return True 
+        elif (len(u_input)==0):
+            um_city_label_error.config(text="Invalid Empty Field!")
+            if len(uid_text.get()) == 0:
+                add_userbtn.config(state='disabled', cursor="")
+            else:
+                upd_userbtn.config(state='disabled', cursor="")
+                del_userbtn.config(state='disabled', cursor="")
+            return True 
+    def cityvalidation2(*args):
+        value = city_val.get()
+        
+        whitelist = set('abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+        if not (value.isalpha() & value.isspace()):
+            corrected = ''.join(filter(whitelist.__contains__, value))
+            if len(corrected) > 30: 
+                corrected = corrected[:30]
+            city_val.set(corrected)
+    # Limit postal code entry box length and numeric only function    
+    def postvalidation1(input):
+        if input.isdigit() or len(input) == 0: 
+            return True
+        else:
+            return False
+    def postvalidation2(*args):
+        value = post_val.get()
+        if len(value) > 5: 
+            post_val.set(value[:5])
+            
+        if (len(value)==0): 
+            um_post_label_error.config(text="Invalid Empty Field!")
+            if len(uid_text.get()) == 0:
+                add_userbtn.config(state='disabled', cursor="")
+            else:
+                upd_userbtn.config(state='disabled', cursor="")
+                del_userbtn.config(state='disabled', cursor="")
+        elif len(value) > 0 and len(value) <= 5:
+            um_post_label_error.config(text="")
+            if len(uid_text.get()) == 0 and len(um_phone_label_error['text']) == 0 and len(um_email_label_error['text']) == 0 and len(um_fname_label_error['text']) == 0 and len(um_lname_label_error['text']) == 0 and len(um_add_label_error['text']) == 0 and len(um_post_label_error['text']) == 0: 
+                add_userbtn.config(state='normal', cursor="hand2")
+            elif not (len(uid_text.get()) == 0) and len(um_phone_label_error['text']) == 0 and len(um_email_label_error['text']) == 0 and len(um_fname_label_error['text']) == 0 and len(um_lname_label_error['text']) == 0 and len(um_add_label_error['text']) == 0 and len(um_post_label_error['text']) == 0: 
+                upd_userbtn.config(state='normal', cursor="hand2")
+                del_userbtn.config(state='normal', cursor="hand2")
+    # Validate email entry box function
+    def validate_email(u_input):
+        if(re.search(emailregex, u_input) and u_input.isalpha):
+            um_email_label_error.config(text="")
+            if len(uid_text.get()) == 0 and len(um_phone_label_error['text']) == 0 and len(um_city_label_error['text']) == 0 and len(um_fname_label_error['text']) == 0 and len(um_lname_label_error['text']) == 0 and len(um_add_label_error['text']) == 0 and len(um_post_label_error['text']) == 0: 
+                add_userbtn.config(state='normal', cursor="hand2")
+            elif not (len(uid_text.get()) == 0) and len(um_phone_label_error['text']) == 0 and len(um_city_label_error['text']) == 0 and len(um_fname_label_error['text']) == 0 and len(um_lname_label_error['text']) == 0 and len(um_add_label_error['text']) == 0 and len(um_post_label_error['text']) == 0: 
+                upd_userbtn.config(state='normal', cursor="hand2")
+                del_userbtn.config(state='normal', cursor="hand2")  
+            return True  
+        elif (len(u_input)==0):
+            um_email_label_error.config(text="Invalid Empty Field!")
+            if len(uid_text.get()) == 0:
+                add_userbtn.config(state='disabled', cursor="")
+            else:
+                upd_userbtn.config(state='disabled', cursor="")
+                del_userbtn.config(state='disabled', cursor="")
+            return True    
+        else:
+            um_email_label_error.config(text="Improper Email Format!")
+            if len(uid_text.get()) == 0:
+                add_userbtn.config(state='disabled', cursor="")
+            else:
+                upd_userbtn.config(state='disabled', cursor="")
+                del_userbtn.config(state='disabled', cursor="")
+            return True
+    # Validate phone entry box function
+    def validate_phone(u_input):
+        if(re.search(phoneregex, u_input) and u_input.isalpha):
+            um_phone_label_error.config(text="")
+            if len(uid_text.get()) == 0 and len(um_email_label_error['text']) == 0 and len(um_city_label_error['text']) == 0 and len(um_fname_label_error['text']) == 0 and len(um_lname_label_error['text']) == 0 and len(um_add_label_error['text']) == 0 and len(um_post_label_error['text']) == 0: 
+                add_userbtn.config(state='normal', cursor="hand2")
+            elif not (len(uid_text.get()) == 0) and len(um_email_label_error['text']) == 0 and len(um_city_label_error['text']) == 0 and len(um_fname_label_error['text']) == 0 and len(um_lname_label_error['text']) == 0 and len(um_add_label_error['text']) == 0 and len(um_post_label_error['text']) == 0: 
+                upd_userbtn.config(state='normal', cursor="hand2")
+                del_userbtn.config(state='normal', cursor="hand2")  
+            return True        
+        elif (len(u_input)==0):
+            um_phone_label_error.config(text="Invalid Empty Field!")
+            if len(uid_text.get()) == 0:
+                add_userbtn.config(state='disabled', cursor="")
+            else:
+                upd_userbtn.config(state='disabled', cursor="")
+                del_userbtn.config(state='disabled', cursor="")
+            return True    
+        else:
+            um_phone_label_error.config(text="Improper Phone Number Format!")
+            if len(uid_text.get()) == 0:
+                add_userbtn.config(state='disabled', cursor="")
+            else:
+                upd_userbtn.config(state='disabled', cursor="")
+                del_userbtn.config(state='disabled', cursor="")
+            return True
+    # Search all user function
+    def serachAllUser():
+        loading(usermanageWindow)
+        try:
+            mysql_con = MySqlConnector(sql_config) # Initial connection
+            sql = '''SELECT * FROM User WHERE user_role = 2'''
+            result_details = mysql_con.queryall(sql)
+            if result_details:
+                usermanageWindow.attributes('-disabled', 0)
+                loading_splash.destroy()
+                return result_details
+            # If no existing data found
+            else:
+                result = None
+                usermanageWindow.attributes('-disabled', 0)
+                loading_splash.destroy()
+                messagebox.showinfo("No User Data Found", "There was no existing monitoring employee found in the system!")
+                return result_details
+        except pymysql.Error as e:
+            messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+            print("Error %d: %s" % (e.args[0], e.args[1]))
+            return False
+        finally:
+            # Close the connection
+            mysql_con.close()
+    # Search user based on filter function
+    def searchUserByFilter(value, opt):
+        if opt == 'All':
+            try:
+                mysql_con = MySqlConnector(sql_config) # Initial connection
+                loading(usermanageWindow)
+                sql = '''SELECT * FROM User WHERE user_role = 2'''
+                result_details = mysql_con.queryall(sql)
+                if result_details:
+                    usrmng_tree.delete(*usrmng_tree.get_children())
+                    usrmng_count = 0
+                    for dt in result_details:
+                        if usrmng_count % 2 == 0:
+                            usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('evenrow',))
+                        else:
+                            usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('oddrow',))
+                        usrmng_count +=1
+                    usermanageWindow.attributes('-disabled', 0)
+                    loading_splash.destroy()
+                # If no existing data found
+                else:
+                    result_details = None
+                    usrmng_tree.delete(*usrmng_tree.get_children())
+                    usrmng_count = 0
+                    usermanageWindow.attributes('-disabled', 0)
+                    loading_splash.destroy()
+                    messagebox.showinfo("No User Data Found", "There was no existing monitoring employee found in the system!")
+            except pymysql.Error as e:
+                messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                print("Error %d: %s" % (e.args[0], e.args[1]))
+                return False
+            finally:
+                # Close the connection
+                mysql_con.close()
+        else:
+            if not value:
+                message = "The value field should not be empty for " + opt + " fitlration option!"
+                messagebox.showerror("Invalid Empty Field", message)
+                filterfield_text.focus()
+            else:
+                try:
+                    mysql_con = MySqlConnector(sql_config) # Initial connection
+                    loading(usermanageWindow)
+                    if opt == 'User ID':
+                        sql = '''SELECT * FROM User WHERE user_role = 2 AND user_id LIKE CONCAT('%%', %s, '%%')'''
+                    elif opt == 'First Name':
+                        sql = '''SELECT * FROM User WHERE user_role = 2 AND user_firstname LIKE CONCAT('%%', %s, '%%')'''
+                    elif opt == 'Last Name':
+                        sql = '''SELECT * FROM User WHERE user_role = 2 AND user_lastname LIKE CONCAT('%%', %s, '%%')'''
+                    elif opt == 'Email':
+                        sql = '''SELECT * FROM User WHERE user_role = 2 AND user_email LIKE CONCAT('%%', %s, '%%')'''
+                    else:
+                        sql = '''SELECT * FROM User WHERE user_role = 2 AND user_phone LIKE CONCAT('%%', %s, '%%')'''
+                    result_details1 = mysql_con.queryall(sql, (value))
+                    if result_details1:
+                        usrmng_tree.delete(*usrmng_tree.get_children())
+                        usrmng_count = 0
+                        for dt in result_details1:
+                            if usrmng_count % 2 == 0:
+                                usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('evenrow',))
+                            else:
+                                usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('oddrow',))
+                            usrmng_count +=1
+                        usermanageWindow.attributes('-disabled', 0)
+                        loading_splash.destroy()
+                    # If no existing data found
+                    else:
+                        result_details1 = None
+                        usrmng_tree.delete(*usrmng_tree.get_children())
+                        usrmng_count = 0
+                        usermanageWindow.attributes('-disabled', 0)
+                        loading_splash.destroy()
+                        messagebox.showinfo("No User Data Found", "There was no such monitoring employee found based on the filtration value!")
+                except pymysql.Error as e:
+                    messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                    print("Error %d: %s" % (e.args[0], e.args[1]))
+                    return False
+                finally:
+                    # Close the connection
+                    mysql_con.close()   
+    # Filter user callback fucntion
+    def usrmngcallback(eventObject):
+        if filter_opt.get() == 'All':
+            filterfield_text.delete(0, 'end')
+            filterfield_text.config(state='disabled')
+        else:
+            filterfield_text.config(state='normal')
+            filterfield_text.focus()
+    # Clear function
+    def clearselected():
+        global tempselecteduser
+        if 'tempselecteduser' in globals():
+            temp = list(tempselecteduser)
+            temp.clear()
+            tempselecteduser = tuple(temp)
+        uid_text.config(state='normal')
+        uid_text.delete(0, END)
+        ufname_text.delete(0, END)
+        ulname_text.delete(0, END)
+        add_text.delete(0, END)
+        city_text.delete(0, END)
+        post_val.set("")
+        post_text.delete(0, END)
+        state_text.current(0)
+        email_text.delete(0, END)
+        phone_text.delete(0, END)
+        uid_text.config(state='disabled')
+        um_fname_label_error.config(text='')
+        um_lname_label_error.config(text='')
+        um_add_label_error.config(text='')
+        um_city_label_error.config(text='')
+        um_post_label_error.config(text='')
+        um_email_label_error.config(text='')
+        um_phone_label_error.config(text='')
+        add_userbtn.config(state='normal', cursor='hand2')
+        upd_userbtn.config(state='disabled', cursor='')
+        del_userbtn.config(state='disabled', cursor='')
+    # Select user function
+    def userselected(e):
+        global tempselecteduser
+        
+        # Clear entry boxes
+        clearselected()
+        
+        selected = usrmng_tree.focus() #returning index number
+        tempselecteduser = usrmng_tree.item(selected, 'values') #returning list of values of selected user
+        
+        # Display selected user
+        uid_text.config(state='normal')
+        uid_text.insert(0, tempselecteduser[0])
+        ufname_text.insert(0, tempselecteduser[1])
+        ulname_text.insert(0, tempselecteduser[2])
+        add_text.insert(0, tempselecteduser[3])
+        city_text.insert(0, tempselecteduser[4])
+        post_text.insert(0, tempselecteduser[5])
+        ustate = tempselecteduser[6]
+        if ustate == 'Johor':
+            state_text.current(0)
+        elif ustate == 'Kedah':
+            state_text.current(1)
+        elif ustate == 'Kelantan':
+            state_text.current(2)
+        elif ustate == 'Malacca':
+            state_text.current(3)
+        elif ustate == 'Negeri Sembilan':
+            state_text.current(4)
+        elif ustate == 'Pahang':
+            state_text.current(5)
+        elif ustate == 'Penang':
+            state_text.current(6)
+        elif ustate == 'Perak':
+            state_text.current(7)
+        elif ustate == 'Perlis':
+            state_text.current(8)
+        elif ustate == 'Sabah':
+            state_text.current(9)
+        elif ustate == 'Sarawak':
+            state_text.current(10)
+        elif ustate == 'Selangor':
+            state_text.current(11)
+        elif ustate == 'Terengganu':
+            state_text.current(12)
+        elif ustate == 'Kuala Lumpur':
+            state_text.current(13)
+        elif ustate == 'Labuan':
+            state_text.current(14)
+        else:
+            state_text.current(15)
+        email_text.insert(0, tempselecteduser[7])
+        phone_text.insert(0, tempselecteduser[8])
+        uid_text.config(state='disabled')
+        uid_selection_lbl.config(text="Employee Data Selected: {}".format(tempselecteduser[0]))
+        resetpas_btn.config(state='normal', cursor='hand2')
+        add_userbtn.config(state='disabled', cursor='')
+        upd_userbtn.config(state='normal', cursor='hand2')
+        del_userbtn.config(state='normal', cursor='hand2')   
+    # Clear selected user function
+    def usrmngclearselected():
+        global tempselecteduser
+        
+        confirmbox = messagebox.askquestion('e-Vision', 'Are you sure to clear the user selection?', icon='warning')
+        if confirmbox == 'yes':
+            if 'tempselecteduser' in globals():
+                if len(tempselecteduser) != 0:
+                    clearselected()
+                    uid_selection_lbl.config(text="")
+                    resetpas_btn.config(state='disabled', cursor='')
+                    add_userbtn.config(state='normal', cursor='hand2')
+                    upd_userbtn.config(state='disabled', cursor='')
+                    del_userbtn.config(state='disabled', cursor='')
+                    if len(usrmng_tree.selection()) > 0:
+                        usrmng_tree.selection_remove(usrmng_tree.selection()[0])
+                    messagebox.showinfo("e-Vision", "The previously selected user had been clear.")
+                else:
+                    messagebox.showerror("e-Vision", "There was no user being selected!")
+            else:
+                messagebox.showerror("e-Vision", "There was no user being selected!")
+    # Add new user function
+    def addnewuser(fname, lname, add, city, post, state, email, phone):
+        empty = FALSE
+        # Get required field
+        first_name = fname.get()
+        last_name = lname.get()
+        address_line = add.get()
+        city_name = city.get()
+        zip_code = post.get()
+        state_name = state.get()
+        email_address = email.get().lower()
+        phone_number = phone.get()
+        
+        # Validate empty field
+        if len(first_name) == 0:
+            um_fname_label_error.config(text="Invalid Empty Field!")
+            empty = TRUE
+        if len(last_name) == 0:
+            um_lname_label_error.config(text="Invalid Empty Field!")
+            empty = TRUE
+        if len(address_line) == 0:
+            um_add_label_error.config(text="Invalid Empty Field!")
+            empty = TRUE
+        if len(city_name) == 0:
+            um_city_label_error.config(text="Invalid Empty Field!")
+            empty = TRUE
+        if len(zip_code) == 0:
+            um_post_label_error.config(text="Invalid Empty Field!")
+            empty = TRUE
+        if len(email_address) == 0:
+            um_email_label_error.config(text="Invalid Empty Field!")
+            empty = TRUE
+        if len(phone_number) == 0:
+            um_phone_label_error.config(text="Invalid Empty Field!")
+            empty = TRUE
+            
+        if not empty:
+            if not len(zip_code) == 5:
+                um_post_label_error.config(text="Must Be 5 Digits!")
+            else:
+                confirmbox = messagebox.askquestion('e-Vision', 'Are you sure to create new employee with email of {}?'.format(email_address), icon='warning')
+                if confirmbox == 'yes':
+                    loading(usermanageWindow)
+                    usermanageWindow.update()
+                    global email_redundant
+                    email_redundant = False
+                    # Check for email redundancy
+                    try:
+                        mysql_con = MySqlConnector(sql_config) # Initial connection
+                        sql = '''SELECT user_email FROM User'''
+                        result_details = mysql_con.queryall(sql)
+                        result = [result[0] for result in result_details]
+                        for i in range(len(result)):
+                            if result[i] == email_address:
+                                loading_splash.destroy()
+                                messagebox.showerror("Add New User Failed", "The inserted email had been registered by other existing users!")
+                                email_redundant = True
+                                usermanageWindow.attributes('-disabled', 0)
+                                usermanageWindow.focus_force()
+                                email.focus()
+                                break
+                    except pymysql.Error as e:
+                        messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                        print("Error %d: %s" % (e.args[0], e.args[1]))
+                        return False
+                    finally:
+                        # Close the connection
+                        mysql_con.close()
+                            
+                    # Create new user if no duplicated email found
+                    if(email_redundant == False):
+                        input_addline = address_line
+                        if "," in input_addline[-1]:
+                            input_addline = input_addline.rstrip(",")
+                        temppass = generate_temppassword() # system generated temp password
+                        try:
+                            mysql_con = MySqlConnector(sql_config) # Initial connection
+                            sql = '''INSERT INTO User (user_firstname, user_lastname, user_password, user_addressline, user_city, user_state, user_postcode, user_email, user_phone)
+                            VALUES (%s, %s, SHA2(%s, 256), %s, %s, %s, %s, %s, %s)''' # Insert User
+                            insert = mysql_con.update(sql, (first_name, last_name, temppass, input_addline, city_name, state_name, zip_code, email_address, phone_number))
+                            if insert > 0:
+                                # Send email to the user
+                                emailtxt = [email_address]
+                                send = mail_newuserregister(emailtxt, temppass)
+                                if send:
+                                    # Refresh the list
+                                    refreshuerlist()
+                                    uid_text.delete(0, END)
+                                    ufname_text.delete(0, END)
+                                    ulname_text.delete(0, END)
+                                    add_text.delete(0, END)
+                                    city_text.delete(0, END)
+                                    post_val.set("")
+                                    post_text.delete(0, END)
+                                    state_text.current(0)
+                                    email_text.delete(0, END)
+                                    phone_text.delete(0, END)
+                                    uid_text.config(state='disabled')
+                                    um_fname_label_error.config(text='')
+                                    um_lname_label_error.config(text='')
+                                    um_add_label_error.config(text='')
+                                    um_city_label_error.config(text='')
+                                    um_post_label_error.config(text='')
+                                    um_email_label_error.config(text='')
+                                    um_phone_label_error.config(text='')
+                                    loading_splash.destroy()
+                                    messagebox.showinfo("Add New User Successful", "The new monitoring employee with email {} had been successfully created!".format(email_address))
+                                    usermanageWindow.attributes('-disabled', 0)
+                                    usermanageWindow.focus_force()
+                                else:
+                                    # Refresh the list
+                                    refreshuerlist()
+                                    uid_text.config(state='normal')
+                                    uid_text.delete(0, END)
+                                    ufname_text.delete(0, END)
+                                    ulname_text.delete(0, END)
+                                    add_text.delete(0, END)
+                                    city_text.delete(0, END)
+                                    post_val.set("")
+                                    post_text.delete(0, END)
+                                    state_text.current(0)
+                                    email_text.delete(0, END)
+                                    phone_text.delete(0, END)
+                                    uid_text.config(state='disabled')
+                                    um_fname_label_error.config(text='')
+                                    um_lname_label_error.config(text='')
+                                    um_add_label_error.config(text='')
+                                    um_city_label_error.config(text='')
+                                    um_post_label_error.config(text='')
+                                    um_email_label_error.config(text='')
+                                    um_phone_label_error.config(text='')
+                                    loading_splash.destroy()
+                                    messagebox.showinfo("Add New User Successful", "The new monitoring employee with email {} had been successfully created but the email was failed to send to the monitoring employee! You may try to reset the password to trigger the email again.".format(email_address))
+                                    usermanageWindow.attributes('-disabled', 0)
+                                    usermanageWindow.focus_force()
+                            # If error
+                            else:
+                                loading_splash.destroy()
+                                messagebox.showerror("Add New User Failed", "Failed to create the account for the monitoring employee! Please contact developer for help!")
+                                usermanageWindow.attributes('-disabled', 0)
+                                usermanageWindow.focus_force() 
+                        except pymysql.Error as e:
+                            messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                            print("Error %d: %s" % (e.args[0], e.args[1]))
+                            return False
+                        finally:
+                            # Close the connection
+                            mysql_con.close()
+    # Refresh user list function
+    def refreshuerlist():
+        # Refresh the list
+        mysql_con = MySqlConnector(sql_config) # Initial connection
+        sql = '''SELECT * FROM User WHERE user_role = 2'''
+        result_details = mysql_con.queryall(sql)
+        if result_details:
+            usrmng_tree.delete(*usrmng_tree.get_children())
+            usrmng_count = 0
+            for dt in result_details:
+                if usrmng_count % 2 == 0:
+                    usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('evenrow',))
+                else:
+                    usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('oddrow',))
+                usrmng_count +=1
+        filterfield_text.delete(0, 'end')
+        filterfield_text.config(state='disabled')
+        filter_opt.current(0)
+    # Refresh user button function
+    def refreshlistbtn():
+        confirmbox = messagebox.askquestion('e-Vision', 'Are you sure to refresh the user list? (Fields will be cleared out together)', icon='warning')
+        if confirmbox == 'yes':
+            refreshuerlist()
+            clearselected()
+            messagebox.showinfo("e-Vision", "The user list had been refreshed with the latest data available.")
+    
+    global usermanageWindow
     
     # Configure  window attribute
     mainWindow.withdraw()
     usermanageWindow = Toplevel(mainWindow)
     usermanageWindow.title('e-Vision User Management')
     usermanageWindow.iconbitmap('asset/logo.ico')
-    height = round(960*ratio)
+    height = round(980*ratio)
     width = round(1600*ratio)
     x = (cscreen_width/2)-(width/2)
-    y = ((cscreen_height/2)-(height/2))-round(25*ratio)
+    y = ((cscreen_height/2)-(height/2))-round(35*ratio)
     usermanageWindow.geometry(f'{width}x{height}+{round(x)}+{round(y)}')
     usermanageWindow.resizable(False, False)
     usermanageWindow.protocol("WM_DELETE_WINDOW", disable_event)
@@ -2146,12 +2605,12 @@ def usermanagementPage():
     usermanageWindow.grid_rowconfigure(23, weight=round(1*ratio))
     
     # Setup frames
-    left_frame = Frame(usermanageWindow, width=round(cscreen_width*0.28), bg="#EDF1F7")
+    left_frame = Frame(usermanageWindow, width=round(cscreen_width*0.2604), bg="#EDF1F7")
     left_frame.grid(row=0, column=0, rowspan=24, columnspan=3, sticky="nsew")
-    right_frame = Frame(usermanageWindow, width=round(cscreen_width*0.58), bg="#293e50")
-    right_frame.grid(row=0, column=3, rowspan=24, columnspan=2, sticky="nsew")
-    dummy_frame = Frame(usermanageWindow, width=round(cscreen_width*0.094), bg="#EDF1F7")
+    dummy_frame = Frame(usermanageWindow, width=round(cscreen_width*0.08736), bg="#EDF1F7")
     dummy_frame.grid(row=0, column=1, rowspan=24, sticky="nsew")
+    right_frame = Frame(usermanageWindow, width=round(cscreen_width*0.573), bg="#293e50")
+    right_frame.grid(row=0, column=3, rowspan=24, columnspan=2, sticky="nsew")
     
     # Left components
     btn_frame1 = Canvas(usermanageWindow, bg="#EDF1F7")
@@ -2165,84 +2624,133 @@ def usermanagementPage():
     usrmngtile_label.image = usrmngtile
     usrmngtile_label.grid(column=1, row=0, columnspan=2, rowspan=2, sticky="nsw", pady=(round(30*ratio), round(5*ratio)), padx=(round(20*ratio), 0))
     # User detail fields
-    uid_label = Label(usermanageWindow, text="User ID", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
-    uid_label.grid(row=2, column=0, columnspan=3, sticky="sw", padx=round(60*ratio))
-    f0 = Frame(usermanageWindow, borderwidth=round(2*ratio), relief=SUNKEN)
-    f0.grid(row=3, column=0, columnspan=3, padx=round(60*ratio), sticky="new")
-    uid_text = Entry(f0, bd=round(3*ratio), relief=FLAT, font=("Lato", round(13*ratio)), width=round(38*ratio))
-    uid_text.pack(fill=BOTH, expand=True)
+    f0a = Frame(usermanageWindow, relief=FLAT, bd=0 , bg="#EDF1F7")
+    f0a.grid(row=2, column=0, columnspan=3, sticky="nsew", padx=round(50*ratio))
+    uid_label = Label(f0a, text="User ID", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
+    uid_label.pack(side=LEFT)
+    info_icon = Image.open('asset/info.png')
+    info_icon = info_icon.resize((round(20*ratio),round(20*ratio)))
+    info_icon = ImageTk.PhotoImage(info_icon)
+    info_lbl = Label(f0a, image=info_icon, bg="#EDF1F7")
+    info_lbl.image = info_icon
+    info_lbl.pack(side=LEFT)
+    uid_selection_lbl = Label(usermanageWindow, text="", font=("Arial Rounded MT Bold", round(9*ratio)), bg="#EDF1F7", fg="green")
+    uid_selection_lbl.grid(row=2, column=1, columnspan=2, sticky="nse", padx=(round(10*ratio), round(50*ratio)))
+    f0 = Frame(usermanageWindow, borderwidth=round(2*ratio), relief=SUNKEN, bg="#f0f0f0")
+    f0.grid(row=3, column=0, columnspan=3, padx=round(50*ratio), sticky="new")
+    uid_icon = Image.open('asset/employeeid.png')
+    uid_icon = uid_icon.resize((round(25*ratio),round(25*ratio)))
+    uid_icon = ImageTk.PhotoImage(uid_icon)
+    uidicon_lbl = Label(f0, image=uid_icon, bg="#f0f0f0")
+    uidicon_lbl.image = uid_icon
+    uidicon_lbl.pack(side=LEFT, fill=BOTH, padx=(round(10*ratio),round(5*ratio)))
+    uid_text = Entry(f0, bd=round(6*ratio), relief=FLAT, font=("Lato", round(12*ratio)))
+    uid_text.pack(side=RIGHT, fill=BOTH, expand=True)
     uid_text.configure(state="disabled")
-    CreateToolTip(uid_text, text = 'Add New User: Leave this field blank as system will auto generate the user ID\n'
-                  'Update User: Select the user to be updated in the list, user ID field will be automatically filled\n'
-                  'Delete User: Select the user to be deleted in the list before pressing on the button')
+    CreateToolTip(info_lbl, text = '1) Add New User: Leave this field blank as system will\n auto generate the user ID\n\n'
+                  '2) Update User: Select the user to be updated in the list, \nuser ID field will be automatically filled\n\n'
+                  '3) Delete User: Select the user to be deleted in the list before \npressing on the button')
     ufname_label = Label(usermanageWindow, text="First Name", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
-    ufname_label.grid(row=4, column=0, columnspan=3, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
-    f1 = Frame(usermanageWindow, borderwidth=round(2*ratio), relief=SUNKEN)
-    f1.grid(row=5, column=0, columnspan=3, padx=round(60*ratio), sticky="new")
+    ufname_label.grid(row=4, column=0, columnspan=3, sticky="sw", padx=(round(50*ratio), round(10*ratio)), pady=(round(10*ratio), 0))
+    um_fname_label_error = Label(usermanageWindow, text="", font=("Arial Rounded MT Bold", round(9*ratio)), bg="#EDF1F7", fg="red")
+    um_fname_label_error.grid(row=4, column=1, columnspan=2, sticky="se", padx=(round(10*ratio), round(50*ratio)), pady=(round(10*ratio), 0))
+    f1 = Frame(usermanageWindow, borderwidth=round(2*ratio), relief=SUNKEN, bg="white")
+    f1.grid(row=5, column=0, columnspan=3, padx=round(50*ratio), sticky="new")
+    ufname_icon = Image.open('asset/name.png')
+    ufname_icon = ufname_icon.resize((round(25*ratio),round(25*ratio)))
+    ufname_icon = ImageTk.PhotoImage(ufname_icon)
+    ufname_lbl = Label(f1, image=ufname_icon, bg="white")
+    ufname_lbl.image = ufname_icon
+    ufname_lbl.pack(side=LEFT, fill=BOTH, padx=(round(10*ratio),round(5*ratio)))
     ufname_val = StringVar()
-    # ufname_val.trace('w', fnamevalidation)
-    ufname_text = Entry(f1, bd=round(4*ratio), relief=FLAT, font=("Lato", round(13*ratio)), width=round(38*ratio), textvariable=ufname_val)
-    ufname_text.pack(fill=BOTH, expand=True)
+    my_valid1 = usermanageWindow.register(fnamevalidation)
+    ufname_text = Entry(f1, bd=round(6*ratio), relief=FLAT, font=("Lato", round(12*ratio)), textvariable=ufname_val)
+    ufname_text.pack(side=RIGHT, fill=BOTH, expand=True)
+    ufname_text.config(validate="key", validatecommand=(my_valid1, '%P'))
     CreateToolTip(ufname_text, text = 'Max length should only be 30 characters')
     ulname_label = Label(usermanageWindow, text="Last Name", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
-    ulname_label.grid(row=6, column=0, columnspan=3, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
-    f2 = Frame(usermanageWindow, borderwidth=round(2*ratio), relief=SUNKEN)
-    f2.grid(row=7, column=0, columnspan=3, padx=round(60*ratio), sticky="new")
+    ulname_label.grid(row=6, column=0, columnspan=3, sticky="sw", padx=(round(50*ratio), round(10*ratio)), pady=(round(10*ratio), 0))
+    um_lname_label_error = Label(usermanageWindow, text="", font=("Arial Rounded MT Bold", round(9*ratio)), bg="#EDF1F7", fg="red")
+    um_lname_label_error.grid(row=6, column=1, columnspan=2, sticky="se", padx=(round(10*ratio), round(50*ratio)), pady=(round(10*ratio), 0))
+    f2 = Frame(usermanageWindow, borderwidth=round(2*ratio), relief=SUNKEN, bg="white")
+    f2.grid(row=7, column=0, columnspan=3, padx=round(50*ratio), sticky="new")
+    ulname_lbl = Label(f2, image=ufname_icon, bg="white")
+    ulname_lbl.image = ufname_icon
+    ulname_lbl.pack(side=LEFT, fill=BOTH, padx=(round(10*ratio),round(5*ratio)))
     ulname_val = StringVar()
-    # ulname_val.trace('w', lnamevalidation)
-    ulname_text = Entry(f2, bd=round(4*ratio), relief=FLAT, font=("Lato", round(13*ratio)), width=round(38*ratio), textvariable=ulname_val)
-    ulname_text.pack(fill=BOTH, expand=True)
+    my_valid2 = usermanageWindow.register(lnamevalidation)
+    ulname_text = Entry(f2, bd=round(6*ratio), relief=FLAT, font=("Lato", round(12*ratio)), textvariable=ulname_val)
+    ulname_text.pack(side=RIGHT, fill=BOTH, expand=True)
+    ulname_text.config(validate="key", validatecommand=(my_valid2, '%P'))
     CreateToolTip(ulname_text, text = 'Max length should only be 30 characters')
-    pas_label = Label(usermanageWindow, text="Password", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
-    pas_label.grid(row=8, column=0, columnspan=3, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
+    f3a = Frame(usermanageWindow, relief=FLAT, bd=0 , bg="#EDF1F7")
+    f3a.grid(row=8, column=0, columnspan=3, sticky="sew", padx=round(50*ratio), pady=(round(10*ratio), 0))
+    pas_label = Label(f3a, text="Password", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
+    pas_label.pack(side=LEFT)
+    info1_lbl = Label(f3a, image=info_icon, bg="#EDF1F7")
+    info1_lbl.image = info_icon
+    info1_lbl.pack(side=LEFT)
+    CreateToolTip(info1_lbl, text = '1) Add New User: Ignore this field, a temporary password will \nbe generated upon successful new user creation\n\n'
+                  '2) Reset Password (Existing User): Select the user in the list \nand click on reset button, a temporary password will be generated \nand send to user email immediately')
     fpas = Frame(usermanageWindow, bg="#EDF1F7")
-    fpas.grid(row=9, column=0, columnspan=3, padx=round(60*ratio), sticky="new")
-    resetpas_btn = Button(fpas, cursor="hand2", text="Reset Password", font=("Arial Rounded MT Bold", round(13*ratio)), width=round(20*ratio), relief=RIDGE, bd=1, bg="#6c757d", fg="white", activebackground="#4D5358", activeforeground="white")
+    fpas.grid(row=9, column=0, columnspan=3, padx=round(50*ratio), sticky="new")
+    resetpas_btn = Button(fpas, state='disabled', text="Reset Password", font=("Arial Rounded MT Bold", round(12*ratio)), width=round(20*ratio), relief=RIDGE, bd=1, bg="#6c757d", fg="white", activebackground="#4D5358", activeforeground="white")
     resetpas_btn.pack(side=LEFT)
-    # pas_val = StringVar()
-    # # pas_val.trace('w', addvalidation)
-    # pas_text = Entry(fpas, bd=round(4*ratio), relief=FLAT, font=("Lato", round(13*ratio)), width=round(38*ratio), textvariable=pas_val)
-    # pas_text.pack(fill=BOTH, expand=True)
-    # CreateToolTip(pas_text, text = 'Password Policy Requirement:\n'
-    #               '\t1. Minimum 8 characters in length\n'
-    #               '\t2. At least one lowercase English letter (a-z)\n'
-    #               '\t3. At least one uppercase English letter (A-Z)\n'
-    #               '\t4. At least one digit (0-9)\n'
-    #               '\t5. At least one accepted special character (@$!%*?&')
     add_label = Label(usermanageWindow, text="Address Line", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
-    add_label.grid(row=10, column=0, columnspan=3, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
-    f3 = Frame(usermanageWindow, borderwidth=round(2*ratio), relief=SUNKEN)
-    f3.grid(row=11, column=0, columnspan=3, padx=round(60*ratio), sticky="new")
+    add_label.grid(row=10, column=0, columnspan=3, sticky="sw", padx=(round(50*ratio), round(10*ratio)), pady=(round(10*ratio), 0))
+    um_add_label_error = Label(usermanageWindow, text="", font=("Arial Rounded MT Bold", round(9*ratio)), bg="#EDF1F7", fg="red")
+    um_add_label_error.grid(row=10, column=1, columnspan=2, sticky="se", padx=(round(10*ratio), round(50*ratio)), pady=(round(10*ratio), 0))
+    f3 = Frame(usermanageWindow, borderwidth=round(2*ratio), relief=SUNKEN, bg="white")
+    f3.grid(row=11, column=0, columnspan=3, padx=round(50*ratio), sticky="new")
+    add_icon = Image.open('asset/addressline.png')
+    add_icon = add_icon.resize((round(25*ratio),round(25*ratio)))
+    add_icon = ImageTk.PhotoImage(add_icon)
+    add_lbl = Label(f3, image=add_icon, bg="white")
+    add_lbl.image = add_icon
+    add_lbl.pack(side=LEFT, fill=BOTH, padx=(round(10*ratio),round(5*ratio)))
     add_val = StringVar()
-    # add_val.trace('w', addvalidation)
-    add_text = Entry(f3, bd=round(4*ratio), relief=FLAT, font=("Lato", round(13*ratio)), width=round(38*ratio), textvariable=add_val)
-    add_text.pack(fill=BOTH, expand=True)
+    my_valid3 = usermanageWindow.register(addvalidation)
+    add_text = Entry(f3, bd=round(6*ratio), relief=FLAT, font=("Lato", round(12*ratio)), textvariable=add_val)
+    add_text.pack(side=RIGHT, fill=BOTH, expand=True)
+    add_text.config(validate="key", validatecommand=(my_valid3, '%P'))
     CreateToolTip(add_text, text = 'Max length should only be 255 characters')
     city_label = Label(usermanageWindow, text="City", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
-    city_label.grid(row=12, column=0, columnspan=3, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
-    f4 = Frame(usermanageWindow, borderwidth=round(2*ratio), relief=SUNKEN)
-    f4.grid(row=13, column=0, columnspan=3, padx=round(60*ratio), sticky="new")
+    city_label.grid(row=12, column=0, columnspan=3, sticky="sw", padx=(round(50*ratio), round(10*ratio)), pady=(round(10*ratio), 0))
+    um_city_label_error = Label(usermanageWindow, text="", font=("Arial Rounded MT Bold", round(9*ratio)), bg="#EDF1F7", fg="red")
+    um_city_label_error.grid(row=12, column=1, columnspan=2, sticky="se", padx=(round(10*ratio), round(50*ratio)), pady=(round(10*ratio), 0))
+    f4 = Frame(usermanageWindow, borderwidth=round(2*ratio), relief=SUNKEN, bg="white")
+    f4.grid(row=13, column=0, columnspan=3, padx=round(50*ratio), sticky="new")
+    city_icon = Image.open('asset/city.png')
+    city_icon = city_icon.resize((round(25*ratio),round(25*ratio)))
+    city_icon = ImageTk.PhotoImage(city_icon)
+    city_lbl = Label(f4, image=city_icon, bg="white")
+    city_lbl.image = city_icon
+    city_lbl.pack(side=LEFT, fill=BOTH, padx=(round(10*ratio),round(5*ratio)))
     city_val = StringVar()
-    # city_val.trace('w', cityvalidation)
-    city_text = Entry(f4, bd=round(4*ratio), relief=FLAT, font=("Lato", round(13*ratio)), width=round(38*ratio), textvariable=city_val)
-    city_text.pack(fill=BOTH, expand=True)
+    city_val.trace('w', cityvalidation2)
+    my_valid4 = usermanageWindow.register(cityvalidation1)
+    city_text = Entry(f4, bd=round(6*ratio), relief=FLAT, font=("Lato", round(12*ratio)), textvariable=city_val)
+    city_text.pack(side=RIGHT, fill=BOTH, expand=True)
+    city_text.config(validate="key", validatecommand=(my_valid4, '%P'))
     CreateToolTip(city_text, text = 'Max length should only be 30 characters')
     post_label = Label(usermanageWindow, text="Postal Code", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
-    post_label.grid(row=14, column=0, columnspan=2, sticky="sw", padx=(round(60*ratio), 0), pady=(round(10*ratio), 0))
+    post_label.grid(row=14, column=0, columnspan=2, sticky="sw", padx=(round(50*ratio), 0), pady=(round(10*ratio), 0))
+    um_post_label_error = Label(usermanageWindow, text="", font=("Arial Rounded MT Bold", round(8*ratio)), bg="#EDF1F7", fg="red", wraplength=round(80*ratio), justify=RIGHT)
+    um_post_label_error.grid(row=14, column=0, columnspan=2, sticky="se", padx=round(10*ratio), pady=(round(10*ratio), 0))
     f4a = Frame(usermanageWindow, borderwidth=round(2*ratio), relief=SUNKEN)
-    f4a.grid(row=15, column=0, columnspan=2, padx=(round(60*ratio), round(10*ratio)), sticky="nw")
+    f4a.grid(row=15, column=0, columnspan=2, padx=(round(50*ratio), round(10*ratio)), sticky="nw")
     post_val = StringVar()
-    # post_val.trace("w", postvalidation2)
-    post_text = Entry(f4a, bd=round(4*ratio), relief=FLAT, font=("Lato", round(13*ratio)), textvariable=post_val)
+    post_val.trace("w", postvalidation2)
+    post_text = Entry(f4a, bd=round(6*ratio), relief=FLAT, font=("Lato", round(12*ratio)), textvariable=post_val)
     post_text.pack(fill=BOTH, expand=True)
-    # reg = updprofileWindow.register(postvalidation1)
-    # post_text.config(validate="key", validatecommand=(reg, '%P'))
+    reg = usermanageWindow.register(postvalidation1)
+    post_text.config(validate="key", validatecommand=(reg, '%P'))
     CreateToolTip(post_text, text = 'Max length should only be 5 numeric')
     state_label = Label(usermanageWindow, text="State", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
-    state_label.grid(row=14, column=2, sticky="sw", padx=(round(15*ratio), round(60*ratio)), pady=(round(10*ratio), 0))
+    state_label.grid(row=14, column=2, sticky="sw", padx=(round(10*ratio), round(50*ratio)), pady=(round(10*ratio), 0))
     f5 = Frame(usermanageWindow, relief=SUNKEN)
-    f5.grid(row=15, column=2, padx=(round(10*ratio), round(60*ratio)), sticky="ne")
-    state_text = ttk.Combobox(f5, font=("Lato", round(13*ratio)), background="white")
+    f5.grid(row=15, column=2, padx=(round(10*ratio), round(50*ratio)), sticky="ne")
+    state_text = ttk.Combobox(f5, font=("Lato", round(12*ratio)), background="white")
     state_text['values'] = ('Johor', 
                           'Kedah',
                           'Kelantan',
@@ -2263,40 +2771,54 @@ def usermanagementPage():
     state_text.current(0)
     state_text['state'] = 'readonly'
     email_label = Label(usermanageWindow, text="Email", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
-    email_label.grid(row=16, column=0, columnspan=3, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
-    um_email_label_error = Label(usermanageWindow, text="Improper Email Format!", font=("Arial Rounded MT Bold", round(9*ratio)), bg="#EDF1F7", fg="red")
-    f6 = Frame(usermanageWindow, borderwidth=round(2*ratio), relief=SUNKEN)
-    f6.grid(row=17, column=0, columnspan=3, padx=round(60*ratio), sticky="new")
+    email_label.grid(row=16, column=0, columnspan=3, sticky="sw", padx=(round(50*ratio), round(10*ratio)), pady=(round(10*ratio), 0))
+    um_email_label_error = Label(usermanageWindow, text="", font=("Arial Rounded MT Bold", round(9*ratio)), bg="#EDF1F7", fg="red")
+    um_email_label_error.grid(row=16, column=1, columnspan=2, sticky="se", padx=(round(10*ratio), round(50*ratio)), pady=(round(10*ratio), 0))
+    f6 = Frame(usermanageWindow, borderwidth=round(2*ratio), relief=SUNKEN, bg="white")
+    f6.grid(row=17, column=0, columnspan=3, padx=round(50*ratio), sticky="new")
+    email_icon = Image.open('asset/email.png')
+    email_icon = email_icon.resize((round(25*ratio),round(25*ratio)))
+    email_icon = ImageTk.PhotoImage(email_icon)
+    email_lbl = Label(f6, image=email_icon, bg="white")
+    email_lbl.image = email_icon
+    email_lbl.pack(side=LEFT, fill=BOTH, padx=(round(10*ratio),round(5*ratio)))
     email_val = StringVar()
-    # my_valid = usermanageWindow.register(validate_email)
-    email_text = Entry(f6, bd=round(4*ratio), relief=FLAT, font=("Lato", round(13*ratio)), width=round(38*ratio), textvariable=email_val)
-    email_text.pack(fill=BOTH, expand=True)
-    # email_text.config(validate="key", validatecommand=(my_valid, '%P'))
+    my_valid5 = usermanageWindow.register(validate_email)
+    email_text = Entry(f6, bd=round(6*ratio), relief=FLAT, font=("Lato", round(12*ratio)), textvariable=email_val)
+    email_text.pack(side=RIGHT, fill=BOTH, expand=True)
+    email_text.config(validate="key", validatecommand=(my_valid5, '%P'))
     CreateToolTip(email_text, text = 'e.g. dummy@xyz.com')
     phone_label = Label(usermanageWindow, text="Phone Number", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
-    phone_label.grid(row=18, column=0, columnspan=3, sticky="sw", padx=round(60*ratio), pady=(round(10*ratio), 0))
-    um_phone_label_error = Label(usermanageWindow, text="Improper Phone Number Format!", font=("Arial Rounded MT Bold", round(9*ratio)), bg="white", fg="red")
-    f7 = Frame(usermanageWindow, borderwidth=round(2*ratio), relief=SUNKEN)
-    f7.grid(row=19, column=0, columnspan=3, padx=round(60*ratio), sticky="new")
+    phone_label.grid(row=18, column=0, columnspan=3, sticky="sw", padx=(round(50*ratio), round(10*ratio)), pady=(round(10*ratio), 0))
+    um_phone_label_error = Label(usermanageWindow, text="", font=("Arial Rounded MT Bold", round(9*ratio)), bg="#EDF1F7", fg="red")
+    um_phone_label_error.grid(row=18, column=1, columnspan=2, sticky="se", padx=(round(10*ratio), round(50*ratio)), pady=(round(10*ratio), 0))
+    f7 = Frame(usermanageWindow, borderwidth=round(2*ratio), relief=SUNKEN, bg="white")
+    f7.grid(row=19, column=0, columnspan=3, padx=round(50*ratio), sticky="new")
+    phone_icon = Image.open('asset/phone.png')
+    phone_icon = phone_icon.resize((round(25*ratio),round(25*ratio)))
+    phone_icon = ImageTk.PhotoImage(phone_icon)
+    phone_lbl = Label(f7, image=phone_icon, bg="white")
+    phone_lbl.image = phone_icon
+    phone_lbl.pack(side=LEFT, fill=BOTH, padx=(round(10*ratio),round(5*ratio)))
     phone_val = StringVar()
-    # phone_valid = usermanageWindow.register(validate_phone)
-    phone_text = Entry(f7, bd=round(4*ratio), relief=FLAT, font=("Lato", round(13*ratio)), width=round(38*ratio), textvariable=phone_val)
-    phone_text.pack(fill=BOTH, expand=True)
-    # phone_text.config(validate="key", validatecommand=(phone_valid, '%P'))
+    my_valid6 = usermanageWindow.register(validate_phone)
+    phone_text = Entry(f7, bd=round(6*ratio), relief=FLAT, font=("Lato", round(13*ratio)), width=round(38*ratio), textvariable=phone_val)
+    phone_text.pack(side=RIGHT, fill=BOTH, expand=True)
+    phone_text.config(validate="key", validatecommand=(my_valid6, '%P'))
     CreateToolTip(phone_text, text = 'e.g. 012-3456789')
-    f8 = Frame(usermanageWindow, bg="#EDF1F7")
-    f8.grid(row=20, column=0, columnspan=3, sticky="nsew", padx=round(60*ratio), pady=(round(20*ratio), round(5*ratio)))
-    add_userbtn = Button(f8, cursor="hand2", text="Add New User", font=("Arial Rounded MT Bold", round(13*ratio)), width=round(43*ratio), bg="#f2c40e", fg="white", relief=RIDGE, bd=1, activebackground="#C19C0C", activeforeground="white")
-    add_userbtn.pack()
-    f9 = Frame(usermanageWindow, bg="#EDF1F7")
-    f9.grid(row=21, column=0, columnspan=3, sticky="nsew", padx=round(60*ratio), pady= round(5*ratio))
-    upd_userbtn = Button(f9, cursor="hand2", text="Update User Info", font=("Arial Rounded MT Bold", round(13*ratio)), width=round(43*ratio), bg="#18bc9b", fg="white", relief=RIDGE, bd=1, activebackground="#17856F", activeforeground="white")
-    upd_userbtn.pack()
-    f10 = Frame(usermanageWindow, bg="#EDF1F7")
-    f10.grid(row=22, column=0, columnspan=3, sticky="nsew", padx=round(60*ratio), pady=round(5*ratio))
-    del_userbtn = Button(f10, cursor="hand2", text="Delete User", font=("Arial Rounded MT Bold", round(13*ratio)), width=round(43*ratio), bg="#dc3545", fg="white", relief=RIDGE, bd=1, activebackground="#A72A36", activeforeground="white")
-    del_userbtn.pack()
-    
+    f8 = Frame(usermanageWindow, bd=round(4*ratio), bg="#f2c40e")
+    f8.grid(row=20, column=0, columnspan=3, sticky="nsew", padx=round(50*ratio), pady=(round(25*ratio), round(5*ratio)))
+    add_userbtn = Button(f8, cursor="hand2", command=lambda:addnewuser(ufname_text, ulname_text, add_text, city_text, post_text, state_text, email_text, phone_text), text="Add New User", font=("Arial Rounded MT Bold", round(12*ratio)), bg="#f2c40e", fg="white", relief=FLAT, bd=0, activebackground="#f2c40e", activeforeground="white")
+    add_userbtn.pack(expand=TRUE, fill=BOTH)
+    f9 = Frame(usermanageWindow, bd=round(4*ratio), bg="#18bc9b")
+    f9.grid(row=21, column=0, columnspan=3, sticky="nsew", padx=round(50*ratio), pady= round(5*ratio))
+    upd_userbtn = Button(f9, state="disabled", text="Update User Info", font=("Arial Rounded MT Bold", round(12*ratio)), bg="#18bc9b", fg="white", relief=FLAT, bd=0, activebackground="#18bc9b", activeforeground="white")
+    upd_userbtn.pack(expand=TRUE, fill=BOTH)
+    f10 = Frame(usermanageWindow, bd=round(4*ratio), bg="#dc3545")
+    f10.grid(row=22, column=0, columnspan=3, sticky="nsew", padx=round(50*ratio), pady=round(5*ratio))
+    del_userbtn = Button(f10, state="disabled", text="Delete User", font=("Arial Rounded MT Bold", round(12*ratio)), bg="#dc3545", fg="white", relief=FLAT, bd=0, activebackground="#dc3545", activeforeground="white")
+    del_userbtn.pack(expand=TRUE, fill=BOTH)
+
     # Right components
     sys_label = Label(usermanageWindow, text="e-Vision", font=("Arial Rounded MT Bold", round(14*ratio)), bg="#293e50", fg="white")
     sys_label.grid(row=0, column=4, sticky="ne", padx=round(30*ratio), pady=round(15*ratio))
@@ -2374,12 +2896,17 @@ def usermanagementPage():
             else:
                 usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('oddrow',))
             usrmng_count +=1
+    # Selection bind
+    usrmng_tree.bind("<ButtonRelease-1>", userselected)
     # Clear selected btn
     f12 = Frame(usermanageWindow, bg="#293e50")
     f12.grid(row=22, column=3, columnspan=2, sticky="nsew", padx=round(60*ratio), pady=round(5*ratio))
-    clr_selectedbtn = Button(f12, cursor="hand2", text="Clear Selected User", font=("Arial Rounded MT Bold", round(11*ratio)), width=round(25*ratio), bg="#E6E6E6", fg="black", relief=RIDGE, bd=1, activebackground="#B4B1B1", activeforeground="black")
+    clr_selectedbtn = Button(f12, cursor="hand2", command=lambda:usrmngclearselected(), text="Clear Selected User", font=("Arial Rounded MT Bold", round(11*ratio)), width=round(25*ratio), bg="#E6E6E6", fg="black", relief=RIDGE, bd=1, activebackground="#B4B1B1", activeforeground="black")
     clr_selectedbtn.pack(side=LEFT)
-    refresh_userbtn = Button(f12, cursor="hand2", text="Refresh User List", font=("Arial Rounded MT Bold", round(11*ratio)), width=round(25*ratio), bg="#E6E6E6", fg="black", relief=RIDGE, bd=1, activebackground="#B4B1B1", activeforeground="black")
+    # Refresh list btn
+    refresh_userbtn = Button(f12, cursor="hand2", command=lambda:refreshlistbtn(), text="Refresh User List", font=("Arial Rounded MT Bold", round(11*ratio)), width=round(25*ratio), bg="#E6E6E6", fg="black", relief=RIDGE, bd=1, activebackground="#B4B1B1", activeforeground="black")
     refresh_userbtn.pack(side=RIGHT)
+
+
 
 root.mainloop()
