@@ -3,7 +3,6 @@
 # Program Name: Main GUI Integration
 # Date Created: 05/05/2022
 import os, io, re, secrets, string, pymysql
-from cv2 import exp
 import pandas as pd
 from tkinter import *
 from tkinter import messagebox
@@ -97,12 +96,18 @@ class Usersession:
             newf.focus()
         else:  
             cid = self.user_id
+            loading(wel)
             try:
                 mysql_con = MySqlConnector(sql_config) # Initial connection
                 sql = '''SELECT * FROM User WHERE user_id = (%s) AND BINARY user_password = SHA2(%s, 256)'''
                 result_details = mysql_con.queryall(sql, (cid, new))
             except pymysql.Error as e:
+                loading_splash.destroy()
+                mainWindow.attributes('-disabled', 0)
+                wel.destroy() # Close the interface
+                mainWindow.focus_force()
                 messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                logout()
                 print("Error %d: %s" % (e.args[0], e.args[1]))
                 return False
             finally:
@@ -129,16 +134,26 @@ class Usersession:
                         self.user_phone = result_details[0][9]
                         self.user_role = result_details[0][10]
                         self.user_firstlogin = result_details[0][12]
-                        messagebox.showinfo("Change Password Successful", "Your temporary password had been replaced with the new password!")
+                        loading_splash.destroy()
                         mainWindow.attributes('-disabled', 0)
                         wel.destroy() # Close the interface
                         mainWindow.focus_force()
+                        messagebox.showinfo("Change Password Successful", "Your temporary password had been replaced with the new password!")
                     # If error
                     else:
+                        loading_splash.destroy()
+                        mainWindow.attributes('-disabled', 0)
+                        wel.destroy() # Close the interface
+                        mainWindow.focus_force()
                         messagebox.showerror("Change Passord Failed", "Failed to update your temporary password! Please contact developer for help!")
                         logout()
                 except pymysql.Error as e:
+                    loading_splash.destroy()
+                    mainWindow.attributes('-disabled', 0)
+                    wel.destroy() # Close the interface
+                    mainWindow.focus_force()
                     messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                    logout()
                     print("Error %d: %s" % (e.args[0], e.args[1]))
                     return False
                 finally:
@@ -176,7 +191,7 @@ class Usersession:
                         getimg(self.user_avatar) # Download the new avatar to temp
                         avatar_path = 'temp/' + self.user_avatar + '.png' # Display new avatar
                         img_avatar = Image.open(avatar_path)
-                        img_avatar = img_avatar.resize((round(200*ratio),round(200*ratio)), Image.ANTIALIAS)
+                        img_avatar = img_avatar.resize((round(180*ratio),round(180*ratio)), Image.ANTIALIAS)
                         img_avatar = ImageTk.PhotoImage(img_avatar)
                         loc.configure(image=img_avatar)
                         loc.image = img_avatar
@@ -189,6 +204,8 @@ class Usersession:
                         loading_splash.destroy()
                         messagebox.showerror("Change Avatar Failed", "Failed to update your avatar! Please contact developer for help!")
                 except pymysql.Error as e:
+                    profileWindow.attributes('-disabled', 0)
+                    loading_splash.destroy()
                     messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
                     print("Error %d: %s" % (e.args[0], e.args[1]))
                     return False
@@ -298,6 +315,10 @@ class Usersession:
                                 updpassWindow.destroy() # Close the interface
                                 profileWindow.focus_force() 
                         except pymysql.Error as e:
+                            loading_splash.destroy()
+                            profileWindow.attributes('-disabled', 0)
+                            updpassWindow.destroy() # Close the interface
+                            profileWindow.focus_force()
                             messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
                             print("Error %d: %s" % (e.args[0], e.args[1]))
                             return False
@@ -329,8 +350,23 @@ class Usersession:
             else:
                 loading(updprofileWindow)
                 updprofileWindow.update()
-                global email_exist
+                global email_exist, data_changes
                 email_exist = False
+                data_changes = False
+                input_addline = ad.get()
+                if "," in input_addline[-1]:
+                    input_addline = input_addline.rstrip(",")
+                
+                # Check for data changes
+                if(uf.get()==self.user_firstname and ul.get()==self.user_lastname and input_addline==self.user_addressline and ci.get()==self.user_city and st.get()==self.user_state and po.get()==self.user_postcode and em.get().lower()==self.user_email and ph.get()==self.user_phone):
+                    data_changes = False
+                    loading_splash.destroy()
+                    messagebox.showerror("Personal Info Update Not Execute", "The update process did not executed because there are no personal details changes had been made!")
+                    updprofileWindow.attributes('-disabled', 0)
+                    updprofileWindow.focus_force() 
+                else:
+                    data_changes = True
+                
                 # Check for email redundancy
                 if em.get().lower() != self.user_email:
                     try:
@@ -348,18 +384,18 @@ class Usersession:
                                 em.focus()
                                 break
                     except pymysql.Error as e:
+                        loading_splash.destroy()
+                        updprofileWindow.attributes('-disabled', 0)
+                        updprofileWindow.focus_force()
                         messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
                         print("Error %d: %s" % (e.args[0], e.args[1]))
                         return False
                     finally:
                         # Close the connection
                         mysql_con.close()
-                        
+
                 # Update profile if exist was false
-                if(email_exist == False):
-                    input_addline = ad.get()
-                    if "," in input_addline[-1]:
-                        input_addline = input_addline.rstrip(",")
+                if((email_exist == False) and (data_changes == True)):
                     try:
                         mysql_con = MySqlConnector(sql_config) # Initial connection
                         sql = '''UPDATE User SET user_firstname = (%s), user_lastname = (%s), user_addressline = (%s), user_city = (%s), user_state = (%s), user_postcode = (%s), user_email = (%s), user_phone = (%s) WHERE user_id = (%s)''' # Update user info
@@ -398,24 +434,15 @@ class Usersession:
                             updprofileWindow.destroy() # Close the interface
                             profileWindow.focus_force() 
                     except pymysql.Error as e:
+                        loading_splash.destroy()
+                        profileWindow.attributes('-disabled', 0)
+                        updprofileWindow.destroy() # Close the interface 
                         messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
                         print("Error %d: %s" % (e.args[0], e.args[1]))
                         return False
                     finally:
                         # Close the connection
                         mysql_con.close()
-
-# User class
-class User:
-    def __init__(self, ufname, ulname, uadd, ucity, ustate, upost, uemail, uphone):
-        self.user_firstname = ufname
-        self.user_lastname = ulname
-        self.user_addressline = uadd
-        self.user_city = ucity
-        self.user_state = ustate
-        self.user_postcode = upost
-        self.user_email = uemail
-        self.user_phone = uphone
 
 # Dynamically resize login right
 class ResizingCanvas(Canvas):
@@ -712,36 +739,44 @@ def login(eloc, ploc, eml_error, pas_error):
             if result_details:
                 loading(root)
                 root.update()
-                usession = Usersession(
-                    result_details[0][0], 
-                    result_details[0][1], 
-                    result_details[0][2],  
-                    result_details[0][4], 
-                    result_details[0][5], 
-                    result_details[0][6], 
-                    result_details[0][7], 
-                    result_details[0][8], 
-                    result_details[0][9], 
-                    result_details[0][10], 
-                    result_details[0][11], 
-                    result_details[0][12], 
-                    result_details[0][13]
-                )
-                now = datetime.now() # Get current date time
-                dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-                sql = '''UPDATE User SET user_lastlogin_datetime = (%s) WHERE user_id = (%s)''' # Update last login
-                mysql_con.update(sql, (dt_string, usession.user_id))
-                usession.user_lastlogin = dt_string
-                # Get avatar
-                getimg(usession.user_avatar)
-                root.attributes('-disabled', 0)
-                loading_splash.destroy()
-                eloc.delete(0, END)
-                ploc.delete(0, END)
-                eloc.focus()
-                messagebox.showinfo("Login Successful", "Hi {0}, welcome back to e-Vision!".format(usession.user_firstname))
-                mainPage() # Invoke the main page
-                root.withdraw() # Withdraw the login page
+                if result_details[0][14] == 1:
+                    root.attributes('-disabled', 0)
+                    loading_splash.destroy()
+                    eloc.delete(0, END)
+                    ploc.delete(0, END)
+                    eloc.focus()
+                    messagebox.showerror("Login Failed", "Your e-Vision account had been deactivated! Please contact company's Admin for assistance.")
+                else:
+                    usession = Usersession(
+                        result_details[0][0], 
+                        result_details[0][1], 
+                        result_details[0][2],  
+                        result_details[0][4], 
+                        result_details[0][5], 
+                        result_details[0][6], 
+                        result_details[0][7], 
+                        result_details[0][8], 
+                        result_details[0][9], 
+                        result_details[0][10], 
+                        result_details[0][11], 
+                        result_details[0][12], 
+                        result_details[0][13]
+                    )
+                    now = datetime.now() # Get current date time
+                    dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
+                    sql = '''UPDATE User SET user_lastlogin_datetime = (%s) WHERE user_id = (%s)''' # Update last login
+                    mysql_con.update(sql, (dt_string, usession.user_id))
+                    usession.user_lastlogin = dt_string
+                    # Get avatar
+                    getimg(usession.user_avatar)
+                    root.attributes('-disabled', 0)
+                    loading_splash.destroy()
+                    eloc.delete(0, END)
+                    ploc.delete(0, END)
+                    eloc.focus()
+                    messagebox.showinfo("Login Successful", "Hi {0}, welcome back to e-Vision!".format(usession.user_firstname))
+                    mainPage() # Invoke the main page
+                    root.withdraw() # Withdraw the login page
             # If no such user found
             else:
                 messagebox.showerror("Login Failed", "Invalid email/password! Please try to login again with valid email and password created!")
@@ -897,13 +932,17 @@ def forgetpassPage():
             email.focus() 
         else:
             try:
+                global existed
                 mysql_con = MySqlConnector(sql_config) # Initial connection
                 sql = '''SELECT * FROM User WHERE user_email = (%s)'''
                 result_details = mysql_con.queryall(sql, (email_con))
                 if result_details:
-                    global existed
-                    existed = True
-                    err_lbl.config(text="")
+                    if result_details[0][14] == 1:
+                        existed = False
+                        err_lbl.config(text="We found out that your email had been deactivated!")
+                    else:
+                        existed = True
+                        err_lbl.config(text="")
                 # If no existing data found
                 else:
                     existed = False
@@ -953,6 +992,11 @@ def forgetpassPage():
                         root.attributes('-disabled', 0)
                         root.focus_force()
                 except pymysql.Error as e:
+                    forgetpassWindow.attributes('-disabled', 0)
+                    loading_splash.destroy() 
+                    forgetpassWindow.destroy() # Close the interface
+                    root.attributes('-disabled', 0)
+                    root.focus_force()
                     messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
                     print("Error %d: %s" % (e.args[0], e.args[1]))
                     return False
@@ -1995,6 +2039,11 @@ def updatepassPage():
 #==============================================================================================#
 ## Admin - Manage User Page Interface
 def usermanagementPage():
+    global usermanageWindow, tempselecteduser
+    tempselecteduser = tuple()
+    cvalue = None
+    copt = 'All (Except Deactivated)'
+    
     ## Function & Validation list for User Management Page
     # Limit first name entry box length function
     def fnamevalidation(u_input):
@@ -2188,10 +2237,14 @@ def usermanagementPage():
             return True
     # Search all user function
     def serachAllUser():
+        global cvalue, copt
+        
+        cvalue = None
+        copt = 'All (Except Deactivated)'
         loading(usermanageWindow)
         try:
             mysql_con = MySqlConnector(sql_config) # Initial connection
-            sql = '''SELECT * FROM User WHERE user_role = 2'''
+            sql = '''SELECT * FROM User WHERE user_role = 2 AND user_isDelete = 0'''
             result_details = mysql_con.queryall(sql)
             if result_details:
                 usermanageWindow.attributes('-disabled', 0)
@@ -2205,6 +2258,8 @@ def usermanagementPage():
                 messagebox.showinfo("No User Data Found", "There was no existing monitoring employee found in the system!")
                 return result_details
         except pymysql.Error as e:
+            loading_splash.destroy()
+            usermanageWindow.attributes('-disabled', 0)
             messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
             print("Error %d: %s" % (e.args[0], e.args[1]))
             return False
@@ -2213,32 +2268,81 @@ def usermanagementPage():
             mysql_con.close()
     # Search user based on filter function
     def searchUserByFilter(value, opt):
-        if opt == 'All':
+        global cvalue, copt
+        
+        cvalue = value
+        copt = opt
+        
+        if opt == 'All (Except Deactivated)':
             try:
                 mysql_con = MySqlConnector(sql_config) # Initial connection
                 loading(usermanageWindow)
-                sql = '''SELECT * FROM User WHERE user_role = 2'''
+                usermanageWindow.update()
+                sql = '''SELECT * FROM User WHERE user_role = 2 AND user_isDelete = 0'''
                 result_details = mysql_con.queryall(sql)
                 if result_details:
                     usrmng_tree.delete(*usrmng_tree.get_children())
                     usrmng_count = 0
                     for dt in result_details:
+                        acc_status = "Active" if dt[14] == 0 else "Deactivated"
                         if usrmng_count % 2 == 0:
-                            usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('evenrow',))
+                            usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12], acc_status), tags=('evenrow',))
                         else:
-                            usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('oddrow',))
+                            usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12], acc_status), tags=('oddrow',))
                         usrmng_count +=1
-                    usermanageWindow.attributes('-disabled', 0)
+                    view_title.config(text='Current Table View: {}'.format(opt))
                     loading_splash.destroy()
+                    usermanageWindow.attributes('-disabled', 0)
                 # If no existing data found
                 else:
                     result_details = None
                     usrmng_tree.delete(*usrmng_tree.get_children())
                     usrmng_count = 0
-                    usermanageWindow.attributes('-disabled', 0)
+                    view_title.config(text='Current Table View: {}'.format(opt))
                     loading_splash.destroy()
+                    usermanageWindow.attributes('-disabled', 0)
                     messagebox.showinfo("No User Data Found", "There was no existing monitoring employee found in the system!")
             except pymysql.Error as e:
+                loading_splash.destroy()
+                usermanageWindow.attributes('-disabled', 0)
+                messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                print("Error %d: %s" % (e.args[0], e.args[1]))
+                return False
+            finally:
+                # Close the connection
+                mysql_con.close()
+        elif opt ==  "Deactivated(Deleted) Status":  
+            try:
+                mysql_con = MySqlConnector(sql_config) # Initial connection
+                loading(usermanageWindow)
+                usermanageWindow.update()
+                sql = '''SELECT * FROM User WHERE user_role = 2 AND user_isDelete = 1'''
+                result_details2 = mysql_con.queryall(sql)
+                if result_details2:
+                    usrmng_tree.delete(*usrmng_tree.get_children())
+                    usrmng_count = 0
+                    for dt in result_details2:
+                        acc_status = "Active" if dt[14] == 0 else "Deactivated"
+                        if usrmng_count % 2 == 0:
+                            usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12], acc_status), tags=('evenrow',))
+                        else:
+                            usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12], acc_status), tags=('oddrow',))
+                        usrmng_count +=1
+                    view_title.config(text='Current Table View: {}'.format(opt))
+                    loading_splash.destroy()
+                    usermanageWindow.attributes('-disabled', 0)
+                # If no existing data found
+                else:
+                    result_details2 = None
+                    usrmng_tree.delete(*usrmng_tree.get_children())
+                    usrmng_count = 0
+                    view_title.config(text='Current Table View: {}'.format(opt))
+                    loading_splash.destroy()
+                    usermanageWindow.attributes('-disabled', 0)
+                    messagebox.showinfo("No User Data Found", "There was no existing deactivated monitoring employee found in the system!")
+            except pymysql.Error as e:
+                loading_splash.destroy()
+                usermanageWindow.attributes('-disabled', 0)
                 messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
                 print("Error %d: %s" % (e.args[0], e.args[1]))
                 return False
@@ -2255,26 +2359,28 @@ def usermanagementPage():
                     mysql_con = MySqlConnector(sql_config) # Initial connection
                     loading(usermanageWindow)
                     if opt == 'User ID':
-                        sql = '''SELECT * FROM User WHERE user_role = 2 AND user_id LIKE CONCAT('%%', %s, '%%')'''
+                        sql = '''SELECT * FROM User WHERE user_role = 2 AND user_id LIKE CONCAT('%%', %s, '%%') AND user_isDelete = 0'''
                     elif opt == 'First Name':
-                        sql = '''SELECT * FROM User WHERE user_role = 2 AND user_firstname LIKE CONCAT('%%', %s, '%%')'''
+                        sql = '''SELECT * FROM User WHERE user_role = 2 AND user_firstname LIKE CONCAT('%%', %s, '%%') AND user_isDelete = 0'''
                     elif opt == 'Last Name':
-                        sql = '''SELECT * FROM User WHERE user_role = 2 AND user_lastname LIKE CONCAT('%%', %s, '%%')'''
+                        sql = '''SELECT * FROM User WHERE user_role = 2 AND user_lastname LIKE CONCAT('%%', %s, '%%') AND user_isDelete = 0'''
                     elif opt == 'Email':
-                        sql = '''SELECT * FROM User WHERE user_role = 2 AND user_email LIKE CONCAT('%%', %s, '%%')'''
+                        sql = '''SELECT * FROM User WHERE user_role = 2 AND user_email LIKE CONCAT('%%', %s, '%%') AND user_isDelete = 0'''
                     else:
-                        sql = '''SELECT * FROM User WHERE user_role = 2 AND user_phone LIKE CONCAT('%%', %s, '%%')'''
+                        sql = '''SELECT * FROM User WHERE user_role = 2 AND user_phone LIKE CONCAT('%%', %s, '%%') AND user_isDelete = 0'''
                     result_details1 = mysql_con.queryall(sql, (value))
                     if result_details1:
                         usrmng_tree.delete(*usrmng_tree.get_children())
                         usrmng_count = 0
                         for dt in result_details1:
+                            acc_status = "Active" if dt[14] == 0 else "Deactivated"
                             if usrmng_count % 2 == 0:
-                                usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('evenrow',))
+                                usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12], acc_status), tags=('evenrow',))
                             else:
-                                usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('oddrow',))
+                                usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12], acc_status), tags=('oddrow',))
                             usrmng_count +=1
                         usermanageWindow.attributes('-disabled', 0)
+                        view_title.config(text='Current Table View: {}'.format(opt))
                         loading_splash.destroy()
                     # If no existing data found
                     else:
@@ -2282,9 +2388,12 @@ def usermanagementPage():
                         usrmng_tree.delete(*usrmng_tree.get_children())
                         usrmng_count = 0
                         usermanageWindow.attributes('-disabled', 0)
+                        view_title.config(text='Current Table View: {}'.format(opt))
                         loading_splash.destroy()
                         messagebox.showinfo("No User Data Found", "There was no such monitoring employee found based on the filtration value!")
                 except pymysql.Error as e:
+                    loading_splash.destroy()
+                    usermanageWindow.attributes('-disabled', 0)
                     messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
                     print("Error %d: %s" % (e.args[0], e.args[1]))
                     return False
@@ -2293,7 +2402,7 @@ def usermanagementPage():
                     mysql_con.close()   
     # Filter user callback fucntion
     def usrmngcallback(eventObject):
-        if filter_opt.get() == 'All':
+        if filter_opt.get() == 'All (Except Deactivated)' or filter_opt.get() == 'Deactivated(Deleted) Status':
             filterfield_text.delete(0, 'end')
             filterfield_text.config(state='disabled')
         else:
@@ -2302,7 +2411,8 @@ def usermanagementPage():
     # Clear function
     def clearselected():
         global tempselecteduser
-        if 'tempselecteduser' in globals():
+
+        if len(tempselecteduser) > 0:
             temp = list(tempselecteduser)
             temp.clear()
             tempselecteduser = tuple(temp)
@@ -2318,6 +2428,7 @@ def usermanagementPage():
         email_text.delete(0, END)
         phone_text.delete(0, END)
         uid_text.config(state='disabled')
+        uid_selection_lbl.config(text='')
         um_fname_label_error.config(text='')
         um_lname_label_error.config(text='')
         um_add_label_error.config(text='')
@@ -2325,87 +2436,99 @@ def usermanagementPage():
         um_post_label_error.config(text='')
         um_email_label_error.config(text='')
         um_phone_label_error.config(text='')
+        resetpas_btn.config(state='disabled', cursor='')
         add_userbtn.config(state='normal', cursor='hand2')
         upd_userbtn.config(state='disabled', cursor='')
         del_userbtn.config(state='disabled', cursor='')
+        selected_accstat.config(text="Acc Status: No User Selected", fg="#bfbfbf")
+        accstat_lbl.config(image=accstat_icon1)
+        reactivate_userbtn.config(state='disabled', cursor='')
     # Select user function
     def userselected(e):
         global tempselecteduser
         
         # Clear entry boxes
-        clearselected()
+        if len(tempselecteduser) > 0:
+            clearselected()
         
         selected = usrmng_tree.focus() #returning index number
         tempselecteduser = usrmng_tree.item(selected, 'values') #returning list of values of selected user
         
         # Display selected user
-        uid_text.config(state='normal')
-        uid_text.insert(0, tempselecteduser[0])
-        ufname_text.insert(0, tempselecteduser[1])
-        ulname_text.insert(0, tempselecteduser[2])
-        add_text.insert(0, tempselecteduser[3])
-        city_text.insert(0, tempselecteduser[4])
-        post_text.insert(0, tempselecteduser[5])
-        ustate = tempselecteduser[6]
-        if ustate == 'Johor':
-            state_text.current(0)
-        elif ustate == 'Kedah':
-            state_text.current(1)
-        elif ustate == 'Kelantan':
-            state_text.current(2)
-        elif ustate == 'Malacca':
-            state_text.current(3)
-        elif ustate == 'Negeri Sembilan':
-            state_text.current(4)
-        elif ustate == 'Pahang':
-            state_text.current(5)
-        elif ustate == 'Penang':
-            state_text.current(6)
-        elif ustate == 'Perak':
-            state_text.current(7)
-        elif ustate == 'Perlis':
-            state_text.current(8)
-        elif ustate == 'Sabah':
-            state_text.current(9)
-        elif ustate == 'Sarawak':
-            state_text.current(10)
-        elif ustate == 'Selangor':
-            state_text.current(11)
-        elif ustate == 'Terengganu':
-            state_text.current(12)
-        elif ustate == 'Kuala Lumpur':
-            state_text.current(13)
-        elif ustate == 'Labuan':
-            state_text.current(14)
-        else:
-            state_text.current(15)
-        email_text.insert(0, tempselecteduser[7])
-        phone_text.insert(0, tempselecteduser[8])
-        uid_text.config(state='disabled')
-        uid_selection_lbl.config(text="Employee Data Selected: {}".format(tempselecteduser[0]))
-        resetpas_btn.config(state='normal', cursor='hand2')
-        add_userbtn.config(state='disabled', cursor='')
-        upd_userbtn.config(state='normal', cursor='hand2')
-        del_userbtn.config(state='normal', cursor='hand2')   
+        if(len(tempselecteduser) > 0):
+            uid_text.config(state='normal')
+            uid_text.insert(0, tempselecteduser[0])
+            ufname_text.insert(0, tempselecteduser[1])
+            ulname_text.insert(0, tempselecteduser[2])
+            add_text.insert(0, tempselecteduser[3])
+            city_text.insert(0, tempselecteduser[4])
+            post_text.insert(0, tempselecteduser[5])
+            ustate = tempselecteduser[6]
+            if ustate == 'Johor':
+                state_text.current(0)
+            elif ustate == 'Kedah':
+                state_text.current(1)
+            elif ustate == 'Kelantan':
+                state_text.current(2)
+            elif ustate == 'Malacca':
+                state_text.current(3)
+            elif ustate == 'Negeri Sembilan':
+                state_text.current(4)
+            elif ustate == 'Pahang':
+                state_text.current(5)
+            elif ustate == 'Penang':
+                state_text.current(6)
+            elif ustate == 'Perak':
+                state_text.current(7)
+            elif ustate == 'Perlis':
+                state_text.current(8)
+            elif ustate == 'Sabah':
+                state_text.current(9)
+            elif ustate == 'Sarawak':
+                state_text.current(10)
+            elif ustate == 'Selangor':
+                state_text.current(11)
+            elif ustate == 'Terengganu':
+                state_text.current(12)
+            elif ustate == 'Kuala Lumpur':
+                state_text.current(13)
+            elif ustate == 'Labuan':
+                state_text.current(14)
+            else:
+                state_text.current(15)
+            email_text.insert(0, tempselecteduser[7])
+            phone_text.insert(0, tempselecteduser[8])
+            uid_text.config(state='disabled')
+            if tempselecteduser[10] == "Active":
+                uid_selection_lbl.config(text="Employee Data Selected: {}".format(tempselecteduser[0]))
+                resetpas_btn.config(state='normal', cursor='hand2')
+                add_userbtn.config(state='disabled', cursor='')
+                upd_userbtn.config(state='normal', cursor='hand2')
+                del_userbtn.config(state='normal', cursor='hand2')
+                selected_accstat.config(text="Acc Status: Active", fg="#19f000")
+                accstat_lbl.config(image=accstat_icon2)
+                reactivate_userbtn.config(state='disabled', cursor='')
+            else:
+                uid_selection_lbl.config(text="Employee Data Selected: {}".format(tempselecteduser[0]))
+                resetpas_btn.config(state='disabled', cursor='')
+                add_userbtn.config(state='disabled', cursor='')
+                upd_userbtn.config(state='disabled', cursor='')
+                del_userbtn.config(state='disabled', cursor='')
+                selected_accstat.config(text="Acc Status: Deactivated", fg="#f00000")
+                accstat_lbl.config(image=accstat_icon3)
+                reactivate_userbtn.config(state='normal', cursor='hand2')
     # Clear selected user function
     def usrmngclearselected():
-        global tempselecteduser
+        global tempselecteduser, cvalue, copt
         
         confirmbox = messagebox.askquestion('e-Vision', 'Are you sure to clear the user selection?', icon='warning')
         if confirmbox == 'yes':
-            if 'tempselecteduser' in globals():
-                if len(tempselecteduser) != 0:
-                    clearselected()
-                    uid_selection_lbl.config(text="")
-                    resetpas_btn.config(state='disabled', cursor='')
-                    add_userbtn.config(state='normal', cursor='hand2')
-                    upd_userbtn.config(state='disabled', cursor='')
-                    del_userbtn.config(state='disabled', cursor='')
-                    if len(usrmng_tree.selection()) > 0:
-                        usrmng_tree.selection_remove(usrmng_tree.selection()[0])
-                    messagebox.showinfo("e-Vision", "The previously selected user had been clear.")
-                else:
-                    messagebox.showerror("e-Vision", "There was no user being selected!")
+            if len(tempselecteduser) > 0:  
+                clearselected()
+                searchUserByFilter(cvalue, copt)
+                if len(usrmng_tree.selection()) > 0:
+                    usrmng_tree.selection_remove(usrmng_tree.selection()[0])
+                messagebox.showinfo("e-Vision", "The previously selected user had been clear.")
             else:
                 messagebox.showerror("e-Vision", "There was no user being selected!")
     # Add new user function
@@ -2448,7 +2571,7 @@ def usermanagementPage():
             if not len(zip_code) == 5:
                 um_post_label_error.config(text="Must Be 5 Digits!")
             else:
-                confirmbox = messagebox.askquestion('e-Vision', 'Are you sure to create new employee with email of {}?'.format(email_address), icon='warning')
+                confirmbox = messagebox.askquestion('e-Vision', 'Are you sure to create new employee account with email of {}?'.format(email_address), icon='warning')
                 if confirmbox == 'yes':
                     loading(usermanageWindow)
                     usermanageWindow.update()
@@ -2470,6 +2593,9 @@ def usermanagementPage():
                                 email.focus()
                                 break
                     except pymysql.Error as e:
+                        loading_splash.destroy()
+                        usermanageWindow.attributes('-disabled', 0)
+                        usermanageWindow.focus_force()
                         messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
                         print("Error %d: %s" % (e.args[0], e.args[1]))
                         return False
@@ -2513,6 +2639,13 @@ def usermanagementPage():
                                     um_post_label_error.config(text='')
                                     um_email_label_error.config(text='')
                                     um_phone_label_error.config(text='')
+                                    resetpas_btn.config(state='disabled', cursor='')
+                                    add_userbtn.config(state='normal', cursor='hand2')
+                                    upd_userbtn.config(state='disabled', cursor='')
+                                    del_userbtn.config(state='disabled', cursor='')
+                                    selected_accstat.config(text="Acc Status: No User Selected", fg="#bfbfbf")
+                                    accstat_lbl.config(image=accstat_icon1)
+                                    reactivate_userbtn.config(state='disabled', cursor='')
                                     loading_splash.destroy()
                                     messagebox.showinfo("Add New User Successful", "The new monitoring employee with email {} had been successfully created!".format(email_address))
                                     usermanageWindow.attributes('-disabled', 0)
@@ -2539,6 +2672,9 @@ def usermanagementPage():
                                     um_post_label_error.config(text='')
                                     um_email_label_error.config(text='')
                                     um_phone_label_error.config(text='')
+                                    selected_accstat.config(text="Acc Status: No User Selected", fg="#bfbfbf")
+                                    accstat_lbl.config(image=accstat_icon1)
+                                    reactivate_userbtn.config(state='disabled', cursor='')
                                     loading_splash.destroy()
                                     messagebox.showinfo("Add New User Successful", "The new monitoring employee with email {} had been successfully created but the email was failed to send to the monitoring employee! You may try to reset the password to trigger the email again.".format(email_address))
                                     usermanageWindow.attributes('-disabled', 0)
@@ -2550,6 +2686,9 @@ def usermanagementPage():
                                 usermanageWindow.attributes('-disabled', 0)
                                 usermanageWindow.focus_force() 
                         except pymysql.Error as e:
+                            loading_splash.destroy()
+                            usermanageWindow.attributes('-disabled', 0)
+                            usermanageWindow.focus_force()
                             messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
                             print("Error %d: %s" % (e.args[0], e.args[1]))
                             return False
@@ -2558,31 +2697,370 @@ def usermanagementPage():
                             mysql_con.close()
     # Refresh user list function
     def refreshuerlist():
+        global cvalue, copt
+        
+        cvalue = None
+        copt = 'All (Except Deactivated)'
+        
         # Refresh the list
         mysql_con = MySqlConnector(sql_config) # Initial connection
-        sql = '''SELECT * FROM User WHERE user_role = 2'''
+        sql = '''SELECT * FROM User WHERE user_role = 2 AND user_isDelete = 0'''
         result_details = mysql_con.queryall(sql)
         if result_details:
             usrmng_tree.delete(*usrmng_tree.get_children())
             usrmng_count = 0
             for dt in result_details:
+                acc_status = "Active" if dt[14] == 0 else "Deactivated"
                 if usrmng_count % 2 == 0:
-                    usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('evenrow',))
+                    usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12], acc_status), tags=('evenrow',))
                 else:
-                    usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('oddrow',))
+                    usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12], acc_status), tags=('oddrow',))
                 usrmng_count +=1
         filterfield_text.delete(0, 'end')
         filterfield_text.config(state='disabled')
         filter_opt.current(0)
+        view_title.config(text='Current Table View: All (Except Deactivated)')
     # Refresh user button function
     def refreshlistbtn():
         confirmbox = messagebox.askquestion('e-Vision', 'Are you sure to refresh the user list? (Fields will be cleared out together)', icon='warning')
         if confirmbox == 'yes':
+            loading(usermanageWindow)
+            usermanageWindow.update()
             refreshuerlist()
             clearselected()
+            loading_splash.destroy()
+            usermanageWindow.attributes('-disabled', 0)
+            usermanageWindow.focus_force()
             messagebox.showinfo("e-Vision", "The user list had been refreshed with the latest data available.")
+    # Reset password of user
+    def resetpassword(id):
+        confirmbox = messagebox.askquestion('e-Vision', 'Are you sure to reset the password for user {}?'.format(id), icon='warning')
+        if confirmbox == 'yes':
+            loading(usermanageWindow)
+            usermanageWindow.update()
+            # Generate random pass
+            temp = generate_temppassword()
+            # Get the email address
+            try:
+                mysql_con = MySqlConnector(sql_config) # Initial connection
+                sql = '''SELECT user_email FROM User WHERE user_id = (%s)'''
+                result_details = mysql_con.queryall(sql, (id))
+            except pymysql.Error as e:
+                loading_splash.destroy()
+                usermanageWindow.attributes('-disabled', 0)
+                messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                print("Error %d: %s" % (e.args[0], e.args[1]))
+                return False
+            finally:
+                # Close the connection
+                mysql_con.close()
+            # Update the password
+            try:
+                mysql_con = MySqlConnector(sql_config) # Initial connection
+                sql = '''UPDATE User SET user_password = SHA2(%s, 256), user_firstLogin = 1 WHERE user_id = (%s)'''
+                update = mysql_con.update(sql, (temp, id))
+                if update > 0:
+                    # Send email to the user
+                    emailtxt = [result_details[0][0]]
+                    send = mail_resetpass(emailtxt, temp)
+                    if send:
+                        loading_splash.destroy()
+                        messagebox.showinfo("Password Reset Successful", "The password for user {} had been reset and an email had been sent to {} for user notification.".format(id, result_details[0][0])) 
+                        usermanageWindow.attributes('-disabled', 0)
+                        usermanageWindow.focus_force()
+                    else:
+                        usermanageWindow.destroy() # Close the interface
+                        messagebox.showinfo("Password Reset Process Not Complete", "The password for user {} had been reset but email failed to sent to user. Please check with developer for help!".format(id))
+                        usermanageWindow.attributes('-disabled', 0)
+                        usermanageWindow.focus_force()
+                # If error
+                else:
+                    loading_splash.destroy()
+                    messagebox.showerror("Passord Reset Failed", "Failed to reset password for user {}! Please contact developer for help!".format(id))
+                    usermanageWindow.attributes('-disabled', 0)
+                    usermanageWindow.focus_force()
+            except pymysql.Error as e:
+                loading_splash.destroy()
+                messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                usermanageWindow.attributes('-disabled', 0)
+                usermanageWindow.focus_force()
+                print("Error %d: %s" % (e.args[0], e.args[1]))
+                return False
+            finally:
+                # Close the connection
+                mysql_con.close()
+    # Update existing user function
+    def updateuser(id, fname, lname, add, city, post, state, email, phone):
+        empty = FALSE
+        # Get required field
+        user_id = id.get()
+        first_name = fname.get()
+        last_name = lname.get()
+        address_line = add.get()
+        city_name = city.get()
+        zip_code = post.get()
+        state_name = state.get()
+        email_address = email.get().lower()
+        phone_number = phone.get()
+        
+        # Validate empty field
+        if len(first_name) == 0:
+            um_fname_label_error.config(text="Invalid Empty Field!")
+            empty = TRUE
+        if len(last_name) == 0:
+            um_lname_label_error.config(text="Invalid Empty Field!")
+            empty = TRUE
+        if len(address_line) == 0:
+            um_add_label_error.config(text="Invalid Empty Field!")
+            empty = TRUE
+        if len(city_name) == 0:
+            um_city_label_error.config(text="Invalid Empty Field!")
+            empty = TRUE
+        if len(zip_code) == 0:
+            um_post_label_error.config(text="Invalid Empty Field!")
+            empty = TRUE
+        if len(email_address) == 0:
+            um_email_label_error.config(text="Invalid Empty Field!")
+            empty = TRUE
+        if len(phone_number) == 0:
+            um_phone_label_error.config(text="Invalid Empty Field!")
+            empty = TRUE
+            
+        if not empty:
+            confirmbox = messagebox.askquestion('e-Vision', 'Are you sure to update the personal details for user {}?'.format(user_id), icon='warning')
+            if confirmbox == 'yes':
+                if len(user_id) == 0:
+                    messagebox.showerror("Update User Failed", "There was no user selected to be updated!")
+                elif not(len(zip_code) == 5):
+                    um_post_label_error.config(text="Invalid Length Format!")
+                    post.focus()
+                else:
+                    loading(usermanageWindow)
+                    usermanageWindow.update()
+                    global email_exist, data_changes
+                    email_exist = False
+                    data_changes = False
+                    input_addline = address_line
+                    if "," in input_addline[-1]:
+                        input_addline = input_addline.rstrip(",")
+                    
+                    # Check for data changes
+                    if(first_name==tempselecteduser[1] and last_name==tempselecteduser[2] and input_addline==tempselecteduser[3] and city_name==tempselecteduser[4] and state_name==tempselecteduser[6] and zip_code==tempselecteduser[5] and email_address==tempselecteduser[7] and phone_number==tempselecteduser[8]):
+                        data_changes = False
+                        loading_splash.destroy()
+                        messagebox.showerror("User Update Not Execute", "The update process did not executed because there are no user's personal details changes had been made!")
+                        usermanageWindow.attributes('-disabled', 0)
+                        usermanageWindow.focus_force() 
+                    else:
+                        data_changes = True
+                    
+                    # Check for email redundancy
+                    if email_address != tempselecteduser[7]:
+                        try:
+                            mysql_con = MySqlConnector(sql_config) # Initial connection
+                            sql = '''SELECT user_email FROM User'''
+                            result_details = mysql_con.queryall(sql)
+                            result = [result[0] for result in result_details]
+                            for i in range(len(result)):
+                                if result[i] == email_address:
+                                    loading_splash.destroy()
+                                    messagebox.showerror("User Update Failed", "The new inserted email had been registered previously!")
+                                    email_exist = True
+                                    usermanageWindow.attributes('-disabled', 0)
+                                    usermanageWindow.focus_force()
+                                    email.focus()
+                                    break
+                        except pymysql.Error as e:
+                            loading_splash.destroy()
+                            usermanageWindow.attributes('-disabled', 0)
+                            usermanageWindow.focus_force()
+                            messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                            print("Error %d: %s" % (e.args[0], e.args[1]))
+                            return False
+                        finally:
+                            # Close the connection
+                            mysql_con.close()
+
+                    # Update profile if exist was false
+                    if((email_exist == False) and (data_changes == True)):
+                        try:
+                            mysql_con = MySqlConnector(sql_config) # Initial connection
+                            sql = '''UPDATE User SET user_firstname = (%s), user_lastname = (%s), user_addressline = (%s), user_city = (%s), user_state = (%s), user_postcode = (%s), user_email = (%s), user_phone = (%s) WHERE user_id = (%s)''' # Update user info
+                            update = mysql_con.update(sql, (first_name, last_name, input_addline, city_name, state_name, zip_code, email_address, phone_number, user_id))
+                            if update > 0:
+                                # Refresh the list
+                                refreshuerlist()
+                                uid_text.delete(0, END)
+                                ufname_text.delete(0, END)
+                                ulname_text.delete(0, END)
+                                add_text.delete(0, END)
+                                city_text.delete(0, END)
+                                post_val.set("")
+                                post_text.delete(0, END)
+                                state_text.current(0)
+                                email_text.delete(0, END)
+                                phone_text.delete(0, END)
+                                uid_text.config(state='disabled')
+                                um_fname_label_error.config(text='')
+                                um_lname_label_error.config(text='')
+                                um_add_label_error.config(text='')
+                                um_city_label_error.config(text='')
+                                um_post_label_error.config(text='')
+                                um_email_label_error.config(text='')
+                                um_phone_label_error.config(text='')
+                                resetpas_btn.config(state='disabled', cursor='')
+                                add_userbtn.config(state='normal', cursor='hand2')
+                                upd_userbtn.config(state='disabled', cursor='')
+                                del_userbtn.config(state='disabled', cursor='')
+                                selected_accstat.config(text="Acc Status: No User Selected", fg="#bfbfbf")
+                                accstat_lbl.config(image=accstat_icon1)
+                                reactivate_userbtn.config(state='disabled', cursor='')
+                                loading_splash.destroy()
+                                messagebox.showinfo("User Update Successful", "The personal details for user {} had been updated!".format(user_id))
+                                usermanageWindow.attributes('-disabled', 0)
+                                usermanageWindow.focus_force()
+                            # If error
+                            else:
+                                loading_splash.destroy()
+                                messagebox.showerror("User Update Failed", "Failed to update the user's personal details! Please contact developer for help!")
+                                usermanageWindow.attributes('-disabled', 0)
+                                usermanageWindow.focus_force() 
+                        except pymysql.Error as e:
+                            loading_splash.destroy()
+                            usermanageWindow.attributes('-disabled', 0)
+                            messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                            print("Error %d: %s" % (e.args[0], e.args[1]))
+                            return False
+                        finally:
+                            # Close the connection
+                            mysql_con.close()
+    # Delete existing user function
+    def deleteuser(id):
+        user_id = id.get()
+        
+        if len(user_id) == 0:
+            messagebox.showerror("Delete User Failed", "There was no user account selected to be deleted!")
+        else:
+            confirmbox = messagebox.askquestion('e-Vision', 'Are you sure to delete(deactivate) the user {}? (Action cannot undo once proceed)'.format(user_id), icon='warning')
+            if confirmbox == 'yes':
+                loading(usermanageWindow)
+                usermanageWindow.update()
+                try:
+                    mysql_con = MySqlConnector(sql_config) # Initial connection
+                    sql = '''UPDATE User SET user_isDelete = 1 WHERE user_id = (%s)''' # Delete user (soft delete)
+                    delete = mysql_con.update(sql, (user_id))
+                    if delete > 0:
+                        # Refresh the list
+                        refreshuerlist()
+                        uid_text.delete(0, END)
+                        ufname_text.delete(0, END)
+                        ulname_text.delete(0, END)
+                        add_text.delete(0, END)
+                        city_text.delete(0, END)
+                        post_val.set("")
+                        post_text.delete(0, END)
+                        state_text.current(0)
+                        email_text.delete(0, END)
+                        phone_text.delete(0, END)
+                        uid_text.config(state='disabled')
+                        um_fname_label_error.config(text='')
+                        um_lname_label_error.config(text='')
+                        um_add_label_error.config(text='')
+                        um_city_label_error.config(text='')
+                        um_post_label_error.config(text='')
+                        um_email_label_error.config(text='')
+                        um_phone_label_error.config(text='')
+                        resetpas_btn.config(state='disabled', cursor='')
+                        add_userbtn.config(state='normal', cursor='hand2')
+                        upd_userbtn.config(state='disabled', cursor='')
+                        del_userbtn.config(state='disabled', cursor='')
+                        selected_accstat.config(text="Acc Status: No User Selected", fg="#bfbfbf")
+                        accstat_lbl.config(image=accstat_icon1)
+                        reactivate_userbtn.config(state='disabled', cursor='')
+                        loading_splash.destroy()
+                        messagebox.showinfo("User Deletion Successful", "The account for user {} had been deleted(deactivated)!".format(user_id))
+                        usermanageWindow.attributes('-disabled', 0)
+                        usermanageWindow.focus_force()
+                    # If error
+                    else:
+                        loading_splash.destroy()
+                        messagebox.showerror("User Deletion Failed", "Failed to delete(deactivate) the user account! Please contact developer for help!")
+                        usermanageWindow.attributes('-disabled', 0)
+                        usermanageWindow.focus_force() 
+                except pymysql.Error as e:
+                    loading_splash.destroy()
+                    usermanageWindow.attributes('-disabled', 0)
+                    messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                    print("Error %d: %s" % (e.args[0], e.args[1]))
+                    return False
+                finally:
+                    # Close the connection
+                    mysql_con.close()
+    # Re-active deleted user function
+    def reactivateuser(id):
+        user_id = id.get()
+        
+        if tempselecteduser[10] == "Active":
+            messagebox.showerror("Reactivate User Failed", "The selected user was an existing active account!")
+        elif len(user_id) == 0:
+            messagebox.showerror("Reactivate User Failed", "There was no user account selected to be reactivated!")
+        else:
+            confirmbox = messagebox.askquestion('e-Vision', 'Are you sure to reactivate the deactivated(deleted) user {}?'.format(user_id), icon='warning')
+            if confirmbox == 'yes':
+                loading(usermanageWindow)
+                usermanageWindow.update()
+                try:
+                    mysql_con = MySqlConnector(sql_config) # Initial connection
+                    sql = '''UPDATE User SET user_isDelete = 0 WHERE user_id = (%s)''' # Delete user (soft delete)
+                    delete = mysql_con.update(sql, (user_id))
+                    if delete > 0:
+                        # Refresh the list
+                        refreshuerlist()
+                        uid_text.delete(0, END)
+                        ufname_text.delete(0, END)
+                        ulname_text.delete(0, END)
+                        add_text.delete(0, END)
+                        city_text.delete(0, END)
+                        post_val.set("")
+                        post_text.delete(0, END)
+                        state_text.current(0)
+                        email_text.delete(0, END)
+                        phone_text.delete(0, END)
+                        uid_text.config(state='disabled')
+                        um_fname_label_error.config(text='')
+                        um_lname_label_error.config(text='')
+                        um_add_label_error.config(text='')
+                        um_city_label_error.config(text='')
+                        um_post_label_error.config(text='')
+                        um_email_label_error.config(text='')
+                        um_phone_label_error.config(text='')
+                        resetpas_btn.config(state='disabled', cursor='')
+                        add_userbtn.config(state='normal', cursor='hand2')
+                        upd_userbtn.config(state='disabled', cursor='')
+                        del_userbtn.config(state='disabled', cursor='')
+                        selected_accstat.config(text="Acc Status: No User Selected", fg="#bfbfbf")
+                        accstat_lbl.config(image=accstat_icon1)
+                        reactivate_userbtn.config(state='disabled', cursor='')
+                        loading_splash.destroy()
+                        messagebox.showinfo("User Reactivation Successful", "The account for deactivated(deleted) user {} had been reactivated!".format(user_id))
+                        usermanageWindow.attributes('-disabled', 0)
+                        usermanageWindow.focus_force()
+                    # If error
+                    else:
+                        loading_splash.destroy()
+                        messagebox.showerror("User Reactivation Failed", "Failed to delete(deactivate) the user account! Please contact developer for help!")
+                        usermanageWindow.attributes('-disabled', 0)
+                        usermanageWindow.focus_force() 
+                except pymysql.Error as e:
+                    loading_splash.destroy()
+                    usermanageWindow.attributes('-disabled', 0)
+                    messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                    print("Error %d: %s" % (e.args[0], e.args[1]))
+                    return False
+                finally:
+                    # Close the connection
+                    mysql_con.close()
     
-    global usermanageWindow
     
     # Configure  window attribute
     mainWindow.withdraw()
@@ -2694,7 +3172,7 @@ def usermanagementPage():
                   '2) Reset Password (Existing User): Select the user in the list \nand click on reset button, a temporary password will be generated \nand send to user email immediately')
     fpas = Frame(usermanageWindow, bg="#EDF1F7")
     fpas.grid(row=9, column=0, columnspan=3, padx=round(50*ratio), sticky="new")
-    resetpas_btn = Button(fpas, state='disabled', text="Reset Password", font=("Arial Rounded MT Bold", round(12*ratio)), width=round(20*ratio), relief=RIDGE, bd=1, bg="#6c757d", fg="white", activebackground="#4D5358", activeforeground="white")
+    resetpas_btn = Button(fpas, state='disabled', command=lambda:resetpassword(uid_text.get()), text="Reset Password", font=("Arial Rounded MT Bold", round(12*ratio)), width=round(20*ratio), relief=RIDGE, bd=1, bg="#6c757d", fg="white", activebackground="#4D5358", activeforeground="white")
     resetpas_btn.pack(side=LEFT)
     add_label = Label(usermanageWindow, text="Address Line", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
     add_label.grid(row=10, column=0, columnspan=3, sticky="sw", padx=(round(50*ratio), round(10*ratio)), pady=(round(10*ratio), 0))
@@ -2812,11 +3290,11 @@ def usermanagementPage():
     add_userbtn.pack(expand=TRUE, fill=BOTH)
     f9 = Frame(usermanageWindow, bd=round(4*ratio), bg="#18bc9b")
     f9.grid(row=21, column=0, columnspan=3, sticky="nsew", padx=round(50*ratio), pady= round(5*ratio))
-    upd_userbtn = Button(f9, state="disabled", text="Update User Info", font=("Arial Rounded MT Bold", round(12*ratio)), bg="#18bc9b", fg="white", relief=FLAT, bd=0, activebackground="#18bc9b", activeforeground="white")
+    upd_userbtn = Button(f9, state="disabled", command=lambda:updateuser(uid_text, ufname_text, ulname_text, add_text, city_text, post_text, state_text, email_text, phone_text), text="Update User Info", font=("Arial Rounded MT Bold", round(12*ratio)), bg="#18bc9b", fg="white", relief=FLAT, bd=0, activebackground="#18bc9b", activeforeground="white")
     upd_userbtn.pack(expand=TRUE, fill=BOTH)
     f10 = Frame(usermanageWindow, bd=round(4*ratio), bg="#dc3545")
     f10.grid(row=22, column=0, columnspan=3, sticky="nsew", padx=round(50*ratio), pady=round(5*ratio))
-    del_userbtn = Button(f10, state="disabled", text="Delete User", font=("Arial Rounded MT Bold", round(12*ratio)), bg="#dc3545", fg="white", relief=FLAT, bd=0, activebackground="#dc3545", activeforeground="white")
+    del_userbtn = Button(f10, state="disabled", command=lambda:deleteuser(uid_text), text="Delete User", font=("Arial Rounded MT Bold", round(12*ratio)), bg="#dc3545", fg="white", relief=FLAT, bd=0, activebackground="#dc3545", activeforeground="white")
     del_userbtn.pack(expand=TRUE, fill=BOTH)
 
     # Right components
@@ -2831,13 +3309,14 @@ def usermanagementPage():
     filterfield_text.pack(fill=BOTH, expand=True)
     f11b = Frame(f11)
     f11b.pack(side=LEFT,  padx=round(10*ratio))
-    filter_opt = ttk.Combobox(f11b, font=("Lato", round(10*ratio)), background="white", width=round(15*ratio))
-    filter_opt['values'] = ('All',
+    filter_opt = ttk.Combobox(f11b, font=("Lato", round(10*ratio)), background="white", width=round(25*ratio))
+    filter_opt['values'] = ('All (Except Deactivated)',
                           'User ID', 
                           'First Name',
                           'Last Name',
                           'Email',
-                          'Phone Number')
+                          'Phone Number',
+                          'Deactivated(Deleted) Status')
     filter_opt.pack(fill=BOTH, expand=True)
     filter_opt.current(0)
     filter_opt['state'] = 'readonly'
@@ -2846,17 +3325,39 @@ def usermanagementPage():
     f11c.pack(side=LEFT)
     search_userbtn = Button(f11c, cursor="hand2", text="Search", command=lambda:searchUserByFilter(filterfield_text.get(), filter_opt.get()), font=("Arial Rounded MT Bold", round(11*ratio)), width=round(12*ratio), bg="#E6E6E6", fg="black", relief=RIDGE, bd=1, activebackground="#B4B1B1", activeforeground="black")
     search_userbtn.pack()
+    f11d = Frame(f11)
+    f11d.pack(side=RIGHT)
+    reactivate_userbtn = Button(f11d, state='disabled', command=lambda:reactivateuser(uid_text), text="Re-activate", font=("Arial Rounded MT Bold", round(11*ratio)), width=round(14*ratio), bg="#E6E6E6", fg="black", relief=RIDGE, bd=1, activebackground="#B4B1B1", activeforeground="black")
+    reactivate_userbtn.pack()
+    view_title = Label(usermanageWindow, text="Current Table View: {}".format(filter_opt.get()), font=("Arial Rounded MT Bold", round(11*ratio)), bg="#293e50", fg="white")
+    view_title.grid(row=0, column=3, columnspan=2, sticky="sw", padx=round(60*ratio))
+    f11e = Frame(usermanageWindow, bg="#293e50")
+    f11e.grid(row=0, column=4, sticky="se", padx=round(60*ratio))
+    selected_accstat = Label(f11e, text="Acc Status: No User Selected", font=("Arial Rounded MT Bold", round(10*ratio)), bg="#293e50", fg="#bfbfbf")
+    selected_accstat.pack(side=RIGHT)
+    accstat_icon1 = Image.open('asset/neutral_status.png')
+    accstat_icon1 = accstat_icon1.resize((round(20*ratio),round(20*ratio)))
+    accstat_icon1 = ImageTk.PhotoImage(accstat_icon1)
+    accstat_icon2 = Image.open('asset/active_status.png')
+    accstat_icon2 = accstat_icon2.resize((round(20*ratio),round(20*ratio)))
+    accstat_icon2 = ImageTk.PhotoImage(accstat_icon2)
+    accstat_icon3 = Image.open('asset/deactivate_status.png')
+    accstat_icon3 = accstat_icon3.resize((round(20*ratio),round(20*ratio)))
+    accstat_icon3 = ImageTk.PhotoImage(accstat_icon3)
+    accstat_lbl = Label(f11e, image=accstat_icon1, bg="#293e50")
+    accstat_lbl.image = accstat_icon1
+    accstat_lbl.pack(side=RIGHT)
     # Treeview frame
-    usrmng_tree_frame = Frame(usermanageWindow)
+    usrmng_tree_frame = Frame(usermanageWindow, relief=FLAT, bd=0)
     usrmng_tree_frame.grid(row=2, column=3, rowspan=20, columnspan=2, padx=round(60*ratio))
     # Treeview components
-    usrmng_tree_vscroll = Scrollbar(usrmng_tree_frame)
+    usrmng_tree_vscroll = Scrollbar(usrmng_tree_frame, relief=FLAT, bd=0)
     usrmng_tree_vscroll.pack(side=RIGHT, fill=Y)
-    usrmng_tree_hscroll = Scrollbar(usrmng_tree_frame, orient='horizontal')
+    usrmng_tree_hscroll = Scrollbar(usrmng_tree_frame, orient='horizontal', relief=FLAT, bd=0)
     usrmng_tree_hscroll.pack(side=BOTTOM, fill=X)
-    column_headerlist = ['user_id', 'user_firstname', 'user_lastname', 'user_addressline', 'user_city', 'user_postcode', 'user_state', 'user_email', 'user_phone', 'user_lastlogin']
+    column_headerlist = ['user_id', 'user_firstname', 'user_lastname', 'user_addressline', 'user_city', 'user_postcode', 'user_state', 'user_email', 'user_phone', 'user_lastlogin', 'user_isDelete']
     usrmng_tree = ttk.Treeview(usrmng_tree_frame, columns=column_headerlist, show='headings', yscrollcommand=usrmng_tree_vscroll.set, xscrollcommand=usrmng_tree_hscroll.set, selectmode="browse", height=round(22*ratio))
-    usrmng_tree.pack(side=TOP)
+    usrmng_tree.pack(side=TOP, expand=FALSE)
     style.map('Treeview', background=[('selected', '#04D8AE')])  #selected color
     # Configure scrollbar
     usrmng_tree_vscroll.config(command=usrmng_tree.yview)
@@ -2872,17 +3373,19 @@ def usermanagementPage():
     usrmng_tree.heading('user_email', text='Email')
     usrmng_tree.heading('user_phone', text='Phone Number')
     usrmng_tree.heading('user_lastlogin', text='Last Login Period')
+    usrmng_tree.heading('user_isDelete', text='Account Status')
     # Define column width and alignments
     usrmng_tree.column('user_id', width=round(60*ratio), minwidth=round(60*ratio), anchor ='c')
-    usrmng_tree.column('user_firstname', width=round(100*ratio), minwidth=round(100*ratio), anchor ='c')
-    usrmng_tree.column('user_lastname', width=round(100*ratio), minwidth=round(100*ratio), anchor ='c')
+    usrmng_tree.column('user_firstname', width=round(90*ratio), minwidth=round(90*ratio), anchor ='c')
+    usrmng_tree.column('user_lastname', width=round(90*ratio), minwidth=round(90*ratio), anchor ='c')
     usrmng_tree.column('user_addressline', width=round(150*ratio), minwidth=round(150*ratio), anchor ='c')
     usrmng_tree.column('user_city', width=round(100*ratio), minwidth=round(100*ratio), anchor ='c')
     usrmng_tree.column('user_postcode', width=round(70*ratio), minwidth=round(70*ratio), anchor ='c')
-    usrmng_tree.column('user_state', width=round(100*ratio), minwidth=round(100*ratio), anchor ='c')
-    usrmng_tree.column('user_email', width=round(100*ratio), minwidth=round(100*ratio), anchor ='c')
+    usrmng_tree.column('user_state', width=round(105*ratio), minwidth=round(105*ratio), anchor ='c')
+    usrmng_tree.column('user_email', width=round(120*ratio), minwidth=round(120*ratio), anchor ='c')
     usrmng_tree.column('user_phone', width=round(100*ratio), minwidth=round(100*ratio), anchor ='c')
     usrmng_tree.column('user_lastlogin', width=round(160*ratio), minwidth=round(160*ratio), anchor ='c')
+    usrmng_tree.column('user_isDelete', width=round(100*ratio), minwidth=round(100*ratio), anchor ='c')
     # Fetch all users (default)
     usrmng_tree.tag_configure('oddrow', background="white")
     usrmng_tree.tag_configure('evenrow', background="#ecf3fd")
@@ -2891,13 +3394,14 @@ def usermanagementPage():
     userresult = serachAllUser()
     if userresult is not None:
         for dt in userresult:
+            acc_status = "Active" if dt[14] == 0 else "Deactivated"
             if usrmng_count % 2 == 0:
-                usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('evenrow',))
+                usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12], acc_status), tags=('evenrow',))
             else:
-                usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('oddrow',))
+                usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12], acc_status), tags=('oddrow',))
             usrmng_count +=1
-    # Selection bind
-    usrmng_tree.bind("<ButtonRelease-1>", userselected)
+    # Selection bin
+    usrmng_tree.bind("<ButtonRelease-1>", userselected) #<<TreeviewSelect>> <ButtonRelease-1>
     # Clear selected btn
     f12 = Frame(usermanageWindow, bg="#293e50")
     f12.grid(row=22, column=3, columnspan=2, sticky="nsew", padx=round(60*ratio), pady=round(5*ratio))
