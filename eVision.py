@@ -2,8 +2,10 @@
 # Intake: UC3F2111CS(IS)
 # Program Name: Main GUI Integration
 # Date Created: 05/05/2022
-import os, io, re, secrets, string, pymysql
+import os, io, re, secrets, string, pymysql, customtkinter, tkintermapview
 import pandas as pd
+import customtkinter
+from tkintermapview import TkinterMapView
 from tkinter import *
 from tkinter import messagebox
 from tkinter import ttk
@@ -630,6 +632,33 @@ def uploadimg(filepath):
             fields='id'
         ).execute()
 
+# Upload cideo to cloud storage function
+def uploadvid(filepath):
+    # Get name and type
+    head, tail = os.path.split(filepath)
+    component = tail.split(".")
+    
+    # Upload a file to folder
+    file_names = [filepath]
+    if component[1].lower() == "mp4":
+        mime_types = ['video/mp4'] #mp4
+    else:
+        mime_types = ['video/x-msvideo'] #avi
+
+    for file_name, mime_type in zip(file_names, mime_types):
+        file_metadata = {
+            'name': tail,
+            'parents': [folder_id]
+        }
+
+        media = MediaFileUpload(file_name, mimetype=mime_type)
+        
+        service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id'
+        ).execute()
+
 # Delete existing file
 def deletefile(fileid):
     file_id = fileid
@@ -1161,7 +1190,7 @@ def mainPage():
         btn_mngcamimg = Image.open('asset/managecam_btn.png')
         btn_mngcamimg = btn_mngcamimg.resize((round(182*ratio),round(50*ratio)), Image.ANTIALIAS)
         btn_mngcamimg = ImageTk.PhotoImage(btn_mngcamimg)
-        btn_mngcamera = Button(btn_frame2, cursor="hand2", image=btn_mngcamimg, bg="#EDF1F7", relief=FLAT, bd=0, highlightthickness=0, activebackground="#EDF1F7")
+        btn_mngcamera = Button(btn_frame2, cursor="hand2", command=lambda:cammanagementPage(), image=btn_mngcamimg, bg="#EDF1F7", relief=FLAT, bd=0, highlightthickness=0, activebackground="#EDF1F7")
         btn_mngcamera.image = btn_mngcamimg
         btn_mngcamera.pack(pady=(round(10*ratio),0))
         btn_frame3 = Frame(mainWindow, bg="#EDF1F7")
@@ -2039,7 +2068,7 @@ def updatepassPage():
 #==============================================================================================#
 ## Admin - Manage User Page Interface
 def usermanagementPage():
-    global usermanageWindow, tempselecteduser
+    global usermanageWindow, tempselecteduser, cvalue, copt
     tempselecteduser = tuple()
     cvalue = None
     copt = 'All (Except Deactivated)'
@@ -2286,9 +2315,9 @@ def usermanagementPage():
                     for dt in result_details:
                         acc_status = "Active" if dt[14] == 0 else "Deactivated"
                         if usrmng_count % 2 == 0:
-                            usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12], acc_status), tags=('evenrow',))
+                            usrmng_tree.insert("", 'end', values=(dt[0], acc_status, dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('evenrow',))
                         else:
-                            usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12], acc_status), tags=('oddrow',))
+                            usrmng_tree.insert("", 'end', values=(dt[0], acc_status, dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('oddrow',))
                         usrmng_count +=1
                     view_title.config(text='Current Table View: {}'.format(opt))
                     loading_splash.destroy()
@@ -2324,9 +2353,9 @@ def usermanagementPage():
                     for dt in result_details2:
                         acc_status = "Active" if dt[14] == 0 else "Deactivated"
                         if usrmng_count % 2 == 0:
-                            usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12], acc_status), tags=('evenrow',))
+                            usrmng_tree.insert("", 'end', values=(dt[0], acc_status, dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('evenrow',))
                         else:
-                            usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12], acc_status), tags=('oddrow',))
+                            usrmng_tree.insert("", 'end', values=(dt[0], acc_status, dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('oddrow',))
                         usrmng_count +=1
                     view_title.config(text='Current Table View: {}'.format(opt))
                     loading_splash.destroy()
@@ -2375,9 +2404,9 @@ def usermanagementPage():
                         for dt in result_details1:
                             acc_status = "Active" if dt[14] == 0 else "Deactivated"
                             if usrmng_count % 2 == 0:
-                                usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12], acc_status), tags=('evenrow',))
+                                usrmng_tree.insert("", 'end', values=(dt[0], acc_status, dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('evenrow',))
                             else:
-                                usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12], acc_status), tags=('oddrow',))
+                                usrmng_tree.insert("", 'end', values=(dt[0], acc_status, dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('oddrow',))
                             usrmng_count +=1
                         usermanageWindow.attributes('-disabled', 0)
                         view_title.config(text='Current Table View: {}'.format(opt))
@@ -2458,12 +2487,12 @@ def usermanagementPage():
         if(len(tempselecteduser) > 0):
             uid_text.config(state='normal')
             uid_text.insert(0, tempselecteduser[0])
-            ufname_text.insert(0, tempselecteduser[1])
-            ulname_text.insert(0, tempselecteduser[2])
-            add_text.insert(0, tempselecteduser[3])
-            city_text.insert(0, tempselecteduser[4])
-            post_text.insert(0, tempselecteduser[5])
-            ustate = tempselecteduser[6]
+            ufname_text.insert(0, tempselecteduser[2])
+            ulname_text.insert(0, tempselecteduser[3])
+            add_text.insert(0, tempselecteduser[4])
+            city_text.insert(0, tempselecteduser[5])
+            post_text.insert(0, tempselecteduser[6])
+            ustate = tempselecteduser[7]
             if ustate == 'Johor':
                 state_text.current(0)
             elif ustate == 'Kedah':
@@ -2496,10 +2525,10 @@ def usermanagementPage():
                 state_text.current(14)
             else:
                 state_text.current(15)
-            email_text.insert(0, tempselecteduser[7])
-            phone_text.insert(0, tempselecteduser[8])
+            email_text.insert(0, tempselecteduser[8])
+            phone_text.insert(0, tempselecteduser[9])
             uid_text.config(state='disabled')
-            if tempselecteduser[10] == "Active":
+            if tempselecteduser[1] == "Active":
                 uid_selection_lbl.config(text="Employee Data Selected: {}".format(tempselecteduser[0]))
                 resetpas_btn.config(state='normal', cursor='hand2')
                 add_userbtn.config(state='disabled', cursor='')
@@ -2571,7 +2600,7 @@ def usermanagementPage():
             if not len(zip_code) == 5:
                 um_post_label_error.config(text="Must Be 5 Digits!")
             else:
-                confirmbox = messagebox.askquestion('e-Vision', 'Are you sure to create new employee account with email of {}?'.format(email_address), icon='warning')
+                confirmbox = messagebox.askquestion('e-Vision', 'Are you confirm to create new employee account with email of {}?'.format(email_address), icon='warning')
                 if confirmbox == 'yes':
                     loading(usermanageWindow)
                     usermanageWindow.update()
@@ -2712,9 +2741,9 @@ def usermanagementPage():
             for dt in result_details:
                 acc_status = "Active" if dt[14] == 0 else "Deactivated"
                 if usrmng_count % 2 == 0:
-                    usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12], acc_status), tags=('evenrow',))
+                    usrmng_tree.insert("", 'end', values=(dt[0], acc_status, dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('evenrow',))
                 else:
-                    usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12], acc_status), tags=('oddrow',))
+                    usrmng_tree.insert("", 'end', values=(dt[0], acc_status, dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('oddrow',))
                 usrmng_count +=1
         filterfield_text.delete(0, 'end')
         filterfield_text.config(state='disabled')
@@ -2845,7 +2874,7 @@ def usermanagementPage():
                         input_addline = input_addline.rstrip(",")
                     
                     # Check for data changes
-                    if(first_name==tempselecteduser[1] and last_name==tempselecteduser[2] and input_addline==tempselecteduser[3] and city_name==tempselecteduser[4] and state_name==tempselecteduser[6] and zip_code==tempselecteduser[5] and email_address==tempselecteduser[7] and phone_number==tempselecteduser[8]):
+                    if(first_name==tempselecteduser[2] and last_name==tempselecteduser[3] and input_addline==tempselecteduser[4] and city_name==tempselecteduser[5] and state_name==tempselecteduser[7] and zip_code==tempselecteduser[6] and email_address==tempselecteduser[8] and phone_number==tempselecteduser[9]):
                         data_changes = False
                         loading_splash.destroy()
                         messagebox.showerror("User Update Not Execute", "The update process did not executed because there are no user's personal details changes had been made!")
@@ -2855,7 +2884,7 @@ def usermanagementPage():
                         data_changes = True
                     
                     # Check for email redundancy
-                    if email_address != tempselecteduser[7]:
+                    if email_address != tempselecteduser[8]:
                         try:
                             mysql_con = MySqlConnector(sql_config) # Initial connection
                             sql = '''SELECT user_email FROM User'''
@@ -3000,7 +3029,7 @@ def usermanagementPage():
     def reactivateuser(id):
         user_id = id.get()
         
-        if tempselecteduser[10] == "Active":
+        if tempselecteduser[1] == "Active":
             messagebox.showerror("Reactivate User Failed", "The selected user was an existing active account!")
         elif len(user_id) == 0:
             messagebox.showerror("Reactivate User Failed", "There was no user account selected to be reactivated!")
@@ -3100,7 +3129,7 @@ def usermanagementPage():
     usrmngtile = ImageTk.PhotoImage(usrmngtile)
     usrmngtile_label = Label(usermanageWindow, image=usrmngtile, bg="#EDF1F7")
     usrmngtile_label.image = usrmngtile
-    usrmngtile_label.grid(column=1, row=0, columnspan=2, rowspan=2, sticky="nsw", pady=(round(30*ratio), round(5*ratio)), padx=(round(20*ratio), 0))
+    usrmngtile_label.grid(column=1, row=0, columnspan=2, rowspan=2, sticky="nsw", pady=(round(30*ratio), round(5*ratio)))
     # User detail fields
     f0a = Frame(usermanageWindow, relief=FLAT, bd=0 , bg="#EDF1F7")
     f0a.grid(row=2, column=0, columnspan=3, sticky="nsew", padx=round(50*ratio))
@@ -3357,13 +3386,14 @@ def usermanagementPage():
     usrmng_tree_hscroll.pack(side=BOTTOM, fill=X)
     column_headerlist = ['user_id', 'user_firstname', 'user_lastname', 'user_addressline', 'user_city', 'user_postcode', 'user_state', 'user_email', 'user_phone', 'user_lastlogin', 'user_isDelete']
     usrmng_tree = ttk.Treeview(usrmng_tree_frame, columns=column_headerlist, show='headings', yscrollcommand=usrmng_tree_vscroll.set, xscrollcommand=usrmng_tree_hscroll.set, selectmode="browse", height=round(22*ratio))
-    usrmng_tree.pack(side=TOP, expand=FALSE)
+    usrmng_tree.pack(side=TOP, expand=FALSE, fill=Y)
     style.map('Treeview', background=[('selected', '#04D8AE')])  #selected color
     # Configure scrollbar
     usrmng_tree_vscroll.config(command=usrmng_tree.yview)
     usrmng_tree_hscroll.config(command=usrmng_tree.xview)
     # Define haeder column name
     usrmng_tree.heading('user_id', text='User ID')
+    usrmng_tree.heading('user_isDelete', text='Account Status')
     usrmng_tree.heading('user_firstname', text='First Name')
     usrmng_tree.heading('user_lastname', text='Last Name')
     usrmng_tree.heading('user_addressline', text='Address Line')
@@ -3373,9 +3403,9 @@ def usermanagementPage():
     usrmng_tree.heading('user_email', text='Email')
     usrmng_tree.heading('user_phone', text='Phone Number')
     usrmng_tree.heading('user_lastlogin', text='Last Login Period')
-    usrmng_tree.heading('user_isDelete', text='Account Status')
     # Define column width and alignments
     usrmng_tree.column('user_id', width=round(60*ratio), minwidth=round(60*ratio), anchor ='c')
+    usrmng_tree.column('user_isDelete', width=round(100*ratio), minwidth=round(100*ratio), anchor ='c')
     usrmng_tree.column('user_firstname', width=round(90*ratio), minwidth=round(90*ratio), anchor ='c')
     usrmng_tree.column('user_lastname', width=round(90*ratio), minwidth=round(90*ratio), anchor ='c')
     usrmng_tree.column('user_addressline', width=round(150*ratio), minwidth=round(150*ratio), anchor ='c')
@@ -3385,7 +3415,14 @@ def usermanagementPage():
     usrmng_tree.column('user_email', width=round(120*ratio), minwidth=round(120*ratio), anchor ='c')
     usrmng_tree.column('user_phone', width=round(100*ratio), minwidth=round(100*ratio), anchor ='c')
     usrmng_tree.column('user_lastlogin', width=round(160*ratio), minwidth=round(160*ratio), anchor ='c')
-    usrmng_tree.column('user_isDelete', width=round(100*ratio), minwidth=round(100*ratio), anchor ='c')
+    # Clear selected btn
+    f12 = Frame(usermanageWindow, bg="#293e50")
+    f12.grid(row=22, column=3, columnspan=2, sticky="nsew", padx=round(60*ratio), pady=round(5*ratio))
+    clr_selectedbtn = Button(f12, cursor="hand2", command=lambda:usrmngclearselected(), text="Clear Selected User", font=("Arial Rounded MT Bold", round(11*ratio)), width=round(25*ratio), bg="#E6E6E6", fg="black", relief=RIDGE, bd=1, activebackground="#B4B1B1", activeforeground="black")
+    clr_selectedbtn.pack(side=LEFT)
+    # Refresh list btn
+    refresh_userbtn = Button(f12, cursor="hand2", command=lambda:refreshlistbtn(), text="Refresh User List", font=("Arial Rounded MT Bold", round(11*ratio)), width=round(25*ratio), bg="#E6E6E6", fg="black", relief=RIDGE, bd=1, activebackground="#B4B1B1", activeforeground="black")
+    refresh_userbtn.pack(side=RIGHT)
     # Fetch all users (default)
     usrmng_tree.tag_configure('oddrow', background="white")
     usrmng_tree.tag_configure('evenrow', background="#ecf3fd")
@@ -3396,21 +3433,996 @@ def usermanagementPage():
         for dt in userresult:
             acc_status = "Active" if dt[14] == 0 else "Deactivated"
             if usrmng_count % 2 == 0:
-                usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12], acc_status), tags=('evenrow',))
+                usrmng_tree.insert("", 'end', values=(dt[0], acc_status, dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('evenrow',))
             else:
-                usrmng_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12], acc_status), tags=('oddrow',))
+                usrmng_tree.insert("", 'end', values=(dt[0], acc_status, dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('evenrow',))
             usrmng_count +=1
     # Selection bin
     usrmng_tree.bind("<ButtonRelease-1>", userselected) #<<TreeviewSelect>> <ButtonRelease-1>
+
+
+#==============================================================================================#
+#                                    Location Selector Page                                    #
+#==============================================================================================#
+## Admin - Location Selector Page Interface
+def mapselectorPage():
+    global marker_loc, adr
+    marker_loc = None
+    adr = None
+    
+    ## Function List
+    def clear_marker_event():
+        global marker_loc, adr
+        if marker_loc is not None:
+            marker_loc.delete()
+            marker_loc = None
+            adr = None
+    def add_marker_event(coords):
+        global marker_loc
+        clear_marker_event()
+        marker_loc = map_widget.set_marker(coords[0], coords[1], text="Pointer")
+    def set_marker_event():
+        global marker_loc
+        clear_marker_event()
+        current_position = map_widget.get_position()
+        marker_loc = map_widget.set_marker(current_position[0], current_position[1], text="Pointer")
+    def search_event(event=None):
+        map_widget.set_address(entry.get())
+        slider_1.set(map_widget.zoom)
+    def slider_event(value):
+        map_widget.set_zoom(value)
+    def confirm_location():
+        global adr
+        if marker_loc is None:
+            messagebox.showerror("Location Selection Error", "There was no location being selected! Please place a marker on the locatoin of the camera before proceeding.")
+        else:
+            confirmbox = messagebox.askquestion('e-Vision', "Are you confirm to mark this pointer's location as camera's location?", icon='warning')
+            if confirmbox == 'yes':
+                loading(mapselectorWindow)
+                mapselectorWindow.update()
+                adr = tkintermapview.convert_coordinates_to_address(marker_loc.position[0], marker_loc.position[1])
+                street_text.config(state='normal')
+                city_text.config(state='normal')
+                state_text.config(state='normal')
+                lati_text.config(state='normal')
+                longi_text.config(state='normal')
+                street_text.delete(0,END)
+                city_text.delete(0,END)
+                state_text.delete(0,END)
+                lati_text.delete(0,END)
+                longi_text.delete(0,END)
+                street_text.insert(0, str(adr.street))
+                city_text.insert(0, str(adr.city))
+                state_text.insert(0, str(adr.state))
+                longi_text.insert(0, adr.latlng[0])
+                lati_text.insert(0, adr.latlng[1])
+                street_text.config(state='disabled')
+                city_text.config(state='disabled')
+                state_text.config(state='disabled')
+                lati_text.config(state='disabled')
+                longi_text.config(state='disabled')
+                location_label_error.config(text="")
+                loading_splash.destroy()
+                mapselectorWindow.grab_release()
+                mapselectorWindow.destroy()
+    
+    # Configure  window attribute
+    mapselectorWindow = Toplevel(cammanageWindow)
+    mapselectorWindow.title('e-Vision Location Selector')
+    mapselectorWindow.iconbitmap('asset/logo.ico')
+    height = 500
+    width = 800
+    x = (cscreen_width/2)-(width/2)
+    y = ((cscreen_height/2)-(height/2))-round(35*ratio)
+    mapselectorWindow.geometry(f'{width}x{height}+{round(x)}+{round(y)}')
+    mapselectorWindow.grab_set()
+    
+    mapselectorWindow.grid_columnconfigure(0, weight=0)
+    mapselectorWindow.grid_columnconfigure(1, weight=1)
+    mapselectorWindow.grid_rowconfigure(0, weight=1)
+
+    frame_left = customtkinter.CTkFrame(master=mapselectorWindow, width=150, corner_radius=0)
+    frame_left.grid(row=0, column=0, padx=0, pady=0, sticky="nsew")
+
+    frame_right = customtkinter.CTkFrame(master=mapselectorWindow, corner_radius=0)
+    frame_right.grid(row=0, column=1, rowspan=1, pady=0, padx=0, sticky="nsew")
+    
+    button_1 = customtkinter.CTkButton(master=frame_left,
+                                        text="Set Marker",
+                                        command=set_marker_event,
+                                        width=120, height=30,
+                                        border_width=0,
+                                        corner_radius=8)
+    button_1.grid(pady=(20, 0), padx=(20, 20), row=0, column=0)
+
+    button_2 = customtkinter.CTkButton(master=frame_left,
+                                        text="Remove Marker",
+                                        command=clear_marker_event,
+                                        width=120, height=30,
+                                        border_width=0,
+                                        corner_radius=8)
+    button_2.grid(pady=(20, 0), padx=(20, 20), row=1, column=0)
+    
+    button_3 = customtkinter.CTkButton(master=frame_left,
+                                        text="Confirm Location",
+                                        command=confirm_location,
+                                        width=120, height=30,
+                                        border_width=0,
+                                        corner_radius=8)
+    button_3.grid(pady=(20, 0), padx=(20, 20), row=2, column=0)
+    
+    frame_right.grid_rowconfigure(0, weight=1)
+    frame_right.grid_rowconfigure(1, weight=0)
+    frame_right.grid_columnconfigure(0, weight=1)
+    frame_right.grid_columnconfigure(1, weight=0)
+    frame_right.grid_columnconfigure(2, weight=1)
+
+    map_widget = TkinterMapView(frame_right, corner_radius=11)
+    map_widget.grid(row=0, rowspan=1, column=0, columnspan=3, sticky="nswe", padx=(20, 20), pady=(20, 0))
+    map_widget.set_address("Kuala Lumpur")
+    map_widget.set_zoom(10)
+    
+    map_widget.add_right_click_menu_command(label="Add Marker",
+                                        command=add_marker_event,
+                                        pass_coords=True)
+
+    entry = customtkinter.CTkEntry(master=frame_right,
+                                        placeholder_text="Type Address",
+                                        width=140,
+                                        height=30,
+                                        corner_radius=8)
+    entry.grid(row=1, column=0, sticky="we", padx=(20, 0), pady=20)
+    entry.entry.bind("<Return>", search_event)
+
+    button_5 = customtkinter.CTkButton(master=frame_right,
+                                            height=30,
+                                            text="Search",
+                                            command=search_event,
+                                            border_width=0,
+                                            corner_radius=8)
+    button_5.grid(row=1, column=1, sticky="w", padx=(20, 0), pady=20)
+
+    slider_1 = customtkinter.CTkSlider(master=frame_right,
+                                            width=200,
+                                            height=16,
+                                            from_=0, to=19,
+                                            border_width=5,
+                                            command=slider_event)
+    slider_1.grid(row=1, column=2, sticky="e", padx=20, pady=20)
+    slider_1.set(map_widget.zoom)
+    loading_splash.destroy()
+
+
+#==============================================================================================#
+#                                  Admin - Manage Camera Page                                  #
+#==============================================================================================#
+## Admin - Manage Camera Page Interface
+def cammanagementPage():
+    global cammanageWindow, tempselectedcam, tempsourcepath, street_text, city_text, state_text, lati_text, longi_text, cvalue, copt, location_label_error
+    tempselectedcam = tuple()
+    tempsourcepath = ""
+    cvalue = None
+    copt = 'All (Except Deactivated)'
+    
+    ## Function & Validation list for Camera Management Page
+    # Limit first name entry box length function
+    def camdescvalidation(u_input):
+        if len(u_input) > 255: 
+            camdesc_label_error.config(text="Exceed 255 Characters Length Limit!")
+            if len(cid_text.get()) == 0:
+                add_cambtn.config(state='disabled', cursor="")
+            else:
+                upd_cambtn.config(state='disabled', cursor="")
+                del_cambtn.config(state='disabled', cursor="")
+            return True 
+        elif len(u_input) > 0 and len(u_input) <= 255:
+            camdesc_label_error.config(text="")
+            if len(cid_text.get()) == 0: 
+                add_cambtn.config(state='normal', cursor="hand2")
+            elif not (len(cid_text.get()) == 0): 
+                upd_cambtn.config(state='normal', cursor="hand2")
+                del_cambtn.config(state='normal', cursor="hand2")
+            return True 
+        elif (len(u_input)==0):
+            camdesc_label_error.config(text="Invalid Empty Field!")
+            if len(cid_text.get()) == 0:
+                add_cambtn.config(state='disabled', cursor="")
+            else:
+                upd_cambtn.config(state='disabled', cursor="")
+                del_cambtn.config(state='disabled', cursor="")
+            return True 
+    # Filter camera callback fucntion
+    def usrmngcallback(eventObject):
+        if filter_opt.get() == 'All (Except Deactivated)' or filter_opt.get() == 'Deactivated(Deleted) Status':
+            filterfield_text.delete(0, 'end')
+            filterfield_text.config(state='disabled')
+        else:
+            filterfield_text.config(state='normal')
+            filterfield_text.focus()
+    # Search camera based on filter function
+    def searchCameraByFilter(value, opt):
+        global cvalue, copt
+        
+        cvalue = value
+        copt = opt
+        
+        if opt == 'All (Except Deactivated)':
+            try:
+                mysql_con = MySqlConnector(sql_config) # Initial connection
+                loading(cammanageWindow)
+                cammanageWindow.update()
+                sql = '''SELECT * FROM Camera WHERE cam_isDelete = 0'''
+                result_details = mysql_con.queryall(sql)
+                if result_details:
+                    cammng_tree.delete(*cammng_tree.get_children())
+                    cammng_count = 0
+                    for dt in result_details:
+                        cam_status = "Active" if dt[9] == 0 else "Deactivated"
+                        if cammng_count % 2 == 0:
+                            cammng_tree.insert("", 'end', values=(dt[0], cam_status, dt[1], dt[2], dt[4], dt[5], dt[6], dt[7], dt[8], dt[3]), tags=('evenrow',))
+                        else:
+                            cammng_tree.insert("", 'end', values=(dt[0], cam_status, dt[1], dt[2], dt[4], dt[5], dt[6], dt[7], dt[8], dt[3]), tags=('evenrow',))
+                        cammng_count +=1
+                    view_title.config(text='Current Table View: {}'.format(opt))
+                    loading_splash.destroy()
+                    cammanageWindow.attributes('-disabled', 0)
+                # If no existing data found
+                else:
+                    result_details = None
+                    cammng_tree.delete(*cammng_tree.get_children())
+                    cammng_count = 0
+                    view_title.config(text='Current Table View: {}'.format(opt))
+                    loading_splash.destroy()
+                    cammanageWindow.attributes('-disabled', 0)
+                    messagebox.showinfo("No Camera Data Found", "There was no existing camera records found in the system!")
+            except pymysql.Error as e:
+                loading_splash.destroy()
+                cammanageWindow.attributes('-disabled', 0)
+                messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                print("Error %d: %s" % (e.args[0], e.args[1]))
+                return False
+            finally:
+                # Close the connection
+                mysql_con.close()
+        elif opt ==  "Deactivated(Deleted) Status":  
+            try:
+                mysql_con = MySqlConnector(sql_config) # Initial connection
+                loading(cammanageWindow)
+                cammanageWindow.update()
+                sql = '''SELECT * FROM Camera WHERE cam_isDelete = 1'''
+                result_details2 = mysql_con.queryall(sql)
+                if result_details2:
+                    cammng_tree.delete(*cammng_tree.get_children())
+                    cammng_count = 0
+                    for dt in result_details2:
+                        cam_status = "Active" if dt[9] == 0 else "Deactivated"
+                        if cammng_count % 2 == 0:
+                            cammng_tree.insert("", 'end', values=(dt[0], cam_status, dt[1], dt[2], dt[4], dt[5], dt[6], dt[7], dt[8], dt[3]), tags=('evenrow',))
+                        else:
+                            cammng_tree.insert("", 'end', values=(dt[0], cam_status, dt[1], dt[2], dt[4], dt[5], dt[6], dt[7], dt[8], dt[3]), tags=('evenrow',))
+                        cammng_count +=1
+                    view_title.config(text='Current Table View: {}'.format(opt))
+                    loading_splash.destroy()
+                    cammanageWindow.attributes('-disabled', 0)
+                # If no existing data found
+                else:
+                    result_details2 = None
+                    cammng_tree.delete(*cammng_tree.get_children())
+                    cammng_count = 0
+                    view_title.config(text='Current Table View: {}'.format(opt))
+                    loading_splash.destroy()
+                    cammanageWindow.attributes('-disabled', 0)
+                    messagebox.showinfo("No Camera Data Found", "There was no existing deactivated camera records found in the system!")
+            except pymysql.Error as e:
+                loading_splash.destroy()
+                cammanageWindow.attributes('-disabled', 0)
+                messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                print("Error %d: %s" % (e.args[0], e.args[1]))
+                return False
+            finally:
+                # Close the connection
+                mysql_con.close()
+        else:
+            if not value:
+                message = "The value field should not be empty for " + opt + " fitlration option!"
+                messagebox.showerror("Invalid Empty Field", message)
+                filterfield_text.focus()
+            else:
+                try:
+                    mysql_con = MySqlConnector(sql_config) # Initial connection
+                    loading(cammanageWindow)
+                    if opt == 'Camera ID':
+                        sql = '''SELECT * FROM Camera WHERE cam_id LIKE CONCAT('%%', %s, '%%') AND cam_isDelete = 0'''
+                    elif opt == 'Camera Type':
+                        sql = '''SELECT * FROM Camera WHERE cam_type LIKE CONCAT('%%', %s, '%%') AND cam_isDelete = 0'''
+                    elif opt == 'Street Location':
+                        sql = '''SELECT * FROM Camera WHERE cam_street LIKE CONCAT('%%', %s, '%%') AND cam_isDelete = 0'''
+                    elif opt == 'City Location':
+                        sql = '''SELECT * FROM Camera WHERE cam_city LIKE CONCAT('%%', %s, '%%') AND cam_isDelete = 0'''
+                    else:
+                        sql = '''SELECT * FROM Camera WHERE cam_state LIKE CONCAT('%%', %s, '%%') AND cam_isDelete = 0'''
+                    result_details1 = mysql_con.queryall(sql, (value))
+                    if result_details1:
+                        cammng_tree.delete(*cammng_tree.get_children())
+                        cammng_count = 0
+                        for dt in result_details1:
+                            cam_status = "Active" if dt[9] == 0 else "Deactivated"
+                            if cammng_count % 2 == 0:
+                                cammng_tree.insert("", 'end', values=(dt[0], cam_status, dt[1], dt[2], dt[4], dt[5], dt[7], dt[8], dt[9], dt[3]), tags=('evenrow',))
+                            else:
+                                cammng_tree.insert("", 'end', values=(dt[0], cam_status, dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[3]), tags=('evenrow',))
+                            cammng_count +=1
+                        cammanageWindow.attributes('-disabled', 0)
+                        view_title.config(text='Current Table View: {}'.format(opt))
+                        loading_splash.destroy()
+                    # If no existing data found
+                    else:
+                        result_details1 = None
+                        cammng_tree.delete(*cammng_tree.get_children())
+                        cammng_count = 0
+                        cammanageWindow.attributes('-disabled', 0)
+                        view_title.config(text='Current Table View: {}'.format(opt))
+                        loading_splash.destroy()
+                        messagebox.showinfo("No Camera Data Found", "There was no such camera records found based on the filtration value!")
+                except pymysql.Error as e:
+                    loading_splash.destroy()
+                    cammanageWindow.attributes('-disabled', 0)
+                    messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                    print("Error %d: %s" % (e.args[0], e.args[1]))
+                    return False
+                finally:
+                    # Close the connection
+                    mysql_con.close() 
+    # Search all camera function
+    def serachAllCamera():
+        global cvalue, copt
+        
+        cvalue = None
+        copt = 'All (Except Deactivated)'
+        loading(cammanageWindow)
+        try:
+            mysql_con = MySqlConnector(sql_config) # Initial connection
+            sql = '''SELECT * FROM Camera WHERE cam_isDelete = 0'''
+            result_details = mysql_con.queryall(sql)
+            if result_details:
+                cammanageWindow.attributes('-disabled', 0)
+                loading_splash.destroy()
+                return result_details
+            # If no existing data found
+            else:
+                result = None
+                cammanageWindow.attributes('-disabled', 0)
+                loading_splash.destroy()
+                messagebox.showinfo("No Camera Data Found", "There was no existing camera records found in the system!")
+                return result_details
+        except pymysql.Error as e:
+            loading_splash.destroy()
+            cammanageWindow.attributes('-disabled', 0)
+            messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+            print("Error %d: %s" % (e.args[0], e.args[1]))
+            return False
+        finally:
+            # Close the connection
+            mysql_con.close()
+    # Clear function
+    def clearselected():
+        global tempselectedcam, tempsourcepath
+
+        if len(tempselectedcam) > 0:
+            temp = list(tempselectedcam)
+            temp.clear()
+            tempselectedcam = tuple(temp)
+        cid_text.config(state='normal')
+        street_text.config(state='normal')
+        city_text.config(state='normal')
+        state_text.config(state='normal')
+        lati_text.config(state='normal')
+        longi_text.config(state='normal')
+        cid_text.delete(0, END)
+        camdesc_text.delete(0, END)
+        camtype_text.current(0)
+        tempsourcepath = ""
+        path_label.config(text=tempsourcepath)
+        street_text.delete(0, END)
+        city_text.delete(0, END)
+        state_text.delete(0, END)
+        lati_text.delete(0, END)
+        longi_text.delete(0, END)
+        cid_text.config(state='disabled')
+        street_text.config(state='disabled')
+        city_text.config(state='disabled')
+        state_text.config(state='disabled')
+        lati_text.config(state='disabled')
+        longi_text.config(state='disabled')
+        cid_selection_lbl.config(text='')
+        camdesc_label_error.config(text='')
+        camsource_label_error.config(text='')
+        location_label_error.config(text='')
+        add_cambtn.config(state='normal', cursor='hand2')
+        upd_cambtn.config(state='disabled', cursor='')
+        del_cambtn.config(state='disabled', cursor='')
+        selected_camstat.config(text="Cam Status: No Camera Selected", fg="#bfbfbf")
+        accstat_lbl.config(image=accstat_icon1)
+        reactivate_cambtn.config(state='disabled', cursor='')
+    # Select camera function
+    def camselected(e):
+        global tempselectedcam
+        
+        # Clear entry boxes
+        if len(tempselectedcam) > 0:
+            clearselected()
+        
+        selected = cammng_tree.focus() #returning index number
+        tempselectedcam = cammng_tree.item(selected, 'values') #returning list of values of selected cam
+        
+        # Display selected user
+        if(len(tempselectedcam) > 0):
+            cid_text.config(state='normal')
+            street_text.config(state='normal')
+            city_text.config(state='normal')
+            state_text.config(state='normal')
+            lati_text.config(state='normal')
+            longi_text.config(state='normal')
+            cid_text.insert(0, tempselectedcam[0])
+            camdesc_text.insert(0, tempselectedcam[2])
+            ctype = tempselectedcam[3]
+            if ctype == 'Toll Expressways':
+                camtype_text.current(0)
+            elif ctype == 'National Highways':
+                camtype_text.current(1)
+            elif ctype == 'Primary Roads':
+                camtype_text.current(2)
+            elif ctype == 'Secondary Roads':
+                camtype_text.current(3)
+            elif ctype == 'Minor Roads':
+                camtype_text.current(4)
+            elif ctype == 'Urban Collector Roads':
+                camtype_text.current(5)
+            else:
+                camtype_text.current(6)
+            tempsourcepath = tempselectedcam[9]
+            path_label.config(text=tempsourcepath)
+            street_text.insert(0, tempselectedcam[4])
+            city_text.insert(0, tempselectedcam[5])
+            state_text.insert(0, tempselectedcam[6])
+            lati_text.insert(0, tempselectedcam[7])
+            longi_text.insert(0, tempselectedcam[8])
+            cid_text.config(state='disabled')
+            street_text.config(state='disabled')
+            city_text.config(state='disabled')
+            state_text.config(state='disabled')
+            lati_text.config(state='disabled')
+            longi_text.config(state='disabled')
+            if tempselectedcam[1] == "Active":
+                cid_selection_lbl.config(text="Camera Data Selected: {}".format(tempselectedcam[0]))
+                add_cambtn.config(state='disabled', cursor='')
+                upd_cambtn.config(state='normal', cursor='hand2')
+                del_cambtn.config(state='normal', cursor='hand2')
+                selected_camstat.config(text="Cam Status: Active", fg="#19f000")
+                accstat_lbl.config(image=accstat_icon2)
+                reactivate_cambtn.config(state='disabled', cursor='')
+            else:
+                cid_selection_lbl.config(text="Employee Data Selected: {}".format(tempselecteduser[0]))
+                add_cambtn.config(state='disabled', cursor='')
+                upd_cambtn.config(state='disabled', cursor='')
+                del_cambtn.config(state='disabled', cursor='')
+                selected_camstat.config(text="Cam Status: Deactivated", fg="#f00000")
+                accstat_lbl.config(image=accstat_icon3)
+                reactivate_cambtn.config(state='normal', cursor='hand2')
+    # Clear selected camera function
+    def cammngclearselected():
+        global tempselectedcam, cvalue, copt
+        
+        confirmbox = messagebox.askquestion('e-Vision', 'Are you sure to clear the camera selection?', icon='warning')
+        if confirmbox == 'yes':
+            if len(tempselectedcam) > 0:  
+                clearselected()
+                searchCameraByFilter(cvalue, copt)
+                if len(cammng_tree.selection()) > 0:
+                    cammng_tree.selection_remove(cammng_tree.selection()[0])
+                messagebox.showinfo("e-Vision", "The previously selected camera had been clear.")
+            else:
+                messagebox.showerror("e-Vision", "There was no camera record being selected!")
+    # Refresh camera list function
+    def refreshcamlist():
+        global cvalue, copt
+        
+        cvalue = None
+        copt = 'All (Except Deactivated)'
+        
+        # Refresh the list
+        mysql_con = MySqlConnector(sql_config) # Initial connection
+        sql = '''SELECT * FROM Camera WHERE cam_isDelete = 0'''
+        result_details = mysql_con.queryall(sql)
+        if result_details:
+            cammng_tree.delete(*cammng_tree.get_children())
+            cammng_count = 0
+            for dt in result_details:
+                cam_status = "Active" if dt[9] == 0 else "Deactivated"
+                if cammng_count % 2 == 0:
+                    cammng_tree.insert("", 'end', values=(dt[0], cam_status, dt[1], dt[2], dt[4], dt[5], dt[6], dt[7], dt[8], dt[3]), tags=('evenrow',))
+                else:
+                    cammng_tree.insert("", 'end', values=(dt[0], cam_status, dt[1], dt[2], dt[4], dt[5], dt[6], dt[7], dt[8], dt[3]), tags=('evenrow',))
+                cammng_count +=1
+        filterfield_text.delete(0, 'end')
+        filterfield_text.config(state='disabled')
+        filter_opt.current(0)
+        view_title.config(text='Current Table View: All (Except Deactivated)')
+    # Refresh camera button function
+    def refreshlistbtn():
+        confirmbox = messagebox.askquestion('e-Vision', 'Are you sure to refresh the camera list? (Fields will be cleared out together)', icon='warning')
+        if confirmbox == 'yes':
+            loading(cammanageWindow)
+            cammanageWindow.update()
+            refreshcamlist()
+            clearselected()
+            loading_splash.destroy()
+            cammanageWindow.attributes('-disabled', 0)
+            cammanageWindow.focus_force()
+            messagebox.showinfo("e-Vision", "The camera list had been refreshed with the latest data records available.")
+    # Select camera source function
+    def selectsource():
+        global tempsourcepath
+        
+        file = askopenfile(parent=cammanageWindow, mode='rb', title='Choose a camera source file', filetypes=[("MP4", "*.mp4"), ("AVI", "*.avi")])
+        if not file:
+            pass
+        else:
+            size = os.path.getsize(file.name)
+            # Limit file size as 300 mb max
+            if size > 314572800:
+                messagebox.showerror("Add New Camera Failed", "The source of camera should not be exceeding 300MB! Please try to reduce the size or choose another file.")
+                tempsourcepath = ""
+                path_label.config(text=tempsourcepath)
+                camsource_label_error.config(text="No Source Selected!")
+            else:
+                tempsourcepath = file.name
+                path_label.config(text=tempsourcepath)
+                camsource_label_error.config(text="")
+    # Select location function
+    def selectlocation():
+        mapselectorPage()
+    # Add new camera function
+    def addnewcam(cdesc, ctype, csource, cstreet, ccity, cstate, clati, clongi):
+        empty = FALSE
+        # Get required field
+        cam_desc = cdesc.get()
+        cam_type = ctype.get()
+        cam_source = csource
+        cam_street = cstreet.get()
+        cam_city = ccity.get()
+        cam_state = cstate.get()
+        cam_latitude = clati.get().lower()
+        cam_longitude = clongi.get()
+        
+        # Validate empty field
+        if len(cam_desc) == 0:
+            camdesc_label_error.config(text="Invalid Empty Field!")
+            empty = TRUE
+        if len(cam_source) == 0:
+            camsource_label_error.config(text="No Source Selected!")
+            empty = TRUE
+        if len(cam_street) == 0:
+            location_label_error.config(text="No Location Selected")
+            empty = TRUE
+        if len(cam_city) == 0:
+            location_label_error.config(text="No Location Selected")
+            empty = TRUE
+        if len(cam_state) == 0:
+            location_label_error.config(text="No Location Selected")
+            empty = TRUE
+        if len(cam_latitude) == 0:
+            location_label_error.config(text="No Location Selected")
+            empty = TRUE
+        if len(cam_longitude) == 0:
+            location_label_error.config(text="No Location Selected")
+            empty = TRUE
+            
+        if not empty:
+            confirmbox = messagebox.askquestion('e-Vision', 'Are you confirm to create new CCTV camera at location ({}, {}, {})? (This process will take up to few minutes so please wait patiently if adding the new camera)'.format(cam_street, cam_city, cam_state), icon='warning')
+            if confirmbox == 'yes':
+                global tempsourcepath
+                print(tempsourcepath)
+                print("adding camera...")
+                loading(cammanageWindow)
+                cammanageWindow.update()
+                uploadvid(tempsourcepath)
+                temp_id = getfilelist()
+                        
+                try:
+                    mysql_con = MySqlConnector(sql_config) # Initial connection
+                    sql = '''INSERT INTO Camera (cam_desc, cam_type, cam_source, cam_street, cam_city, cam_state, cam_latitude, cam_longitude)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)''' # Insert Camera
+                    insert = mysql_con.update(sql, (cam_desc, cam_type, temp_id, cam_street, cam_city, cam_state, cam_latitude, cam_longitude,))
+                    if insert > 0:
+                        refreshcamlist()
+                        cid_text.config(state='normal')
+                        street_text.config(state='normal')
+                        city_text.config(state='normal')
+                        state_text.config(state='normal')
+                        lati_text.config(state='normal')
+                        longi_text.config(state='normal')
+                        cid_text.delete(0, END)
+                        camdesc_text.delete(0, END)
+                        camtype_text.current(0)
+                        tempsourcepath = ""
+                        path_label.config(text=tempsourcepath)
+                        street_text.delete(0, END)
+                        city_text.delete(0, END)
+                        state_text.delete(0, END)
+                        lati_text.delete(0, END)
+                        longi_text.delete(0, END)
+                        cid_text.config(state='disabled')
+                        street_text.config(state='disabled')
+                        city_text.config(state='disabled')
+                        state_text.config(state='disabled')
+                        lati_text.config(state='disabled')
+                        longi_text.config(state='disabled')
+                        cid_selection_lbl.config(text='')
+                        camdesc_label_error.config(text='')
+                        camsource_label_error.config(text='')
+                        location_label_error.config(text='')
+                        add_cambtn.config(state='normal', cursor='hand2')
+                        upd_cambtn.config(state='disabled', cursor='')
+                        del_cambtn.config(state='disabled', cursor='')
+                        selected_camstat.config(text="Cam Status: No Camera Selected", fg="#bfbfbf")
+                        accstat_lbl.config(image=accstat_icon1)
+                        reactivate_cambtn.config(state='disabled', cursor='')
+                        loading_splash.destroy()
+                        messagebox.showinfo("Add New Camera Successful", "The new camera (location: {}, {}, {}) had been successfully created!".format(cam_street, cam_city, cam_state))
+                        cammanageWindow.attributes('-disabled', 0)
+                        cammanageWindow.focus_force()
+                    # If error
+                    else:
+                        loading_splash.destroy()
+                        messagebox.showerror("Add New Camera Failed", "Failed to create the new camera for location ({}, {}, {})! Please contact developer for help!".format(cam_street, cam_city, cam_state))
+                        cammanageWindow.attributes('-disabled', 0)
+                        cammanageWindow.focus_force() 
+                except pymysql.Error as e:
+                    loading_splash.destroy()
+                    cammanageWindow.attributes('-disabled', 0)
+                    cammanageWindow.focus_force()
+                    messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                    print("Error %d: %s" % (e.args[0], e.args[1]))
+                    return False
+                finally:
+                    # Close the connection
+                    mysql_con.close()
+    
+    
+    
+    
+    # Configure  window attribute
+    mainWindow.withdraw()
+    cammanageWindow = Toplevel(mainWindow)
+    cammanageWindow.title('e-Vision Camera Management')
+    cammanageWindow.iconbitmap('asset/logo.ico')
+    height = round(980*ratio)
+    width = round(1600*ratio)
+    x = (cscreen_width/2)-(width/2)
+    y = ((cscreen_height/2)-(height/2))-round(35*ratio)
+    cammanageWindow.geometry(f'{width}x{height}+{round(x)}+{round(y)}')
+    cammanageWindow.resizable(False, False)
+    cammanageWindow.protocol("WM_DELETE_WINDOW", disable_event)
+    style.theme_use('mngstyle')
+    
+    # Configure row column attribute
+    cammanageWindow.grid_columnconfigure(2, weight=round(1*ratio))
+    cammanageWindow.grid_columnconfigure(3, weight=round(2*ratio))
+    cammanageWindow.grid_columnconfigure(4, weight=round(2*ratio))
+    cammanageWindow.grid_rowconfigure(23, weight=round(1*ratio))
+    
+    # Setup frames
+    left_frame = Frame(cammanageWindow, width=round(cscreen_width*0.2604), bg="#EDF1F7")
+    left_frame.grid(row=0, column=0, rowspan=24, columnspan=3, sticky="nsew")
+    dummy_frame = Frame(cammanageWindow, width=round(cscreen_width*0.08736), bg="#EDF1F7")
+    dummy_frame.grid(row=0, column=1, rowspan=24, sticky="nsew")
+    right_frame = Frame(cammanageWindow, width=round(cscreen_width*0.573), bg="#293e50")
+    right_frame.grid(row=0, column=3, rowspan=24, columnspan=2, sticky="nsew")
+    
+    # Left components
+    btn_frame1 = Canvas(cammanageWindow, bg="#EDF1F7")
+    btn_frame1.grid(row=0, column=0, sticky="nsw", padx=round(10*ratio), pady=round(10*ratio))
+    backmainbtn(btn_frame1, cammanageWindow, "#EDF1F7")
+    # Header title
+    cammngtile = Image.open('asset/camera_management.png')
+    cammngtile = cammngtile.resize((round(325*ratio),round(85*ratio)))
+    cammngtile = ImageTk.PhotoImage(cammngtile)
+    cammngtile_label = Label(cammanageWindow, image=cammngtile, bg="#EDF1F7")
+    cammngtile_label.image = cammngtile
+    cammngtile_label.grid(column=1, row=0, columnspan=2, rowspan=2, sticky="nsw", pady=(round(50*ratio), round(15*ratio)))
+    # Camera detail fields
+    f0a = Frame(cammanageWindow, relief=FLAT, bd=0 , bg="#EDF1F7")
+    f0a.grid(row=2, column=0, columnspan=3, sticky="nsew", padx=round(50*ratio))
+    cid_label = Label(f0a, text="Camera ID", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
+    cid_label.pack(side=LEFT)
+    info_icon = Image.open('asset/info.png')
+    info_icon = info_icon.resize((round(20*ratio),round(20*ratio)))
+    info_icon = ImageTk.PhotoImage(info_icon)
+    info_lbl = Label(f0a, image=info_icon, bg="#EDF1F7")
+    info_lbl.image = info_icon
+    info_lbl.pack(side=LEFT)
+    cid_selection_lbl = Label(cammanageWindow, text="", font=("Arial Rounded MT Bold", round(9*ratio)), bg="#EDF1F7", fg="green")
+    cid_selection_lbl.grid(row=2, column=1, columnspan=2, sticky="nse", padx=(round(10*ratio), round(50*ratio)))
+    f0 = Frame(cammanageWindow, borderwidth=round(2*ratio), relief=SUNKEN, bg="#f0f0f0")
+    f0.grid(row=3, column=0, columnspan=3, padx=round(50*ratio), sticky="new")
+    cid_icon = Image.open('asset/cctv.png')
+    cid_icon = cid_icon.resize((round(25*ratio),round(25*ratio)))
+    cid_icon = ImageTk.PhotoImage(cid_icon)
+    cidicon_lbl = Label(f0, image=cid_icon, bg="#f0f0f0")
+    cidicon_lbl.image = cid_icon
+    cidicon_lbl.pack(side=LEFT, fill=BOTH, padx=(round(10*ratio),round(5*ratio)))
+    cid_text = Entry(f0, bd=round(6*ratio), relief=FLAT, font=("Lato", round(12*ratio)))
+    cid_text.pack(side=RIGHT, fill=BOTH, expand=True)
+    cid_text.configure(state="disabled")
+    CreateToolTip(info_lbl, text = '1) Add New Camera: Leave this field blank as system will\n auto generate the camera ID\n\n'
+                  '2) Update Camera: Select the camera to be updated in the list, \ncamera ID field will be automatically filled\n\n'
+                  '3) Delete Camera: Select the camera to be deleted in the list \nbefore pressing on the button')
+    camdesc_label = Label(cammanageWindow, text="Camera Description", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
+    camdesc_label.grid(row=4, column=0, columnspan=3, sticky="sw", padx=(round(50*ratio), round(10*ratio)), pady=(round(10*ratio), 0))
+    camdesc_label_error = Label(cammanageWindow, text="", font=("Arial Rounded MT Bold", round(9*ratio)), bg="#EDF1F7", fg="red")
+    camdesc_label_error.grid(row=4, column=1, columnspan=2, sticky="se", padx=(round(10*ratio), round(50*ratio)), pady=(round(10*ratio), 0))
+    f1 = Frame(cammanageWindow, borderwidth=round(2*ratio), relief=SUNKEN, bg="white")
+    f1.grid(row=5, column=0, columnspan=3, padx=round(50*ratio), sticky="new")
+    camdesc_icon = Image.open('asset/cam_desc.png')
+    camdesc_icon = camdesc_icon.resize((round(25*ratio),round(25*ratio)))
+    camdesc_icon = ImageTk.PhotoImage(camdesc_icon)
+    camdesc_lbl = Label(f1, image=camdesc_icon, bg="white")
+    camdesc_lbl.image = camdesc_icon
+    camdesc_lbl.pack(side=LEFT, fill=BOTH, padx=(round(10*ratio),round(5*ratio)))
+    camdesc_val = StringVar()
+    my_valid1 = cammanageWindow.register(camdescvalidation)
+    camdesc_text = Entry(f1, bd=round(6*ratio), relief=FLAT, font=("Lato", round(12*ratio)), textvariable=camdesc_val)
+    camdesc_text.pack(side=RIGHT, fill=BOTH, expand=True)
+    camdesc_text.config(validate="key", validatecommand=(my_valid1, '%P'))
+    CreateToolTip(camdesc_text, text = 'Max length should only be 255 characters')
+    camtype_label = Label(cammanageWindow, text="Camera Type", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
+    camtype_label.grid(row=6, column=0, columnspan=3, sticky="sw", padx=(round(50*ratio), round(10*ratio)), pady=(round(10*ratio), 0))
+    f2 = Frame(cammanageWindow, relief=SUNKEN)
+    f2.grid(row=7, column=0, columnspan=3, padx=round(50*ratio), sticky="new")
+    camtype_text = ttk.Combobox(f2, font=("Lato", round(12*ratio)), background="white")
+    camtype_text['values'] = ('Toll Expressways', 
+                          'National Highways',
+                          'Primary Roads',
+                          'Secondary Roads',
+                          'Minor Roads',
+                          'Urban Collector Roads',
+                          'Local Streets')
+    camtype_text.pack(fill=BOTH, expand=True)
+    camtype_text.current(0)
+    camtype_text['state'] = 'readonly'
+    f3 = Frame(cammanageWindow, relief=FLAT, bd=0 , bg="#EDF1F7")
+    f3.grid(row=8, column=0, columnspan=3, sticky="sew", padx=round(50*ratio), pady=(round(10*ratio), 0))
+    camsource_label = Label(f3, text="Camera Source", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
+    camsource_label.pack(side=LEFT)
+    camsource_label_error = Label(cammanageWindow, text="", font=("Arial Rounded MT Bold", round(9*ratio)), bg="#EDF1F7", fg="red")
+    camsource_label_error.grid(row=8, column=1, columnspan=2, sticky="se", padx=(round(10*ratio), round(50*ratio)), pady=(round(10*ratio), 0))
+    info1_lbl = Label(f3, image=info_icon, bg="#EDF1F7")
+    info1_lbl.image = info_icon
+    info1_lbl.pack(side=LEFT)
+    CreateToolTip(info1_lbl, text = 'Select the video path of the CCTV\n(To be uploaded to cloud storage)\nNote: \n1) Max Size 300MB Limit\n2) Supported format - MP4, AVI')
+    f3a = Frame(cammanageWindow, bg="#EDF1F7")
+    f3a.grid(row=9, column=0, columnspan=3, padx=round(50*ratio), sticky="new")
+    camsource_btn = Button(f3a, cursor='hand2', command=lambda:selectsource(), text="Select Source", font=("Arial Rounded MT Bold", round(12*ratio)), width=round(15*ratio), relief=RIDGE, bd=1, bg="#6c757d", fg="white", activebackground="#4D5358", activeforeground="white")
+    camsource_btn.pack(side=LEFT)
+    path_label = Label(f3a, text="", font=("Arial Rounded MT Bold", round(8*ratio)), bg="#EDF1F7", fg="black", wraplength=round(220*ratio), justify=LEFT)
+    path_label.pack(side=RIGHT)
+    f4 = Frame(cammanageWindow, relief=FLAT, bd=0 , bg="#EDF1F7")
+    f4.grid(row=10, column=0, columnspan=3, sticky="sew", padx=round(50*ratio), pady=(round(10*ratio), 0))
+    location_label = Label(f4, text="Location", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
+    location_label.pack(side=LEFT)
+    location_label_error = Label(cammanageWindow, text="", font=("Arial Rounded MT Bold", round(9*ratio)), bg="#EDF1F7", fg="red")
+    location_label_error.grid(row=10, column=1, columnspan=2, sticky="se", padx=(round(10*ratio), round(50*ratio)), pady=(round(10*ratio), 0))
+    info2_lbl = Label(f4, image=info_icon, bg="#EDF1F7")
+    info2_lbl.image = info_icon
+    info2_lbl.pack(side=LEFT)
+    CreateToolTip(info2_lbl, text = 'Select the location of the CCTV camera located\nThe location value will be reflected in the fields below')
+    f4a = Frame(cammanageWindow, bg="#EDF1F7")
+    f4a.grid(row=11, column=0, columnspan=3, padx=round(50*ratio), sticky="new")
+    location_btn = Button(f4a, cursor='hand2', command=lambda:selectlocation(), text="Select Location", font=("Arial Rounded MT Bold", round(12*ratio)), width=round(15*ratio), relief=RIDGE, bd=1, bg="#6c757d", fg="white", activebackground="#4D5358", activeforeground="white")
+    location_btn.pack(side=LEFT)
+    f5 = Frame(cammanageWindow, relief=FLAT, bd=0 , bg="#EDF1F7")
+    f5.grid(row=12, column=0, columnspan=3, sticky="sew", padx=round(50*ratio), pady=(round(10*ratio), 0))
+    street_label = Label(f5, text="Street Name", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
+    street_label.pack(side=LEFT)
+    info3_lbl = Label(f5, image=info_icon, bg="#EDF1F7")
+    info3_lbl.image = info_icon
+    info3_lbl.pack(side=LEFT)
+    CreateToolTip(info3_lbl, text = 'Street name value will be based on the location \nselected from above\n\nNote: None value indicated that the map locator did \nnot recognize the street name of the marker placed\nOption: Ignore or try to move to another nearby location')
+    f5a = Frame(cammanageWindow, borderwidth=round(2*ratio), relief=SUNKEN, bg="#f0f0f0")
+    f5a.grid(row=13, column=0, columnspan=3, padx=round(50*ratio), sticky="new")
+    street_icon = Image.open('asset/street.png')
+    street_icon = street_icon.resize((round(25*ratio),round(25*ratio)))
+    street_icon = ImageTk.PhotoImage(street_icon)
+    street_lbl = Label(f5a, image=street_icon, bg="#f0f0f0")
+    street_lbl.image = street_icon
+    street_lbl.pack(side=LEFT, fill=BOTH, padx=(round(10*ratio),round(5*ratio)))
+    street_text = Entry(f5a, bd=round(6*ratio), relief=FLAT, font=("Lato", round(12*ratio)), state='disabled')
+    street_text.pack(side=RIGHT, fill=BOTH, expand=True)
+    f6 = Frame(cammanageWindow, relief=FLAT, bd=0 , bg="#EDF1F7")
+    f6.grid(row=14, column=0, columnspan=2, sticky="sw", padx=(round(50*ratio), 0), pady=(round(10*ratio), 0))
+    city_label = Label(f6, text="City", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
+    city_label.pack(side=LEFT)
+    info4_lbl = Label(f6, image=info_icon, bg="#EDF1F7")
+    info4_lbl.image = info_icon
+    info4_lbl.pack(side=LEFT)
+    CreateToolTip(info4_lbl, text = 'City value will be based on the location \nselected from above\n\nNote: None value indicated that the map locator did \nnot recognize the city name of the marker placed\nOption: Ignore or try to move to another nearby location')
+    f6a = Frame(cammanageWindow, borderwidth=round(2*ratio), relief=SUNKEN)
+    f6a.grid(row=15, column=0, columnspan=2, padx=(round(50*ratio), round(10*ratio)), sticky="nw")
+    city_text = Entry(f6a, bd=round(6*ratio), relief=FLAT, font=("Lato", round(12*ratio)), state='disabled')
+    city_text.pack(fill=BOTH, expand=True)
+    f6b = Frame(cammanageWindow, relief=FLAT, bd=0 , bg="#EDF1F7")
+    f6b.grid(row=14, column=2, sticky="sw", padx=(round(10*ratio), round(50*ratio)), pady=(round(10*ratio), 0))
+    state_label = Label(f6b, text="State", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
+    state_label.pack(side=LEFT)
+    info5_lbl = Label(f6b, image=info_icon, bg="#EDF1F7")
+    info5_lbl.image = info_icon
+    info5_lbl.pack(side=LEFT)
+    CreateToolTip(info5_lbl, text = 'State value will be based on the location \nselected from above\n\nNote: None value indicated that the map locator did \nnot recognize the state name of the marker placed\nOption: Ignore or try to move to another nearby location')
+    f6c = Frame(cammanageWindow, borderwidth=round(2*ratio), relief=SUNKEN)
+    f6c.grid(row=15, column=2, padx=(round(10*ratio), round(50*ratio)), sticky="ne")
+    state_text = Entry(f6c, bd=round(6*ratio), relief=FLAT, font=("Lato", round(12*ratio)), state='disabled')
+    state_text.pack(fill=BOTH, expand=True)
+    f7 = Frame(cammanageWindow, relief=FLAT, bd=0 , bg="#EDF1F7")
+    f7.grid(row=16, column=0, columnspan=3, sticky="sew", padx=round(50*ratio), pady=(round(10*ratio), 0))
+    latitude_label = Label(f7, text="Latitude", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
+    latitude_label.pack(side=LEFT)
+    info6_lbl = Label(f7, image=info_icon, bg="#EDF1F7")
+    info6_lbl.image = info_icon
+    info6_lbl.pack(side=LEFT)
+    CreateToolTip(info6_lbl, text = 'Latitude value will be based on the location \nselected from above')
+    f7a = Frame(cammanageWindow, borderwidth=round(2*ratio), relief=SUNKEN, bg="#f0f0f0")
+    f7a.grid(row=17, column=0, columnspan=3, padx=round(50*ratio), sticky="new")
+    lati_icon = Image.open('asset/latitude.png')
+    lati_icon = lati_icon.resize((round(25*ratio),round(25*ratio)))
+    lati_icon = ImageTk.PhotoImage(lati_icon)
+    lati_lbl = Label(f7a, image=lati_icon, bg="#f0f0f0")
+    lati_lbl.image = lati_icon
+    lati_lbl.pack(side=LEFT, fill=BOTH, padx=(round(10*ratio),round(5*ratio)))
+    lati_text = Entry(f7a, bd=round(6*ratio), relief=FLAT, font=("Lato", round(12*ratio)), state='disabled')
+    lati_text.pack(side=RIGHT, fill=BOTH, expand=True)
+    f8 = Frame(cammanageWindow, relief=FLAT, bd=0 , bg="#EDF1F7")
+    f8.grid(row=18, column=0, columnspan=3, sticky="sew", padx=round(50*ratio), pady=(round(10*ratio), 0))
+    longi_label = Label(f8, text="Longitude", font=("Arial Rounded MT Bold", round(13*ratio)), bg="#EDF1F7", fg="black")
+    longi_label.pack(side=LEFT)
+    info7_lbl = Label(f8, image=info_icon, bg="#EDF1F7")
+    info7_lbl.image = info_icon
+    info7_lbl.pack(side=LEFT)
+    CreateToolTip(info7_lbl, text = 'Longitude value will be based on the \nlocation selected from above')
+    f8a = Frame(cammanageWindow, borderwidth=round(2*ratio), relief=SUNKEN, bg="#f0f0f0")
+    f8a.grid(row=19, column=0, columnspan=3, padx=round(50*ratio), sticky="new")
+    longi_icon = Image.open('asset/longitude.png')
+    longi_icon = longi_icon.resize((round(25*ratio),round(25*ratio)))
+    longi_icon = ImageTk.PhotoImage(longi_icon)
+    longi_lbl = Label(f8a, image=longi_icon, bg="#f0f0f0")
+    longi_lbl.image = longi_icon
+    longi_lbl.pack(side=LEFT, fill=BOTH, padx=(round(10*ratio),round(5*ratio)))
+    longi_text = Entry(f8a, bd=round(6*ratio), relief=FLAT, font=("Lato", round(12*ratio)), state='disabled')
+    longi_text.pack(side=RIGHT, fill=BOTH, expand=True)
+    f9 = Frame(cammanageWindow, bd=round(4*ratio), bg="#f2c40e")
+    f9.grid(row=20, column=0, columnspan=3, sticky="nsew", padx=round(50*ratio), pady=(round(25*ratio), round(5*ratio)))
+    add_cambtn = Button(f9, cursor="hand2", command=lambda:addnewcam(camdesc_text, camtype_text, tempsourcepath, street_text, city_text, state_text, lati_text, longi_text),text="Add New Camera", font=("Arial Rounded MT Bold", round(12*ratio)), bg="#f2c40e", fg="white", relief=FLAT, bd=0, activebackground="#f2c40e", activeforeground="white")
+    add_cambtn.pack(expand=TRUE, fill=BOTH)
+    f10 = Frame(cammanageWindow, bd=round(4*ratio), bg="#18bc9b")
+    f10.grid(row=21, column=0, columnspan=3, sticky="nsew", padx=round(50*ratio), pady= round(5*ratio))
+    upd_cambtn = Button(f10, state="disabled", text="Update Camera Info", font=("Arial Rounded MT Bold", round(12*ratio)), bg="#18bc9b", fg="white", relief=FLAT, bd=0, activebackground="#18bc9b", activeforeground="white")
+    upd_cambtn.pack(expand=TRUE, fill=BOTH)
+    f11a = Frame(cammanageWindow, bd=round(4*ratio), bg="#dc3545")
+    f11a.grid(row=22, column=0, columnspan=3, sticky="nsew", padx=round(50*ratio), pady=round(5*ratio))
+    del_cambtn = Button(f11a, state="disabled", text="Delete Camera", font=("Arial Rounded MT Bold", round(12*ratio)), bg="#dc3545", fg="white", relief=FLAT, bd=0, activebackground="#dc3545", activeforeground="white")
+    del_cambtn.pack(expand=TRUE, fill=BOTH)
+    
+    # Right components
+    sys_label = Label(cammanageWindow, text="e-Vision", font=("Arial Rounded MT Bold", round(14*ratio)), bg="#293e50", fg="white")
+    sys_label.grid(row=0, column=4, sticky="ne", padx=round(30*ratio), pady=round(15*ratio))
+    # Search components
+    f11 = Frame(cammanageWindow, bg="#293e50")
+    f11.grid(row=1, column=3, columnspan=2, sticky="nsew", padx=round(60*ratio))
+    f11a = Frame(f11, borderwidth=round(2*ratio), relief=SUNKEN)
+    f11a.pack(side=LEFT)
+    filterfield_text = Entry(f11a, bd=round(4*ratio), relief=FLAT, font=("Lato", round(10*ratio)), width=round(25*ratio), state='disabled')
+    filterfield_text.pack(fill=BOTH, expand=True)
+    f11b = Frame(f11)
+    f11b.pack(side=LEFT,  padx=round(10*ratio))
+    filter_opt = ttk.Combobox(f11b, font=("Lato", round(10*ratio)), background="white", width=round(25*ratio))
+    filter_opt['values'] = ('All (Except Deactivated)',
+                          'Camera ID', 
+                          'Camera Type',
+                          'Street Location',
+                          'City Location',
+                          'State Location',
+                          'Deactivated(Deleted) Status')
+    filter_opt.pack(fill=BOTH, expand=True)
+    filter_opt.current(0)
+    filter_opt['state'] = 'readonly'
+    filter_opt.bind("<<ComboboxSelected>>", usrmngcallback)
+    f11c = Frame(f11)
+    f11c.pack(side=LEFT)
+    search_cambtn = Button(f11c, cursor="hand2", text="Search", command=lambda:searchCameraByFilter(filterfield_text.get(), filter_opt.get()), font=("Arial Rounded MT Bold", round(11*ratio)), width=round(12*ratio), bg="#E6E6E6", fg="black", relief=RIDGE, bd=1, activebackground="#B4B1B1", activeforeground="black")
+    search_cambtn.pack()
+    f11d = Frame(f11)
+    f11d.pack(side=RIGHT)
+    reactivate_cambtn = Button(f11d, state='disabled', text="Re-activate", font=("Arial Rounded MT Bold", round(11*ratio)), width=round(14*ratio), bg="#E6E6E6", fg="black", relief=RIDGE, bd=1, activebackground="#B4B1B1", activeforeground="black")
+    reactivate_cambtn.pack()
+    view_title = Label(cammanageWindow, text="Current Table View: {}".format(filter_opt.get()), font=("Arial Rounded MT Bold", round(11*ratio)), bg="#293e50", fg="white")
+    view_title.grid(row=0, column=3, columnspan=2, sticky="sw", padx=round(60*ratio))
+    f11e = Frame(cammanageWindow, bg="#293e50")
+    f11e.grid(row=0, column=4, sticky="se", padx=round(60*ratio))
+    selected_camstat = Label(f11e, text="Cam Status: No Camera Selected", font=("Arial Rounded MT Bold", round(10*ratio)), bg="#293e50", fg="#bfbfbf")
+    selected_camstat.pack(side=RIGHT)
+    accstat_icon1 = Image.open('asset/neutral_status.png')
+    accstat_icon1 = accstat_icon1.resize((round(20*ratio),round(20*ratio)))
+    accstat_icon1 = ImageTk.PhotoImage(accstat_icon1)
+    accstat_icon2 = Image.open('asset/active_status.png')
+    accstat_icon2 = accstat_icon2.resize((round(20*ratio),round(20*ratio)))
+    accstat_icon2 = ImageTk.PhotoImage(accstat_icon2)
+    accstat_icon3 = Image.open('asset/deactivate_status.png')
+    accstat_icon3 = accstat_icon3.resize((round(20*ratio),round(20*ratio)))
+    accstat_icon3 = ImageTk.PhotoImage(accstat_icon3)
+    accstat_lbl = Label(f11e, image=accstat_icon1, bg="#293e50")
+    accstat_lbl.image = accstat_icon1
+    accstat_lbl.pack(side=RIGHT)
+    # Treeview frame
+    cammng_tree_frame = Frame(cammanageWindow, relief=FLAT, bd=0)
+    cammng_tree_frame.grid(row=2, column=3, rowspan=20, columnspan=2, padx=round(60*ratio))
+    # Treeview components
+    cammng_tree_vscroll = Scrollbar(cammng_tree_frame, relief=FLAT, bd=0)
+    cammng_tree_vscroll.pack(side=RIGHT, fill=Y)
+    cammng_tree_hscroll = Scrollbar(cammng_tree_frame, orient='horizontal', relief=FLAT, bd=0)
+    cammng_tree_hscroll.pack(side=BOTTOM, fill=X)
+    column_headerlist = ['cam_id', 'cam_isDelete', 'cam_desc', 'cam_type', 'cam_street', 'cam_city', 'cam_state', 'cam_latitude', 'cam_longitude', 'cam_source']
+    cammng_tree = ttk.Treeview(cammng_tree_frame, columns=column_headerlist, show='headings', yscrollcommand=cammng_tree_vscroll.set, xscrollcommand=cammng_tree_hscroll.set, selectmode="browse", height=round(22*ratio))
+    cammng_tree.pack(side=TOP, expand=FALSE, fill=Y)
+    style.map('Treeview', background=[('selected', '#04D8AE')])  #selected color
+    # Configure scrollbar
+    cammng_tree_vscroll.config(command=cammng_tree.yview)
+    cammng_tree_hscroll.config(command=cammng_tree.xview)
+    # Define haeder column name
+    cammng_tree.heading('cam_id', text='Camera ID')
+    cammng_tree.heading('cam_isDelete', text='Camera Status')
+    cammng_tree.heading('cam_desc', text='Camera Descripion')
+    cammng_tree.heading('cam_type', text='Camera Type')
+    cammng_tree.heading('cam_street', text='Street Name')
+    cammng_tree.heading('cam_city', text='City')
+    cammng_tree.heading('cam_state', text='State')
+    cammng_tree.heading('cam_latitude', text='Latitude')
+    cammng_tree.heading('cam_longitude', text='Longitude')
+    cammng_tree.heading('cam_source', text='Source File ID')
+    # Define column width and alignments
+    cammng_tree.column('cam_id', width=round(70*ratio), minwidth=round(70*ratio), anchor ='c')
+    cammng_tree.column('cam_isDelete', width=round(100*ratio), minwidth=round(100*ratio), anchor ='c')
+    cammng_tree.column('cam_desc', width=round(160*ratio), minwidth=round(160*ratio), anchor ='c')
+    cammng_tree.column('cam_type', width=round(120*ratio), minwidth=round(120*ratio), anchor ='c')
+    cammng_tree.column('cam_street', width=round(100*ratio), minwidth=round(100*ratio), anchor ='c')
+    cammng_tree.column('cam_city', width=round(80*ratio), minwidth=round(80*ratio), anchor ='c')
+    cammng_tree.column('cam_state', width=round(80*ratio), minwidth=round(80*ratio), anchor ='c')
+    cammng_tree.column('cam_latitude', width=round(100*ratio), minwidth=round(100*ratio), anchor ='c')
+    cammng_tree.column('cam_longitude', width=round(100*ratio), minwidth=round(100*ratio), anchor ='c')
+    cammng_tree.column('cam_source', width=round(100*ratio), minwidth=round(100*ratio), anchor ='c')
     # Clear selected btn
-    f12 = Frame(usermanageWindow, bg="#293e50")
+    f12 = Frame(cammanageWindow, bg="#293e50")
     f12.grid(row=22, column=3, columnspan=2, sticky="nsew", padx=round(60*ratio), pady=round(5*ratio))
-    clr_selectedbtn = Button(f12, cursor="hand2", command=lambda:usrmngclearselected(), text="Clear Selected User", font=("Arial Rounded MT Bold", round(11*ratio)), width=round(25*ratio), bg="#E6E6E6", fg="black", relief=RIDGE, bd=1, activebackground="#B4B1B1", activeforeground="black")
+    clr_selectedbtn = Button(f12, cursor="hand2", command=lambda:cammngclearselected(), text="Clear Selected Camera", font=("Arial Rounded MT Bold", round(11*ratio)), width=round(25*ratio), bg="#E6E6E6", fg="black", relief=RIDGE, bd=1, activebackground="#B4B1B1", activeforeground="black")
     clr_selectedbtn.pack(side=LEFT)
     # Refresh list btn
-    refresh_userbtn = Button(f12, cursor="hand2", command=lambda:refreshlistbtn(), text="Refresh User List", font=("Arial Rounded MT Bold", round(11*ratio)), width=round(25*ratio), bg="#E6E6E6", fg="black", relief=RIDGE, bd=1, activebackground="#B4B1B1", activeforeground="black")
-    refresh_userbtn.pack(side=RIGHT)
-
-
+    refresh_cambtn = Button(f12, cursor="hand2", command=lambda:refreshlistbtn(), text="Refresh Camera List", font=("Arial Rounded MT Bold", round(11*ratio)), width=round(25*ratio), bg="#E6E6E6", fg="black", relief=RIDGE, bd=1, activebackground="#B4B1B1", activeforeground="black")
+    refresh_cambtn.pack(side=RIGHT)
+    # Fetch all users (default)
+    cammng_tree.tag_configure('oddrow', background="white")
+    cammng_tree.tag_configure('evenrow', background="#ecf3fd")
+    global cammng_count
+    cammng_count = 0
+    camresult = serachAllCamera()
+    if camresult is not None:
+        for dt in camresult:
+            cam_status = "Active" if dt[9] == 0 else "Deactivated"
+            if cammng_count % 2 == 0:
+                cammng_tree.insert("", 'end', values=(dt[0], cam_status, dt[1], dt[2], dt[4], dt[5], dt[6], dt[7], dt[8], dt[3]), tags=('evenrow',))
+            else:
+                cammng_tree.insert("", 'end', values=(dt[0], cam_status, dt[1], dt[2], dt[4], dt[5], dt[6], dt[7], dt[8], dt[3]), tags=('evenrow',))
+            cammng_count +=1
+    # Selection bind
+    cammng_tree.bind("<ButtonRelease-1>", camselected) #<<TreeviewSelect>> <ButtonRelease-1>
+    
 
 root.mainloop()
