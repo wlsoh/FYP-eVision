@@ -3077,7 +3077,7 @@ def usermanagementPage():
                     # If error
                     else:
                         loading_splash.destroy()
-                        messagebox.showerror("User Reactivation Failed", "Failed to delete(deactivate) the user account! Please contact developer for help!")
+                        messagebox.showerror("User Reactivation Failed", "Failed to reactivate the user account! Please contact developer for help!")
                         usermanageWindow.attributes('-disabled', 0)
                         usermanageWindow.focus_force() 
                 except pymysql.Error as e:
@@ -3494,8 +3494,8 @@ def mapselectorPage():
                 street_text.insert(0, str(adr.street))
                 city_text.insert(0, str(adr.city))
                 state_text.insert(0, str(adr.state))
-                longi_text.insert(0, adr.latlng[0])
-                lati_text.insert(0, adr.latlng[1])
+                longi_text.insert(0, adr.latlng[1])
+                lati_text.insert(0, adr.latlng[0])
                 street_text.config(state='disabled')
                 city_text.config(state='disabled')
                 state_text.config(state='disabled')
@@ -3902,7 +3902,7 @@ def cammanagementPage():
                 accstat_lbl.config(image=accstat_icon2)
                 reactivate_cambtn.config(state='disabled', cursor='')
             else:
-                cid_selection_lbl.config(text="Employee Data Selected: {}".format(tempselecteduser[0]))
+                cid_selection_lbl.config(text="Employee Data Selected: {}".format(tempselectedcam[0]))
                 add_cambtn.config(state='disabled', cursor='')
                 upd_cambtn.config(state='disabled', cursor='')
                 del_cambtn.config(state='disabled', cursor='')
@@ -3964,21 +3964,40 @@ def cammanagementPage():
     def selectsource():
         global tempsourcepath
         
-        file = askopenfile(parent=cammanageWindow, mode='rb', title='Choose a camera source file', filetypes=[("MP4", "*.mp4"), ("AVI", "*.avi")])
-        if not file:
-            pass
+        if len(cid_text.get()) != 0:
+            confirmbox = messagebox.askquestion('e-Vision', 'Are you sure to replace the current existing camera source?', icon='warning')
+            if confirmbox == 'yes':
+                file = askopenfile(parent=cammanageWindow, mode='rb', title='Choose a camera source file', filetypes=[("MP4", "*.mp4"), ("AVI", "*.avi")])
+                if not file:
+                    pass
+                else:
+                    size = os.path.getsize(file.name)
+                    # Limit file size as 300 mb max
+                    if size > 314572800:
+                        messagebox.showerror("Add New Camera Failed", "The source of camera should not be exceeding 300MB! Please try to reduce the size or choose another file.")
+                        tempsourcepath = ""
+                        path_label.config(text=tempsourcepath)
+                        camsource_label_error.config(text="No Source Selected!")
+                    else:
+                        tempsourcepath = file.name
+                        path_label.config(text=tempsourcepath)
+                        camsource_label_error.config(text="")
         else:
-            size = os.path.getsize(file.name)
-            # Limit file size as 300 mb max
-            if size > 314572800:
-                messagebox.showerror("Add New Camera Failed", "The source of camera should not be exceeding 300MB! Please try to reduce the size or choose another file.")
-                tempsourcepath = ""
-                path_label.config(text=tempsourcepath)
-                camsource_label_error.config(text="No Source Selected!")
+            file = askopenfile(parent=cammanageWindow, mode='rb', title='Choose a camera source file', filetypes=[("MP4", "*.mp4"), ("AVI", "*.avi")])
+            if not file:
+                pass
             else:
-                tempsourcepath = file.name
-                path_label.config(text=tempsourcepath)
-                camsource_label_error.config(text="")
+                size = os.path.getsize(file.name)
+                # Limit file size as 300 mb max
+                if size > 314572800:
+                    messagebox.showerror("Add New Camera Failed", "The source of camera should not be exceeding 300MB! Please try to reduce the size or choose another file.")
+                    tempsourcepath = ""
+                    path_label.config(text=tempsourcepath)
+                    camsource_label_error.config(text="No Source Selected!")
+                else:
+                    tempsourcepath = file.name
+                    path_label.config(text=tempsourcepath)
+                    camsource_label_error.config(text="")         
     # Select location function
     def selectlocation():
         mapselectorPage()
@@ -4022,8 +4041,7 @@ def cammanagementPage():
             confirmbox = messagebox.askquestion('e-Vision', 'Are you confirm to create new CCTV camera at location ({}, {}, {})? (This process will take up to few minutes so please wait patiently if adding the new camera)'.format(cam_street, cam_city, cam_state), icon='warning')
             if confirmbox == 'yes':
                 global tempsourcepath
-                print(tempsourcepath)
-                print("adding camera...")
+
                 loading(cammanageWindow)
                 cammanageWindow.update()
                 uploadvid(tempsourcepath)
@@ -4088,9 +4106,315 @@ def cammanagementPage():
                 finally:
                     # Close the connection
                     mysql_con.close()
-    
-    
-    
+    # Upadate camera function
+    def updatecam(cid, cdesc, ctype, csource, cstreet, ccity, cstate, clati, clongi):
+        empty = FALSE
+        # Get required field
+        cam_id = cid.get()
+        cam_desc = cdesc.get()
+        cam_type = ctype.get()
+        cam_source = csource
+        cam_street = cstreet.get()
+        cam_city = ccity.get()
+        cam_state = cstate.get()
+        cam_latitude = clati.get().lower()
+        cam_longitude = clongi.get()
+        
+        # Validate empty field
+        if len(cam_desc) == 0:
+            camdesc_label_error.config(text="Invalid Empty Field!")
+            empty = TRUE
+        if len(cam_source) == 0 and len(tempselectedcam[9]) == 0:
+            camsource_label_error.config(text="No Source Selected!")
+            empty = TRUE
+        if len(cam_street) == 0:
+            location_label_error.config(text="No Location Selected")
+            empty = TRUE
+        if len(cam_city) == 0:
+            location_label_error.config(text="No Location Selected")
+            empty = TRUE
+        if len(cam_state) == 0:
+            location_label_error.config(text="No Location Selected")
+            empty = TRUE
+        if len(cam_latitude) == 0:
+            location_label_error.config(text="No Location Selected")
+            empty = TRUE
+        if len(cam_longitude) == 0:
+            location_label_error.config(text="No Location Selected")
+            empty = TRUE
+            
+        if not empty:
+            confirmbox = messagebox.askquestion('e-Vision', 'Are you confirm to update CCTV camera {}? (This process will take up to few minutes so please wait patiently if updating the new camera)'.format(cam_id), icon='warning')
+            if confirmbox == 'yes':
+                if len(cam_id) == 0:
+                    messagebox.showerror("Update Camera Failed", "There was no camera record selected to be updated!")
+                else:
+                    global tempsourcepath
+
+                    loading(cammanageWindow)
+                    cammanageWindow.update()
+                    if len(cam_source) == 0:
+                        try:
+                            mysql_con = MySqlConnector(sql_config) # Initial connection
+                            sql = '''UPDATE Camera SET cam_desc = (%s), cam_type = (%s), cam_street = (%s), cam_city = (%s), cam_state = (%s), cam_latitude = (%s), cam_longitude = (%s) WHERE cam_id = (%s)''' # Update camera info
+                            update = mysql_con.update(sql, (cam_desc, cam_type, cam_street, cam_city, cam_state, cam_latitude, cam_longitude, cam_id))
+                            if update > 0:
+                                refreshcamlist()
+                                cid_text.config(state='normal')
+                                street_text.config(state='normal')
+                                city_text.config(state='normal')
+                                state_text.config(state='normal')
+                                lati_text.config(state='normal')
+                                longi_text.config(state='normal')
+                                cid_text.delete(0, END)
+                                camdesc_text.delete(0, END)
+                                camtype_text.current(0)
+                                tempsourcepath = ""
+                                path_label.config(text=tempsourcepath)
+                                street_text.delete(0, END)
+                                city_text.delete(0, END)
+                                state_text.delete(0, END)
+                                lati_text.delete(0, END)
+                                longi_text.delete(0, END)
+                                cid_text.config(state='disabled')
+                                street_text.config(state='disabled')
+                                city_text.config(state='disabled')
+                                state_text.config(state='disabled')
+                                lati_text.config(state='disabled')
+                                longi_text.config(state='disabled')
+                                cid_selection_lbl.config(text='')
+                                camdesc_label_error.config(text='')
+                                camsource_label_error.config(text='')
+                                location_label_error.config(text='')
+                                add_cambtn.config(state='normal', cursor='hand2')
+                                upd_cambtn.config(state='disabled', cursor='')
+                                del_cambtn.config(state='disabled', cursor='')
+                                selected_camstat.config(text="Cam Status: No Camera Selected", fg="#bfbfbf")
+                                accstat_lbl.config(image=accstat_icon1)
+                                reactivate_cambtn.config(state='disabled', cursor='')
+                                loading_splash.destroy()
+                                messagebox.showinfo("Update Camera Record Successful", "The camera {} had been successfully updated!".format(cam_id))
+                                cammanageWindow.attributes('-disabled', 0)
+                                cammanageWindow.focus_force()
+                            # If error
+                            else:
+                                loading_splash.destroy()
+                                messagebox.showerror("Update Camera Record Failed", "Failed to update the camera's info for camera {}! Please contact developer for help!".format(cam_id))
+                                cammanageWindow.attributes('-disabled', 0)
+                                cammanageWindow.focus_force() 
+                        except pymysql.Error as e:
+                            loading_splash.destroy()
+                            cammanageWindow.attributes('-disabled', 0)
+                            cammanageWindow.focus_force()
+                            messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                            print("Error %d: %s" % (e.args[0], e.args[1]))
+                            return False
+                        finally:
+                            # Close the connection
+                            mysql_con.close()
+                    else:
+                        uploadvid(tempsourcepath)
+                        temp_id = getfilelist()
+                        deletefile(tempselectedcam[9])
+                                
+                        try:
+                            mysql_con = MySqlConnector(sql_config) # Initial connection
+                            sql = '''UPDATE Camera SET cam_desc = (%s), cam_type = (%s), cam_source = (%s), cam_street = (%s), cam_city = (%s), cam_state = (%s), cam_latitude = (%s), cam_longitude = (%s) WHERE cam_id = (%s)''' # Update camera info
+                            update = mysql_con.update(sql, (cam_desc, cam_type, temp_id, cam_street, cam_city, cam_state, cam_latitude, cam_longitude, cam_id))
+                            if update > 0:
+                                refreshcamlist()
+                                cid_text.config(state='normal')
+                                street_text.config(state='normal')
+                                city_text.config(state='normal')
+                                state_text.config(state='normal')
+                                lati_text.config(state='normal')
+                                longi_text.config(state='normal')
+                                cid_text.delete(0, END)
+                                camdesc_text.delete(0, END)
+                                camtype_text.current(0)
+                                tempsourcepath = ""
+                                path_label.config(text=tempsourcepath)
+                                street_text.delete(0, END)
+                                city_text.delete(0, END)
+                                state_text.delete(0, END)
+                                lati_text.delete(0, END)
+                                longi_text.delete(0, END)
+                                cid_text.config(state='disabled')
+                                street_text.config(state='disabled')
+                                city_text.config(state='disabled')
+                                state_text.config(state='disabled')
+                                lati_text.config(state='disabled')
+                                longi_text.config(state='disabled')
+                                cid_selection_lbl.config(text='')
+                                camdesc_label_error.config(text='')
+                                camsource_label_error.config(text='')
+                                location_label_error.config(text='')
+                                add_cambtn.config(state='normal', cursor='hand2')
+                                upd_cambtn.config(state='disabled', cursor='')
+                                del_cambtn.config(state='disabled', cursor='')
+                                selected_camstat.config(text="Cam Status: No Camera Selected", fg="#bfbfbf")
+                                accstat_lbl.config(image=accstat_icon1)
+                                reactivate_cambtn.config(state='disabled', cursor='')
+                                loading_splash.destroy()
+                                messagebox.showinfo("Update Camera Record Successful", "The camera {} had been successfully updated!".format(cam_id))
+                                cammanageWindow.attributes('-disabled', 0)
+                                cammanageWindow.focus_force()
+                            # If error
+                            else:
+                                loading_splash.destroy()
+                                messagebox.showerror("Update Camera Record Failed", "Failed to update the camera's info for camera {}! Please contact developer for help!".format(cam_id))
+                                cammanageWindow.attributes('-disabled', 0)
+                                cammanageWindow.focus_force() 
+                        except pymysql.Error as e:
+                            loading_splash.destroy()
+                            cammanageWindow.attributes('-disabled', 0)
+                            cammanageWindow.focus_force()
+                            messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                            print("Error %d: %s" % (e.args[0], e.args[1]))
+                            return False
+                        finally:
+                            # Close the connection
+                            mysql_con.close()
+    # Delete camera function
+    def deletecam(id):
+        cam_id = id.get()
+        
+        if len(cam_id) == 0:
+            messagebox.showerror("Delete Camera Record Failed", "There was no camera record selected to be deleted!")
+        else:
+            confirmbox = messagebox.askquestion('e-Vision', 'Are you sure to delete(deactivate) the camera {}? (Action cannot undo once proceed)'.format(cam_id), icon='warning')
+            if confirmbox == 'yes':
+                loading(cammanageWindow)
+                cammanageWindow.update()
+                try:
+                    mysql_con = MySqlConnector(sql_config) # Initial connection
+                    sql = '''UPDATE Camera SET cam_isDelete = 1 WHERE cam_id = (%s)''' # Delete camera (soft delete)
+                    delete = mysql_con.update(sql, (cam_id))
+                    if delete > 0:
+                        # Refresh the list
+                        refreshcamlist()
+                        cid_text.config(state='normal')
+                        street_text.config(state='normal')
+                        city_text.config(state='normal')
+                        state_text.config(state='normal')
+                        lati_text.config(state='normal')
+                        longi_text.config(state='normal')
+                        cid_text.delete(0, END)
+                        camdesc_text.delete(0, END)
+                        camtype_text.current(0)
+                        tempsourcepath = ""
+                        path_label.config(text=tempsourcepath)
+                        street_text.delete(0, END)
+                        city_text.delete(0, END)
+                        state_text.delete(0, END)
+                        lati_text.delete(0, END)
+                        longi_text.delete(0, END)
+                        cid_text.config(state='disabled')
+                        street_text.config(state='disabled')
+                        city_text.config(state='disabled')
+                        state_text.config(state='disabled')
+                        lati_text.config(state='disabled')
+                        longi_text.config(state='disabled')
+                        cid_selection_lbl.config(text='')
+                        camdesc_label_error.config(text='')
+                        camsource_label_error.config(text='')
+                        location_label_error.config(text='')
+                        add_cambtn.config(state='normal', cursor='hand2')
+                        upd_cambtn.config(state='disabled', cursor='')
+                        del_cambtn.config(state='disabled', cursor='')
+                        selected_camstat.config(text="Cam Status: No Camera Selected", fg="#bfbfbf")
+                        accstat_lbl.config(image=accstat_icon1)
+                        reactivate_cambtn.config(state='disabled', cursor='')
+                        loading_splash.destroy()
+                        messagebox.showinfo("Camera Deletion Successful", "The camera record for camera {} had been deleted(deactivated)!".format(cam_id))
+                        cammanageWindow.attributes('-disabled', 0)
+                        cammanageWindow.focus_force()
+                    # If error
+                    else:
+                        loading_splash.destroy()
+                        messagebox.showerror("Camera Deletion Failed", "Failed to delete(deactivate) the camera record! Please contact developer for help!")
+                        cammanageWindow.attributes('-disabled', 0)
+                        cammanageWindow.focus_force() 
+                except pymysql.Error as e:
+                    loading_splash.destroy()
+                    cammanageWindow.attributes('-disabled', 0)
+                    messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                    print("Error %d: %s" % (e.args[0], e.args[1]))
+                    return False
+                finally:
+                    # Close the connection
+                    mysql_con.close()
+    # Re-active deleted camera function
+    def reactivatecam(id):
+        cam_id = id.get()
+        
+        if tempselectedcam[1] == "Active":
+            messagebox.showerror("Reactivate Camera Failed", "The selected camera was an existing active camera record!")
+        elif len(cam_id) == 0:
+            messagebox.showerror("Reactivate Camera Failed", "There was no camera record selected to be reactivated!")
+        else:
+            confirmbox = messagebox.askquestion('e-Vision', 'Are you sure to reactivate the deactivated(deleted) camera {}?'.format(cam_id), icon='warning')
+            if confirmbox == 'yes':
+                loading(cammanageWindow)
+                cammanageWindow.update()
+                try:
+                    mysql_con = MySqlConnector(sql_config) # Initial connection
+                    sql = '''UPDATE Camera SET cam_isDelete = 0 WHERE cam_id = (%s)'''
+                    active = mysql_con.update(sql, (cam_id))
+                    if active > 0:
+                        # Refresh the list
+                        refreshcamlist()
+                        cid_text.config(state='normal')
+                        street_text.config(state='normal')
+                        city_text.config(state='normal')
+                        state_text.config(state='normal')
+                        lati_text.config(state='normal')
+                        longi_text.config(state='normal')
+                        cid_text.delete(0, END)
+                        camdesc_text.delete(0, END)
+                        camtype_text.current(0)
+                        tempsourcepath = ""
+                        path_label.config(text=tempsourcepath)
+                        street_text.delete(0, END)
+                        city_text.delete(0, END)
+                        state_text.delete(0, END)
+                        lati_text.delete(0, END)
+                        longi_text.delete(0, END)
+                        cid_text.config(state='disabled')
+                        street_text.config(state='disabled')
+                        city_text.config(state='disabled')
+                        state_text.config(state='disabled')
+                        lati_text.config(state='disabled')
+                        longi_text.config(state='disabled')
+                        cid_selection_lbl.config(text='')
+                        camdesc_label_error.config(text='')
+                        camsource_label_error.config(text='')
+                        location_label_error.config(text='')
+                        add_cambtn.config(state='normal', cursor='hand2')
+                        upd_cambtn.config(state='disabled', cursor='')
+                        del_cambtn.config(state='disabled', cursor='')
+                        selected_camstat.config(text="Cam Status: No Camera Selected", fg="#bfbfbf")
+                        accstat_lbl.config(image=accstat_icon1)
+                        reactivate_cambtn.config(state='disabled', cursor='')
+                        loading_splash.destroy()
+                        messagebox.showinfo("Camera Reactivation Successful", "The camera record for deactivated(deleted) camera {} had been reactivated!".format(cam_id))
+                        cammanageWindow.attributes('-disabled', 0)
+                        cammanageWindow.focus_force()
+                    # If error
+                    else:
+                        loading_splash.destroy()
+                        messagebox.showerror("Camera Reactivation Failed", "Failed to reactivate the camera record! Please contact developer for help!")
+                        cammanageWindow.attributes('-disabled', 0)
+                        cammanageWindow.focus_force() 
+                except pymysql.Error as e:
+                    loading_splash.destroy()
+                    cammanageWindow.attributes('-disabled', 0)
+                    messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                    print("Error %d: %s" % (e.args[0], e.args[1]))
+                    return False
+                finally:
+                    # Close the connection
+                    mysql_con.close()
     
     # Configure  window attribute
     mainWindow.withdraw()
@@ -4305,11 +4629,11 @@ def cammanagementPage():
     add_cambtn.pack(expand=TRUE, fill=BOTH)
     f10 = Frame(cammanageWindow, bd=round(4*ratio), bg="#18bc9b")
     f10.grid(row=21, column=0, columnspan=3, sticky="nsew", padx=round(50*ratio), pady= round(5*ratio))
-    upd_cambtn = Button(f10, state="disabled", text="Update Camera Info", font=("Arial Rounded MT Bold", round(12*ratio)), bg="#18bc9b", fg="white", relief=FLAT, bd=0, activebackground="#18bc9b", activeforeground="white")
+    upd_cambtn = Button(f10, state="disabled", command=lambda:updatecam(cid_text, camdesc_text, camtype_text, tempsourcepath, street_text, city_text, state_text, lati_text, longi_text), text="Update Camera Info", font=("Arial Rounded MT Bold", round(12*ratio)), bg="#18bc9b", fg="white", relief=FLAT, bd=0, activebackground="#18bc9b", activeforeground="white")
     upd_cambtn.pack(expand=TRUE, fill=BOTH)
     f11a = Frame(cammanageWindow, bd=round(4*ratio), bg="#dc3545")
     f11a.grid(row=22, column=0, columnspan=3, sticky="nsew", padx=round(50*ratio), pady=round(5*ratio))
-    del_cambtn = Button(f11a, state="disabled", text="Delete Camera", font=("Arial Rounded MT Bold", round(12*ratio)), bg="#dc3545", fg="white", relief=FLAT, bd=0, activebackground="#dc3545", activeforeground="white")
+    del_cambtn = Button(f11a, state="disabled", command=lambda:deletecam(cid_text), text="Delete Camera", font=("Arial Rounded MT Bold", round(12*ratio)), bg="#dc3545", fg="white", relief=FLAT, bd=0, activebackground="#dc3545", activeforeground="white")
     del_cambtn.pack(expand=TRUE, fill=BOTH)
     
     # Right components
@@ -4342,7 +4666,7 @@ def cammanagementPage():
     search_cambtn.pack()
     f11d = Frame(f11)
     f11d.pack(side=RIGHT)
-    reactivate_cambtn = Button(f11d, state='disabled', text="Re-activate", font=("Arial Rounded MT Bold", round(11*ratio)), width=round(14*ratio), bg="#E6E6E6", fg="black", relief=RIDGE, bd=1, activebackground="#B4B1B1", activeforeground="black")
+    reactivate_cambtn = Button(f11d, state='disabled', command=lambda:reactivatecam(cid_text), text="Re-activate", font=("Arial Rounded MT Bold", round(11*ratio)), width=round(14*ratio), bg="#E6E6E6", fg="black", relief=RIDGE, bd=1, activebackground="#B4B1B1", activeforeground="black")
     reactivate_cambtn.pack()
     view_title = Label(cammanageWindow, text="Current Table View: {}".format(filter_opt.get()), font=("Arial Rounded MT Bold", round(11*ratio)), bg="#293e50", fg="white")
     view_title.grid(row=0, column=3, columnspan=2, sticky="sw", padx=round(60*ratio))
