@@ -3,6 +3,7 @@
 # Program Name: Main GUI Integration
 # Date Created: 05/05/2022
 import os, io, re, secrets, string, pymysql, customtkinter, tkintermapview
+from numpy import pad
 import pandas as pd
 import customtkinter
 from tkintermapview import TkinterMapView
@@ -1198,7 +1199,7 @@ def mainPage():
         btn_agncamimg = Image.open('asset/assigncam_btn.png')
         btn_agncamimg = btn_agncamimg.resize((round(182*ratio),round(50*ratio)), Image.ANTIALIAS)
         btn_agncamimg = ImageTk.PhotoImage(btn_agncamimg)
-        btn_asscamera = Button(btn_frame3, cursor="hand2", image=btn_agncamimg, bg="#EDF1F7", relief=FLAT, bd=0, highlightthickness=0, activebackground="#EDF1F7")
+        btn_asscamera = Button(btn_frame3, cursor="hand2", command=lambda:assigncamPage(), image=btn_agncamimg, bg="#EDF1F7", relief=FLAT, bd=0, highlightthickness=0, activebackground="#EDF1F7")
         btn_asscamera.image = btn_agncamimg
         btn_asscamera.pack(pady=(round(10*ratio),0))
     else:
@@ -3378,7 +3379,7 @@ def usermanagementPage():
     accstat_lbl.pack(side=RIGHT)
     # Treeview frame
     usrmng_tree_frame = Frame(usermanageWindow, relief=FLAT, bd=0)
-    usrmng_tree_frame.grid(row=2, column=3, rowspan=20, columnspan=2, padx=round(60*ratio))
+    usrmng_tree_frame.grid(row=2, column=3, rowspan=20, columnspan=2, padx=round(60*ratio), sticky="nsew", pady=round(10*ratio))
     # Treeview components
     usrmng_tree_vscroll = Scrollbar(usrmng_tree_frame, relief=FLAT, bd=0)
     usrmng_tree_vscroll.pack(side=RIGHT, fill=Y)
@@ -3386,7 +3387,7 @@ def usermanagementPage():
     usrmng_tree_hscroll.pack(side=BOTTOM, fill=X)
     column_headerlist = ['user_id', 'user_firstname', 'user_lastname', 'user_addressline', 'user_city', 'user_postcode', 'user_state', 'user_email', 'user_phone', 'user_lastlogin', 'user_isDelete']
     usrmng_tree = ttk.Treeview(usrmng_tree_frame, columns=column_headerlist, show='headings', yscrollcommand=usrmng_tree_vscroll.set, xscrollcommand=usrmng_tree_hscroll.set, selectmode="browse", height=round(22*ratio))
-    usrmng_tree.pack(side=TOP, expand=FALSE, fill=Y)
+    usrmng_tree.pack(side=TOP, expand=TRUE, fill=BOTH)
     style.map('Treeview', background=[('selected', '#04D8AE')])  #selected color
     # Configure scrollbar
     usrmng_tree_vscroll.config(command=usrmng_tree.yview)
@@ -3435,7 +3436,7 @@ def usermanagementPage():
             if usrmng_count % 2 == 0:
                 usrmng_tree.insert("", 'end', values=(dt[0], acc_status, dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('evenrow',))
             else:
-                usrmng_tree.insert("", 'end', values=(dt[0], acc_status, dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('evenrow',))
+                usrmng_tree.insert("", 'end', values=(dt[0], acc_status, dt[1], dt[2], dt[4], dt[5], dt[7], dt[6], dt[8], dt[9], dt[12]), tags=('oddrow',))
             usrmng_count +=1
     # Selection bin
     usrmng_tree.bind("<ButtonRelease-1>", userselected) #<<TreeviewSelect>> <ButtonRelease-1>
@@ -3661,7 +3662,7 @@ def cammanagementPage():
                         if cammng_count % 2 == 0:
                             cammng_tree.insert("", 'end', values=(dt[0], cam_status, dt[1], dt[2], dt[4], dt[5], dt[6], dt[7], dt[8], dt[3]), tags=('evenrow',))
                         else:
-                            cammng_tree.insert("", 'end', values=(dt[0], cam_status, dt[1], dt[2], dt[4], dt[5], dt[6], dt[7], dt[8], dt[3]), tags=('evenrow',))
+                            cammng_tree.insert("", 'end', values=(dt[0], cam_status, dt[1], dt[2], dt[4], dt[5], dt[6], dt[7], dt[8], dt[3]), tags=('oddrow',))
                         cammng_count +=1
                     view_title.config(text='Current Table View: {}'.format(opt))
                     loading_splash.destroy()
@@ -3942,7 +3943,7 @@ def cammanagementPage():
                 if cammng_count % 2 == 0:
                     cammng_tree.insert("", 'end', values=(dt[0], cam_status, dt[1], dt[2], dt[4], dt[5], dt[6], dt[7], dt[8], dt[3]), tags=('evenrow',))
                 else:
-                    cammng_tree.insert("", 'end', values=(dt[0], cam_status, dt[1], dt[2], dt[4], dt[5], dt[6], dt[7], dt[8], dt[3]), tags=('evenrow',))
+                    cammng_tree.insert("", 'end', values=(dt[0], cam_status, dt[1], dt[2], dt[4], dt[5], dt[6], dt[7], dt[8], dt[3]), tags=('oddrow',))
                 cammng_count +=1
         filterfield_text.delete(0, 'end')
         filterfield_text.config(state='disabled')
@@ -4688,7 +4689,7 @@ def cammanagementPage():
     accstat_lbl.pack(side=RIGHT)
     # Treeview frame
     cammng_tree_frame = Frame(cammanageWindow, relief=FLAT, bd=0)
-    cammng_tree_frame.grid(row=2, column=3, rowspan=20, columnspan=2, padx=round(60*ratio))
+    cammng_tree_frame.grid(row=2, column=3, rowspan=20, columnspan=2, padx=round(60*ratio), sticky="nsew", pady=round(10*ratio))
     # Treeview components
     cammng_tree_vscroll = Scrollbar(cammng_tree_frame, relief=FLAT, bd=0)
     cammng_tree_vscroll.pack(side=RIGHT, fill=Y)
@@ -4696,7 +4697,7 @@ def cammanagementPage():
     cammng_tree_hscroll.pack(side=BOTTOM, fill=X)
     column_headerlist = ['cam_id', 'cam_isDelete', 'cam_desc', 'cam_type', 'cam_street', 'cam_city', 'cam_state', 'cam_latitude', 'cam_longitude', 'cam_source']
     cammng_tree = ttk.Treeview(cammng_tree_frame, columns=column_headerlist, show='headings', yscrollcommand=cammng_tree_vscroll.set, xscrollcommand=cammng_tree_hscroll.set, selectmode="browse", height=round(22*ratio))
-    cammng_tree.pack(side=TOP, expand=FALSE, fill=Y)
+    cammng_tree.pack(side=TOP, expand=TRUE, fill=BOTH)
     style.map('Treeview', background=[('selected', '#04D8AE')])  #selected color
     # Configure scrollbar
     cammng_tree_vscroll.config(command=cammng_tree.yview)
@@ -4743,10 +4744,639 @@ def cammanagementPage():
             if cammng_count % 2 == 0:
                 cammng_tree.insert("", 'end', values=(dt[0], cam_status, dt[1], dt[2], dt[4], dt[5], dt[6], dt[7], dt[8], dt[3]), tags=('evenrow',))
             else:
-                cammng_tree.insert("", 'end', values=(dt[0], cam_status, dt[1], dt[2], dt[4], dt[5], dt[6], dt[7], dt[8], dt[3]), tags=('evenrow',))
+                cammng_tree.insert("", 'end', values=(dt[0], cam_status, dt[1], dt[2], dt[4], dt[5], dt[6], dt[7], dt[8], dt[3]), tags=('oddrow',))
             cammng_count +=1
     # Selection bind
     cammng_tree.bind("<ButtonRelease-1>", camselected) #<<TreeviewSelect>> <ButtonRelease-1>
+
+
+#==============================================================================================#
+#                                  Admin - Assign Camera Page                                  #
+#==============================================================================================#
+## Admin - Assigning Camera Page Interface
+def assigncamPage():
+    global cctvcount, asgempcount, avaempcount, tempactivecam, tempasgemp, tempavaemp
+    cctvcount = 0
+    asgempcount = 0
+    avaempcount = 0
+    tempactivecam = tuple()
+    tempasgemp = tuple()
+    tempavaemp = tuple()
     
+    ## Function & Validation list for Camera Allocation Page
+    # Load all existing camera
+    def loadallcam():
+        global cctvcount
+        
+        loading(assigncamWindow)
+        assigncamWindow.update()
+        activecam_tree.delete(*activecam_tree.get_children())
+        empasg_tree.delete(*empasg_tree.get_children())
+        empava_tree.delete(*empava_tree.get_children())
+        
+        # Load the camera
+        try:
+            mysql_con = MySqlConnector(sql_config) # Initial connection
+            sql = '''SELECT * FROM Camera WHERE cam_isDelete = 0'''
+            result_details = mysql_con.queryall(sql)
+            if result_details:
+                cctvcount = 0
+                for dt in result_details:
+                    if cctvcount % 2 == 0:
+                        activecam_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[6]), tags=('evenrow',))
+                    else:
+                        activecam_tree.insert("", 'end', values=(dt[0], dt[1], dt[2], dt[4], dt[5], dt[6]), tags=('oddrow',))
+                    cctvcount +=1
+                loading_splash.destroy()
+                assigncamWindow.attributes('-disabled', 0)
+                assigncamWindow.focus_force()
+            # If no existing data found
+            else:
+                loading_splash.destroy()
+                messagebox.showinfo("No Active Traffic Camera", "There was no existing active traffic camera found in the system!")
+                assigncamWindow.attributes('-disabled', 0)
+                assigncamWindow.focus_force()
+        except pymysql.Error as e:
+            loading_splash.destroy()
+            assigncamWindow.attributes('-disabled', 0)
+            messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+            print("Error %d: %s" % (e.args[0], e.args[1]))
+            return False
+        finally:
+            # Close the connection
+            mysql_con.close()
+    # Refresh camera button function
+    def refreshlistbtn():
+        confirmbox = messagebox.askquestion('e-Vision', 'Are you sure to refresh the active traffic camera list?', icon='warning')
+        if confirmbox == 'yes':
+            clearselectedactivecam()
+            loadallcam()
+            messagebox.showinfo("e-Vision", "The active traffic camera list had been refreshed with the latest data records available.")
+    # Clear selected active camera function
+    def clearselectedactivecam():
+        global tempactivecam, tempasgemp, tempavaemp
+        
+        if len(tempactivecam) > 0:
+            temp = list(tempactivecam)
+            temp.clear()
+            tempactivecam = tuple(temp)
+            
+        if len(tempasgemp) > 0:
+            temp1 = list(tempasgemp)
+            temp1.clear()
+            tempasgemp = tuple(temp1)
+            
+        if len(tempavaemp) > 0:
+            temp2 = list(tempavaemp)
+            temp2.clear()
+            tempavaemp = tuple(temp2)
+            
+        empasg_tree.delete(*empasg_tree.get_children())
+        empava_tree.delete(*empava_tree.get_children())
+        cam_selection_lbl.config(text="No active camera selected")
+        selectasg_label.config(text="No assigned employee selected")
+        selectava_label.config(text="No available employee selected")
+        unassign_btn.config(cursor="", state="disabled")
+        assign_btn.config(cursor="", state="disabled")
+    # Select active camera function
+    def selectactivecam(e):
+        global tempactivecam, asgempcount, avaempcount
+        
+        loading(assigncamWindow)
+        assigncamWindow.update()
+        # Clear temp selection
+        clearselectedactivecam()
+            
+        selected = activecam_tree.focus() #returning index number
+        tempactivecam = activecam_tree.item(selected, 'values') #returning list of values of selected cam
+    
+        # Change selected active cam label
+        cam_selection_lbl.config(text="Selected Traffic Camera ID: {}".format(tempactivecam[0]))
+
+        # Get the list of assigned employee of the camera
+        try:
+            mysql_con = MySqlConnector(sql_config) # Initial connection
+            sql = '''SELECT * FROM User_Camera uc, User u WHERE uc.cam_id = (%s) AND uc.user_id = u.user_id AND u.user_isDelete = 0 AND u.user_role = 2'''
+            result_details = mysql_con.queryall(sql, (tempactivecam[0]))
+            if result_details:
+                asgempcount = 0
+                for dt in result_details:
+                    if asgempcount % 2 == 0:
+                        empasg_tree.insert("", 'end', values=(dt[2], dt[3], dt[4], dt[10], dt[11]), tags=('evenrow',))
+                    else:
+                        empasg_tree.insert("", 'end', values=(dt[2], dt[3], dt[4], dt[10], dt[11]), tags=('oddrow',))
+                    asgempcount +=1
+            else:
+                loading_splash.destroy()
+                assigncamWindow.attributes('-disabled', 0)
+        except pymysql.Error as e:
+            loading_splash.destroy()
+            assigncamWindow.attributes('-disabled', 0)
+            messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+            print("Error %d: %s" % (e.args[0], e.args[1]))
+            return False
+        finally:
+            # Close the connection
+            mysql_con.close()
+            
+        # Get the list of available employee of the camera
+        try:
+            mysql_con = MySqlConnector(sql_config) # Initial connection
+            sql = '''SELECT * FROM User WHERE user_isDelete = 0 AND user_role = 2'''
+            result_details1 = mysql_con.queryall(sql)
+            if result_details1:
+                # clear assigned employee
+                index_list = []
+                result_details1_list = list(result_details1)
+                for x_index, x in enumerate(result_details1_list):
+                    for y in result_details:
+                        if x[0] == y[0]:
+                            index_list.append(x_index)
+                            break
+                for index in sorted(index_list, reverse=True):
+                    del result_details1_list[index]
+                result_details1 = tuple(result_details1_list)
+                avaempcount = 0
+                for dt1 in result_details1:
+                    if avaempcount % 2 == 0:
+                        empava_tree.insert("", 'end', values=(dt1[0], dt1[1], dt1[2], dt1[8], dt1[9]), tags=('evenrow',))
+                    else:
+                        empava_tree.insert("", 'end', values=(dt1[0], dt1[1], dt1[2], dt1[8], dt1[9]), tags=('oddrow',))
+                    avaempcount +=1
+                loading_splash.destroy()
+                assigncamWindow.attributes('-disabled', 0)
+            else:
+                loading_splash.destroy()
+                assigncamWindow.attributes('-disabled', 0)
+        except pymysql.Error as e:
+            loading_splash.destroy()
+            assigncamWindow.attributes('-disabled', 0)
+            messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+            print("Error %d: %s" % (e.args[0], e.args[1]))
+            return False
+        finally:
+            # Close the connection
+            mysql_con.close()
+    # Select assigned employee function
+    def selectasgemp(e):
+        global tempasgemp
+        tempasgemp = empasg_tree.selection()
+        
+        if len(tempasgemp) != 0:
+            selectasg_label.config(text="Number of assigned employee selected: {}".format(len(tempasgemp)))
+            unassign_btn.config(state='normal', cursor='hand2')
+        else:
+            selectasg_label.config(text="No assigned employee selected")
+            unassign_btn.config(state='disabled', cursor='')
+    # Select assigned employee function
+    def selectavaemp(e):
+        global tempavaemp
+        tempavaemp = empava_tree.selection()
+        
+        if len(tempavaemp) != 0:
+            selectava_label.config(text="Number of available employee selected: {}".format(len(tempavaemp)))
+            assign_btn.config(state='normal', cursor='hand2')
+        else:
+            selectava_label.config(text="No available employee selected")
+            assign_btn.config(state='disabled', cursor='')
+    # Unassign employee
+    def unassignemp():
+        global tempasgemp, tempactivecam, tempavaemp
+        
+        if len(tempasgemp) == 0:
+            messagebox.showerror("No Employee Selected", "There was no assigned employees selected for dellocation!")
+        else:
+            confirmbox = messagebox.askquestion('e-Vision', 'Are you sure to dellocate this(these) {} employee(s) for traffic camera {}?'.format(len(tempasgemp), tempactivecam[0]), icon='warning')
+            if confirmbox == 'yes':
+                loading(assigncamWindow)
+                assigncamWindow.update()
+                
+                emptounasg_list = []
+                for x in tempasgemp:
+                    emptounasg = empasg_tree.item(x, 'values')
+                    emptounasg_list.append(emptounasg)
+                emptounasgID_list = [y[0] for y in emptounasg_list]
+                
+                try:
+                    mysql_con = MySqlConnector(sql_config) # Initial connection
+                    if len(tempasgemp) > 1:
+                        for i in emptounasgID_list:
+                            sql = "DELETE FROM User_Camera WHERE cam_id = (%s) AND user_id IN (%s)"
+                            delete = mysql_con.update(sql, (tempactivecam[0], i))
+                    else:
+                        sql = "DELETE FROM User_Camera WHERE cam_id = (%s) AND user_id = (%s)"
+                        delete = mysql_con.update(sql, (tempactivecam[0], emptounasgID_list))
+                    if delete > 0:
+                        if len(tempasgemp) > 0:
+                            temp1 = list(tempasgemp)
+                            temp1.clear()
+                            tempasgemp = tuple(temp1)
+                        if len(tempavaemp) > 0:
+                            temp2 = list(tempavaemp)
+                            temp2.clear()
+                            tempavaemp = tuple(temp2)
+                        empasg_tree.delete(*empasg_tree.get_children())
+                        empava_tree.delete(*empava_tree.get_children())
+                        selectasg_label.config(text="No assigned employee selected")
+                        selectava_label.config(text="No available employee selected")
+                        unassign_btn.config(cursor="", state="disabled")
+                        assign_btn.config(cursor="", state="disabled")
+                        # Get the list of assigned employee of the camera
+                        try:
+                            mysql_con1 = MySqlConnector(sql_config) # Initial connection
+                            sql1 = '''SELECT * FROM User_Camera uc, User u WHERE uc.cam_id = (%s) AND uc.user_id = u.user_id AND u.user_isDelete = 0 AND u.user_role = 2'''
+                            result_details1 = mysql_con1.queryall(sql1, (tempactivecam[0]))
+                            if result_details1:
+                                asgempcount = 0
+                                for dt in result_details1:
+                                    if asgempcount % 2 == 0:
+                                        empasg_tree.insert("", 'end', values=(dt[2], dt[3], dt[4], dt[10], dt[11]), tags=('evenrow',))
+                                    else:
+                                        empasg_tree.insert("", 'end', values=(dt[2], dt[3], dt[4], dt[10], dt[11]), tags=('oddrow',))
+                                    asgempcount +=1
+                        except pymysql.Error as e:
+                            loading_splash.destroy()
+                            assigncamWindow.attributes('-disabled', 0)
+                            messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                            print("Error %d: %s" % (e.args[0], e.args[1]))
+                            return False
+                        finally:
+                            # Close the connection
+                            mysql_con1.close()
+                        # Get the list of available employee of the camera
+                        try:
+                            mysql_con2 = MySqlConnector(sql_config) # Initial connection
+                            sql2 = '''SELECT * FROM User WHERE user_isDelete = 0 AND user_role = 2'''
+                            result_details2 = mysql_con2.queryall(sql2)
+                            if result_details2:
+                                # clear assigned employee
+                                index_list = []
+                                result_details2_list = list(result_details2)
+                                for x_index, x in enumerate(result_details2_list):
+                                    for y in result_details1:
+                                        if x[0] == y[0]:
+                                            index_list.append(x_index)
+                                            break
+                                for index in sorted(index_list, reverse=True):
+                                    del result_details2_list[index]
+                                result_details2 = tuple(result_details2_list)
+                                avaempcount = 0
+                                for dt1 in result_details2:
+                                    if avaempcount % 2 == 0:
+                                        empava_tree.insert("", 'end', values=(dt1[0], dt1[1], dt1[2], dt1[8], dt1[9]), tags=('evenrow',))
+                                    else:
+                                        empava_tree.insert("", 'end', values=(dt1[0], dt1[1], dt1[2], dt1[8], dt1[9]), tags=('oddrow',))
+                                    avaempcount +=1
+                        except pymysql.Error as e:
+                            loading_splash.destroy()
+                            assigncamWindow.attributes('-disabled', 0)
+                            messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                            print("Error %d: %s" % (e.args[0], e.args[1]))
+                            return False
+                        finally:
+                            # Close the connection
+                            mysql_con2.close()
+                        loading_splash.destroy()
+                        messagebox.showinfo("Camera Dellocation Successful", "The selected employee(s) had been dellocated for traffic camera {}.".format(tempactivecam[0]))
+                        assigncamWindow.attributes('-disabled', 0)
+                        assigncamWindow.focus_force()
+                    # If error
+                    else:
+                        loading_splash.destroy()
+                        messagebox.showerror("Camera Dellocation Failed", "Failed to dellocate the selected employee(s) for traffic camera {}! Please contact developer for help!".format(tempactivecam[0]))
+                        assigncamWindow.attributes('-disabled', 0)
+                        assigncamWindow.focus_force() 
+                except pymysql.Error as e:
+                    loading_splash.destroy()
+                    assigncamWindow.attributes('-disabled', 0)
+                    messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                    print("Error %d: %s" % (e.args[0], e.args[1]))
+                    return False
+                finally:
+                    # Close the connection
+                    mysql_con.close()
+    # Assign employee
+    def assignemp():
+        global tempasgemp, tempactivecam, tempavaemp
+        
+        if len(tempavaemp) == 0:
+            messagebox.showerror("No Employee Selected", "There was no available employees selected for allocation!")
+        else:
+            confirmbox = messagebox.askquestion('e-Vision', 'Are you sure to allocate this(these) {} employee(s) for traffic camera {}?'.format(len(tempavaemp), tempactivecam[0]), icon='warning')
+            if confirmbox == 'yes':
+                loading(assigncamWindow)
+                assigncamWindow.update()
+                
+                emptoasg_list = []
+                for x in tempavaemp:
+                    emptoasg = empava_tree.item(x, 'values')
+                    emptoasg_list.append(emptoasg)
+                emptoasgID_list = [y[0] for y in emptoasg_list]
+                emptoasgwBID_list = ["{}, {}".format(z,tempactivecam[0]) for z in emptoasgID_list]
+                emptoasgwBID_list = [tuple(i.split(', ')) for i in emptoasgwBID_list]
+                
+                try:
+                    mysql_con = MySqlConnector(sql_config) # Initial connection
+                    if len(tempavaemp) > 1:
+                        for i in emptoasgwBID_list:
+                            sql = "INSERT INTO User_Camera(user_id, cam_id) VALUES(%s, %s)"
+                            insert = mysql_con.update(sql, (i[0], i[1]))
+                    else:
+                        sql = "INSERT INTO User_Camera(user_id, cam_id) VALUES(%s, %s)"
+                        insert = mysql_con.update(sql, (emptoasgwBID_list[0][0], emptoasgwBID_list[0][1]))
+                    if insert > 0:
+                        if len(tempasgemp) > 0:
+                            temp1 = list(tempasgemp)
+                            temp1.clear()
+                            tempasgemp = tuple(temp1)
+                        if len(tempavaemp) > 0:
+                            temp2 = list(tempavaemp)
+                            temp2.clear()
+                            tempavaemp = tuple(temp2)
+                        empasg_tree.delete(*empasg_tree.get_children())
+                        empava_tree.delete(*empava_tree.get_children())
+                        selectasg_label.config(text="No assigned employee selected")
+                        selectava_label.config(text="No available employee selected")
+                        unassign_btn.config(cursor="", state="disabled")
+                        assign_btn.config(cursor="", state="disabled")
+                        # Get the list of assigned employee of the camera
+                        try:
+                            mysql_con1 = MySqlConnector(sql_config) # Initial connection
+                            sql1 = '''SELECT * FROM User_Camera uc, User u WHERE uc.cam_id = (%s) AND uc.user_id = u.user_id AND u.user_isDelete = 0 AND u.user_role = 2'''
+                            result_details1 = mysql_con1.queryall(sql1, (tempactivecam[0]))
+                            if result_details1:
+                                asgempcount = 0
+                                for dt in result_details1:
+                                    if asgempcount % 2 == 0:
+                                        empasg_tree.insert("", 'end', values=(dt[2], dt[3], dt[4], dt[10], dt[11]), tags=('evenrow',))
+                                    else:
+                                        empasg_tree.insert("", 'end', values=(dt[2], dt[3], dt[4], dt[10], dt[11]), tags=('oddrow',))
+                                    asgempcount +=1
+                        except pymysql.Error as e:
+                            loading_splash.destroy()
+                            assigncamWindow.attributes('-disabled', 0)
+                            messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                            print("Error %d: %s" % (e.args[0], e.args[1]))
+                            return False
+                        finally:
+                            # Close the connection
+                            mysql_con1.close()
+                        # Get the list of available employee of the camera
+                        try:
+                            mysql_con2 = MySqlConnector(sql_config) # Initial connection
+                            sql2 = '''SELECT * FROM User WHERE user_isDelete = 0 AND user_role = 2'''
+                            result_details2 = mysql_con2.queryall(sql2)
+                            if result_details2:
+                                # clear assigned employee
+                                index_list = []
+                                result_details2_list = list(result_details2)
+                                for x_index, x in enumerate(result_details2_list):
+                                    for y in result_details1:
+                                        if x[0] == y[0]:
+                                            index_list.append(x_index)
+                                            break
+                                for index in sorted(index_list, reverse=True):
+                                    del result_details2_list[index]
+                                result_details2 = tuple(result_details2_list)
+                                avaempcount = 0
+                                for dt1 in result_details2:
+                                    if avaempcount % 2 == 0:
+                                        empava_tree.insert("", 'end', values=(dt1[0], dt1[1], dt1[2], dt1[8], dt1[9]), tags=('evenrow',))
+                                    else:
+                                        empava_tree.insert("", 'end', values=(dt1[0], dt1[1], dt1[2], dt1[8], dt1[9]), tags=('oddrow',))
+                                    avaempcount +=1
+                        except pymysql.Error as e:
+                            loading_splash.destroy()
+                            assigncamWindow.attributes('-disabled', 0)
+                            messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                            print("Error %d: %s" % (e.args[0], e.args[1]))
+                            return False
+                        finally:
+                            # Close the connection
+                            mysql_con2.close()
+                        loading_splash.destroy()
+                        messagebox.showinfo("Camera Allocation Successful", "The selected employee(s) had been allocated for traffic camera {}.".format(tempactivecam[0]))
+                        assigncamWindow.attributes('-disabled', 0)
+                        assigncamWindow.focus_force()
+                    # If error
+                    else:
+                        loading_splash.destroy()
+                        messagebox.showerror("Camera Allocation Failed", "Failed to allocate the selected employee(s) for traffic camera {}! Please contact developer for help!".format(tempactivecam[0]))
+                        assigncamWindow.attributes('-disabled', 0)
+                        assigncamWindow.focus_force() 
+                except pymysql.Error as e:
+                    loading_splash.destroy()
+                    assigncamWindow.attributes('-disabled', 0)
+                    messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                    print("Error %d: %s" % (e.args[0], e.args[1]))
+                    return False
+                finally:
+                    # Close the connection
+                    mysql_con.close()
+                
+    
+    # Configure  window attribute
+    mainWindow.withdraw()
+    assigncamWindow = Toplevel(mainWindow)
+    assigncamWindow.title('e-Vision Camera Allocation')
+    assigncamWindow.iconbitmap('asset/logo.ico')
+    height = round(950*ratio)
+    width = round(1400*ratio)
+    x = (cscreen_width/2)-(width/2)
+    y = ((cscreen_height/2)-(height/2))-round(35*ratio)
+    assigncamWindow.geometry(f'{width}x{height}+{round(x)}+{round(y)}')
+    assigncamWindow.resizable(False, False)
+    assigncamWindow.protocol("WM_DELETE_WINDOW", disable_event)
+    style.theme_use('mngstyle')
+    
+    # Configure row column attribute
+    assigncamWindow.grid_columnconfigure(0, weight=0)
+    assigncamWindow.grid_columnconfigure(1, weight=0)
+    #assigncamWindow.grid_rowconfigure(3, weight=round(1*ratio))
+    assigncamWindow.grid_rowconfigure(10, weight=round(1*ratio))
+    
+    # Setup frames
+    left_frame = Frame(assigncamWindow, width=round(cscreen_width*0.3646), bg="#EDF1F7")
+    left_frame.grid(row=0, column=0, rowspan=11, sticky="nsew")
+    right_frame = Frame(assigncamWindow, width=round(cscreen_width*0.3646), bg="#1D253D")
+    right_frame.grid(row=0, column=1, rowspan=11, sticky="nsew")
+    
+    # Left components
+    btn_frame1 = Canvas(assigncamWindow, bg="#EDF1F7")
+    btn_frame1.grid(row=0, column=0, sticky="nsw", padx=round(10*ratio), pady=round(10*ratio))
+    backmainbtn(btn_frame1, assigncamWindow, "#EDF1F7")
+    f0 = Frame(assigncamWindow, relief=FLAT, bd=0 , bg="#EDF1F7")
+    f0.grid(row=1, column=0, sticky="nsew", padx=round(50*ratio))
+    cam_label = Label(f0, text="Active Traffic Camera", font=("Arial Rounded MT Bold", round(15*ratio)), bg="#EDF1F7", fg="black")
+    cam_label.pack(side=LEFT)
+    info_icon = Image.open('asset/info.png')
+    info_icon = info_icon.resize((round(20*ratio),round(20*ratio)))
+    info_icon = ImageTk.PhotoImage(info_icon)
+    info_lbl = Label(f0, image=info_icon, bg="#EDF1F7")
+    info_lbl.image = info_icon
+    info_lbl.pack(side=LEFT)
+    cam_selection_lbl = Label(assigncamWindow, text="No active camera selected", font=("Lato", round(10*ratio)), bg="#EDF1F7", fg="black")
+    cam_selection_lbl.grid(row=2, column=0, sticky="nsw", padx=round(50*ratio))
+    CreateToolTip(info_lbl, text = 'Please select an available CCTV camera \nin order to manage the particular camera \nallocation to monitoring employees')
+    # Treeview frame
+    activecam_tree_frame = Frame(assigncamWindow, relief=FLAT, bd=0)
+    activecam_tree_frame.grid(row=3, column=0, rowspan=5, padx=round(50*ratio), sticky="nsew")
+    # Treeview components
+    activecam_tree_vscroll = Scrollbar(activecam_tree_frame, relief=FLAT, bd=0)
+    activecam_tree_vscroll.pack(side=RIGHT, fill=Y)
+    activecam_tree_hscroll = Scrollbar(activecam_tree_frame, orient='horizontal', relief=FLAT, bd=0)
+    activecam_tree_hscroll.pack(side=BOTTOM, fill=X)
+    activecam_column_headerlist = ['cam_id', 'cam_desc', 'cam_type', 'cam_street', 'cam_city', 'cam_state']
+    activecam_tree = ttk.Treeview(activecam_tree_frame, columns=activecam_column_headerlist, show='headings', yscrollcommand=activecam_tree_vscroll.set, xscrollcommand=activecam_tree_hscroll.set, selectmode="browse")
+    activecam_tree.pack(side=TOP, expand=TRUE, fill=BOTH)
+    style.map('Treeview', background=[('selected', '#04D8AE')])  #selected color
+    # Configure scrollbar
+    activecam_tree_vscroll.config(command=activecam_tree.yview)
+    activecam_tree_hscroll.config(command=activecam_tree.xview)
+    # Define haeder column name
+    activecam_tree.heading('cam_id', text='Camera ID')
+    activecam_tree.heading('cam_desc', text='Camera Descripion')
+    activecam_tree.heading('cam_type', text='Camera Type')
+    activecam_tree.heading('cam_street', text='Street Name')
+    activecam_tree.heading('cam_city', text='City')
+    activecam_tree.heading('cam_state', text='State')
+    # Define column width and alignments
+    activecam_tree.column('cam_id', width=round(70*ratio), minwidth=round(70*ratio), anchor ='c')
+    activecam_tree.column('cam_desc', width=round(80*ratio), minwidth=round(80*ratio), anchor ='c')
+    activecam_tree.column('cam_type', width=round(80*ratio), minwidth=round(80*ratio), anchor ='c')
+    activecam_tree.column('cam_street', width=round(80*ratio), minwidth=round(80*ratio), anchor ='c')
+    activecam_tree.column('cam_city', width=round(80*ratio), minwidth=round(80*ratio), anchor ='c',)
+    activecam_tree.column('cam_state', width=round(80*ratio), minwidth=round(80*ratio), anchor ='c')
+    activecam_tree.update()
+    activecam_tree.column('cam_id', width=round(70*ratio))
+    activecam_tree.column('cam_desc', width=round(200*ratio))
+    activecam_tree.column('cam_type', width=round(120*ratio))
+    activecam_tree.column('cam_street', width=round(160*ratio))
+    activecam_tree.column('cam_city', width=round(120*ratio))
+    activecam_tree.column('cam_state', width=round(120*ratio))
+    f0a = Frame(assigncamWindow, bd=round(3*ratio), bg="#CFCBCB")
+    f0a.grid(row=8, column=0, rowspan=2, sticky="nsw", padx=round(50*ratio), pady=round(20*ratio))
+    refreshcam_list = Button(f0a, cursor="hand2", command=lambda:refreshlistbtn(), text="Refresh Camera List", font=("Arial Rounded MT Bold", round(10*ratio)), width=round(22*ratio), bg="#CFCBCB", fg="black", relief=FLAT, bd=0, activebackground="#CFCBCB", activeforeground="black")
+    refreshcam_list.pack(expand=TRUE, fill=BOTH)
+    # Selection bind
+    activecam_tree.bind("<ButtonRelease-1>", selectactivecam) #<<TreeviewSelect>> <ButtonRelease-1>
+    
+    # Right components
+    sys_label = Label(assigncamWindow, text="e-Vision", font=("Arial Rounded MT Bold", round(14*ratio)), bg="#1D253D", fg="white")
+    sys_label.grid(row=0, column=1, sticky="ne", padx=round(30*ratio), pady=round(15*ratio))
+    emp_label = Label(assigncamWindow, text="Employee Allocation", font=("Arial Rounded MT Bold", round(15*ratio)), bg="#1D253D", fg="white")
+    emp_label.grid(row=1, column=1, sticky="nsew")
+    f1 = Frame(assigncamWindow, relief=FLAT, bd=0 , bg="#1D253D")
+    f1.grid(row=2, column=1, sticky="nsew", padx=round(50*ratio))
+    empasg_label = Label(f1, text="Assigned Employee", font=("Arial Rounded MT Bold", round(10*ratio)), bg="#1D253D", fg="#00FF22")
+    empasg_label.pack(side=LEFT)
+    note_label = Label(f1, text="Multiple Selection: Use CTRL + Left Click", font=("Arial Rounded MT Bold", round(8*ratio)), bg="#1D253D", fg="red")
+    note_label.pack(side=RIGHT)
+    info_icon1 = Image.open('asset/info1.png')
+    info_icon1 = info_icon1.resize((round(20*ratio),round(20*ratio)))
+    info_icon1 = ImageTk.PhotoImage(info_icon1)
+    info_lbl1 = Label(f1, image=info_icon1, bg="#1D253D")
+    info_lbl1.image = info_icon1
+    info_lbl1.pack(side=LEFT)
+    CreateToolTip(info_lbl1, text = 'The assigned employee list was displayed \naccording to the CCTV camera selected\n\nPlease select the employees for dellocation \n(multiple selection was allowed)')
+    # Treeview frame
+    empasg_tree_frame = Frame(assigncamWindow, relief=FLAT, bd=0)
+    empasg_tree_frame.grid(row=3, column=1, padx=round(50*ratio), sticky="nsew")
+    # Treeview components
+    empasg_tree_vscroll = Scrollbar(empasg_tree_frame, relief=FLAT, bd=0)
+    empasg_tree_vscroll.pack(side=RIGHT, fill=Y)
+    empasg_tree_hscroll = Scrollbar(empasg_tree_frame, orient='horizontal', relief=FLAT, bd=0)
+    empasg_tree_hscroll.pack(side=BOTTOM, fill=X)
+    empasg_column_headerlist = ['user_id', 'user_firstname', 'user_lastname', 'user_email', 'user_phone']
+    empasg_tree = ttk.Treeview(empasg_tree_frame, columns=empasg_column_headerlist, show='headings', yscrollcommand=empasg_tree_vscroll.set, xscrollcommand=empasg_tree_hscroll.set, height=round(9*ratio))
+    empasg_tree.pack(side=TOP, expand=TRUE, fill=BOTH)
+    # Configure scrollbar
+    empasg_tree_vscroll.config(command=empasg_tree.yview)
+    empasg_tree_hscroll.config(command=empasg_tree.xview)
+    # Define haeder column name
+    empasg_tree.heading('user_id', text='User ID')
+    empasg_tree.heading('user_firstname', text='First Name')
+    empasg_tree.heading('user_lastname', text='Last Name')
+    empasg_tree.heading('user_email', text='Email')
+    empasg_tree.heading('user_phone', text='Phone Number')
+    # Define column width and alignments
+    empasg_tree.column('user_id', width=round(70*ratio), minwidth=round(70*ratio), anchor ='c')
+    empasg_tree.column('user_firstname', width=round(80*ratio), minwidth=round(80*ratio), anchor ='c')
+    empasg_tree.column('user_lastname', width=round(80*ratio), minwidth=round(80*ratio), anchor ='c')
+    empasg_tree.column('user_email', width=round(80*ratio), minwidth=round(80*ratio), anchor ='c')
+    empasg_tree.column('user_phone', width=round(80*ratio), minwidth=round(80*ratio), anchor ='c',)
+    empasg_tree.update()
+    empasg_tree.column('user_id', width=round(70*ratio))
+    empasg_tree.column('user_firstname', width=round(140*ratio))
+    empasg_tree.column('user_lastname', width=round(140*ratio))
+    empasg_tree.column('user_email', width=round(140*ratio))
+    empasg_tree.column('user_phone', width=round(140*ratio))
+    selectasg_label = Label(assigncamWindow, text="No assigned employee selected", font=("Arial Rounded MT Bold", round(10*ratio)), bg="#1D253D", fg="#ACACAC")
+    selectasg_label.grid(row=4, column=1, sticky="nsw", padx=round(50*ratio), pady=round(5*ratio))
+    # Selection bind
+    empasg_tree.bind("<ButtonRelease-1>", selectasgemp) #<<TreeviewSelect>> <ButtonRelease-1>
+    f1a = Frame(assigncamWindow, bd=round(4*ratio), bg="#DC3545")
+    f1a.grid(row=5, column=1, sticky="nsw", padx=round(50*ratio), pady=(0, round(10*ratio)))
+    unassign_btn = Button(f1a, state="disabled", command=lambda:unassignemp(), text="Unassign Employee", font=("Arial Rounded MT Bold", round(10*ratio)), width=round(20*ratio), bg="#DC3545", fg="white", relief=FLAT, bd=0, activebackground="#DC3545", activeforeground="white")
+    unassign_btn.pack(expand=TRUE, fill=BOTH)
+    f2 = Frame(assigncamWindow, relief=FLAT, bd=0 , bg="#1D253D")
+    f2.grid(row=6, column=1, sticky="nsew", padx=round(50*ratio))
+    empava_label = Label(f2, text="Available Employee", font=("Arial Rounded MT Bold", round(10*ratio)), bg="#1D253D", fg="#00B9FF")
+    empava_label.pack(side=LEFT)
+    note_label = Label(f2, text="Multiple Selection: Use CTRL + Left Click", font=("Arial Rounded MT Bold", round(8*ratio)), bg="#1D253D", fg="red")
+    note_label.pack(side=RIGHT)
+    info_lbl2 = Label(f2, image=info_icon1, bg="#1D253D")
+    info_lbl2.image = info_icon1
+    info_lbl2.pack(side=LEFT)
+    CreateToolTip(info_lbl2, text = 'The available employee list was displayed \naccording to the CCTV camera selected\n\nPlease select the employees for allocation \n(multiple selection was allowed)')
+    # Treeview frame
+    empava_tree_frame = Frame(assigncamWindow, relief=FLAT, bd=0)
+    empava_tree_frame.grid(row=7, column=1, padx=round(50*ratio), sticky="nsew")
+    # Treeview components
+    empava_tree_vscroll = Scrollbar(empava_tree_frame, relief=FLAT, bd=0)
+    empava_tree_vscroll.pack(side=RIGHT, fill=Y)
+    empava_tree_hscroll = Scrollbar(empava_tree_frame, orient='horizontal', relief=FLAT, bd=0)
+    empava_tree_hscroll.pack(side=BOTTOM, fill=X)
+    empava_column_headerlist = ['user_id', 'user_firstname', 'user_lastname', 'user_email', 'user_phone']
+    empava_tree = ttk.Treeview(empava_tree_frame, columns=empava_column_headerlist, show='headings', yscrollcommand=empava_tree_vscroll.set, xscrollcommand=empava_tree_hscroll.set, height=round(9*ratio))
+    empava_tree.pack(side=TOP, expand=TRUE, fill=BOTH)
+    # Configure scrollbar
+    empava_tree_vscroll.config(command=empava_tree.yview)
+    empava_tree_hscroll.config(command=empava_tree.xview)
+    # Define haeder column name
+    empava_tree.heading('user_id', text='User ID')
+    empava_tree.heading('user_firstname', text='First Name')
+    empava_tree.heading('user_lastname', text='Last Name')
+    empava_tree.heading('user_email', text='Email')
+    empava_tree.heading('user_phone', text='Phone Number')
+    # Define column width and alignments
+    empava_tree.column('user_id', width=round(70*ratio), minwidth=round(70*ratio), anchor ='c')
+    empava_tree.column('user_firstname', width=round(80*ratio), minwidth=round(80*ratio), anchor ='c')
+    empava_tree.column('user_lastname', width=round(80*ratio), minwidth=round(80*ratio), anchor ='c')
+    empava_tree.column('user_email', width=round(80*ratio), minwidth=round(80*ratio), anchor ='c')
+    empava_tree.column('user_phone', width=round(80*ratio), minwidth=round(80*ratio), anchor ='c',)
+    empava_tree.update()
+    empava_tree.column('user_id', width=round(70*ratio))
+    empava_tree.column('user_firstname', width=round(140*ratio))
+    empava_tree.column('user_lastname', width=round(140*ratio))
+    empava_tree.column('user_email', width=round(140*ratio))
+    empava_tree.column('user_phone', width=round(140*ratio))
+    selectava_label = Label(assigncamWindow, text="No available employee selected", font=("Arial Rounded MT Bold", round(10*ratio)), bg="#1D253D", fg="#ACACAC")
+    selectava_label.grid(row=8, column=1, sticky="nsw", padx=round(50*ratio), pady=round(5*ratio))
+    # Selection bind
+    empava_tree.bind("<ButtonRelease-1>", selectavaemp)
+    f2a = Frame(assigncamWindow, bd=round(4*ratio), bg="#18BC9B")
+    f2a.grid(row=9, column=1, sticky="nsw", padx=round(50*ratio), pady=(0, round(10*ratio)))
+    assign_btn = Button(f2a, state="disabled", command=lambda:assignemp(), text="Assign Employee", font=("Arial Rounded MT Bold", round(10*ratio)), width=round(20*ratio), bg="#18BC9B", fg="white", relief=FLAT, bd=0, activebackground="#18BC9B", activeforeground="white")
+    assign_btn.pack(expand=TRUE, fill=BOTH)
+
+    # Initial loading
+    activecam_tree.tag_configure('oddrow', background="white")
+    activecam_tree.tag_configure('evenrow', background="#ecf3fd")
+    empasg_tree.tag_configure('oddrow', background="white")
+    empasg_tree.tag_configure('evenrow', background="#ecf3fd")
+    empava_tree.tag_configure('oddrow', background="white")
+    empava_tree.tag_configure('evenrow', background="#ecf3fd")
+    loadallcam()
 
 root.mainloop()
