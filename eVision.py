@@ -2,10 +2,10 @@
 # Intake: UC3F2111CS(IS)
 # Program Name: Main GUI Integration
 # Date Created: 05/05/2022
-import os, io, re, secrets, string, pymysql, customtkinter, tkintermapview
-from numpy import pad
+import os, io, re, secrets, string, pymysql, glob, cv2
 import pandas as pd
 import customtkinter
+import tkintermapview
 from tkintermapview import TkinterMapView
 from tkinter import *
 from tkinter import messagebox
@@ -18,6 +18,8 @@ from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 from Google import Create_Service
 from mysql_db.db_connect import MySqlConnector
 from email_sender import *
+from accident_detection_model import fused_accident_detection
+from threading import Thread
 
 
 #==============================================================================================#
@@ -947,7 +949,7 @@ mngstyle.theme_create('mngstyle', parent='clam', settings =
 #==============================================================================================#
 #                                   Forget Password Page                                       #
 #==============================================================================================#
-## Main Page Interface
+## Forget Password Page Interface
 def forgetpassPage():
     ## Function List for Forget Password Page
     # Reset password for user
@@ -1103,6 +1105,8 @@ def forgetpassPage():
 #==============================================================================================#
 ## Main Page Interface
 def mainPage():
+    global frm_update
+    
     ## Function & Validation List for Main Page
     # Logout function
     def mainlogout():
@@ -1151,6 +1155,53 @@ def mainPage():
             fbtn_save.config(state='normal', cursor="hand2")
         else:
             fbtn_save.config(state='disabled', cursor="")
+    # Frame update function
+    def frm_update():
+        ava_frame, cv_img, frm_time, isAcci_conf = det_model.proc_frame()
+        
+        frm = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGBA)
+        frm = Image.fromarray(frm)
+        frm = ImageTk.PhotoImage(frm)
+        vmain.imgtk = frm
+        vmain.config(image=frm)
+        
+        # If accident detected, do something
+        # if isAcci_conf:
+            #Todo
+        
+        # Keep update
+        if ava_frame:
+            Thread(target = frm_update).start()
+    # Threading for frame processing
+    process_frame = Thread(target=frm_update)
+    # Initiate CCTV function
+    def init_cctv():
+        global det_model
+        
+        loading(mainWindow)
+        mainWindow.update()
+        # Video path
+        src_path = os.path.abspath('cctv_contents/')
+        ext = ('*.mp4', '*.avi')
+        cctv_list = []
+        for cctv_ext in ext:
+            cctv_list.extend(glob.glob(os.path.join(src_path, cctv_ext)))
+        cur_cctv_idx = 0
+            
+        # Inititate detection model
+        vdet_model_path = os.path.abspath('v_detect_track/retinanet_vdet_model.h5')
+        det_model = fused_accident_detection(vdet_model_path, cctv_list[cur_cctv_idx])
+        
+        # Set the label of CCTV
+        camera_list.config(text="Camera List: {}/{}".format((cur_cctv_idx + 1), len(cctv_list)))
+        camera_id.config(text="Camera ID: Dummy")
+        camera_loc.config(text="Location: Dummy, Dummy")
+        
+        # Start monitoring
+        process_frame.start()
+        loading_splash.destroy()
+        mainWindow.attributes('-disabled', 0)
+    
     
     global mainWindow
     
@@ -1177,6 +1228,8 @@ def mainPage():
     # Left components
     video_player = Frame(mainWindow, bg="white", highlightbackground="black", highlightthickness=1)
     video_player.grid(row=0, column=0, rowspan=7, columnspan=3, sticky="nsew", padx=round(25*ratio), pady=(round(30*ratio), round(15*ratio)))
+    vmain = Label(video_player, bg="white")
+    vmain.pack(anchor='c', expand=TRUE)
     if(usession.user_role == 1):
         btn_frame1 = Frame(mainWindow, bg="#EDF1F7")
         btn_frame1.grid(row=7, rowspan=2, column=0, sticky="nsew")
@@ -1250,7 +1303,7 @@ def mainPage():
     btn_refresh.pack(fill='x')
     btn_frame7 = Frame(mainWindow, bg="#1D253D")
     btn_frame7.grid(row=4, column=3, sticky="nsew", padx=(round(30*ratio), round(5*ratio)), pady=(0, round(5*ratio)))
-    btn_init = Button(btn_frame7, cursor="hand2", text="Initiate", font=("Arial Rounded MT Bold", round(13*ratio)), height=1, width=round(15*ratio), fg="white", bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB", activeforeground="white")
+    btn_init = Button(btn_frame7, cursor="hand2", command=lambda:init_cctv(), text="Initiate", font=("Arial Rounded MT Bold", round(13*ratio)), height=1, width=round(15*ratio), fg="white", bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB", activeforeground="white")
     btn_init.pack(fill='x')
     btn_frame8 = Frame(mainWindow, bg="#1D253D")
     btn_frame8.grid(row=4, column=4, sticky="nsew", padx=(round(5*ratio), round(30*ratio)), pady=(0, round(5*ratio)))

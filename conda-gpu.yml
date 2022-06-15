@@ -1,0 +1,23 @@
+name: conda-cuda-gpu
+
+dependencies:
+  - python==3.7
+  - pip
+  - matplotlib==3.3.1
+  - opencv
+  - cudnn==7.6.0
+  - cudatoolkit==10.0.130
+  - pip:
+    - tensorflow-gpu==1.13.1
+    - keras==2.2.4
+    - scipy==1.2.1
+    - numpy==1.16.4
+    - opencv-python
+    - pandas
+    - pillow
+    - pymysql
+    - tk
+    - customtkinter
+    - tkintermapview
+    - google-api-python-client
+    - tensorflow_datasets==3.2.1
