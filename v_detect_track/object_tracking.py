@@ -89,7 +89,7 @@ class object_tracker:
                     continue
             # If prev obj havent assigned to a current
             else:
-                self.cur_obj_idxes.add(prev_objs[min_eu_dist_index][-1])
+                self.cur_obj_idxes.add(prev_objs[min_eu_dist_index][1])
                 # Set the new object ID
                 cur_objs[i][1] = prev_objs[min_eu_dist_index][1]
                 # Update prev obj to point of new obj
@@ -117,7 +117,7 @@ class object_tracker:
                     y_mag = prev_objs[tracked_prev_obj][3][-1][1] - prev_objs[tracked_prev_obj][3][0][1]
                     vect = [x_mag, y_mag]
                     vect_mag = (vect[0]**2 + vect[1]**2)**(0.5) # Euclidean distance formula
-                    cur_objs[i][5] == vect_mag
+                    cur_objs[i][5] = vect_mag
                     
                 # Update the consecutive frame detection count
                 cur_objs[i][2] = prev_objs[tracked_prev_obj][2] + 1

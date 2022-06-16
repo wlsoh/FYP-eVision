@@ -124,7 +124,6 @@ class fused_accident_detection:
             Index 5: Magnitude of object vectore in prev frame
         '''
         # Accident Detection (magnitude anomaly, classification) -> current frame
-        global isAcci_sus, isAcci_conf
         isAcci_sus = False
         isAcci_conf = False
         for objs in self.cur_frame_objs:
@@ -141,25 +140,26 @@ class fused_accident_detection:
                 # Calculate for sudden change acceleration/deceleration of vehicle
                 chg = abs(vec_mag - objs[5]) # index 5 -> magnitude in prev frame
                 # Determine suspect accident (based on threshold defined -> if exceed threshold and vehicle is moving in prev frame)
-                if (chg >= 1) and (objs[5] != 0.0):
+                if (chg >= 11) and (objs[5] != 0.0):
                     isAcci_sus = True
-                    
+
                 ## Second Validation: neural network accident classification (Resnet)
                 # Pending here....
                 
                 ## Show detected vehicles and potential accidents
-                cv2.circle(dup_frame, objs[0], 5, (0, 255, 0), 2) # radius 5, BGR green, thickness 2
                 if isAcci_sus:
-                    cv2.circle(dup_frame, objs[0], 40, (0, 255, 255), 4) # radius 40, BGR yellow, thickness 2
+                    cv2.circle(dup_frame, objs[0], 5, (0, 255, 255), 2) # radius 5, BGR yellow, thickness 2
+                else:
+                    cv2.circle(dup_frame, objs[0], 5, (0, 255, 0), 2) # radius 5, BGR green, thickness 2
                     
                 ## Show predicting future loc of detected vehicles
-                cv2.line(dup_frame, objs[3][-1], next_loc_vec, (255, 0, 0)) # BGR dark blue
+                cv2.line(dup_frame, objs[3][-1], next_loc_vec, (255, 0, 0), 2) # BGR dark blue
             
         ## If accident confirm detected in the current frame
         if isAcci_conf:
             cv2.putText(dup_frame, "ACCIDENT DETECTED", (10, 10), self.font, 1, (0, 0, 255), 2, cv2.LINE_AA)
             
-        cv2.putText(dup_frame, "FPS: {}".format(fps), (10, 30), self.font, 1, (0, 0, 255), 2, cv2.LINE_AA)
+        cv2.putText(dup_frame, "FPS: {}".format(fps), (10, 30), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 255, 0), 2, cv2.LINE_AA)
         
         # Move next in object tracking
         if not self.isInit_frame:
@@ -178,7 +178,7 @@ class fused_accident_detection:
         return ava_frame, dup_frame, frm_time, isAcci_conf
     
     # End detection
-    def end(self):
+    def __del__(self):
         self.video.release()
         
         

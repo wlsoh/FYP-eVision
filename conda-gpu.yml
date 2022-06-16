@@ -16,7 +16,7 @@ dependencies:
     - pillow
     - pymysql
     - tk
-    - customtkinter
+    - customtkinter==4.3.0
     - tkintermapview
     - google-api-python-client
     - google-auth-oauthlib

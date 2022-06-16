@@ -1107,7 +1107,8 @@ def forgetpassPage():
 #==============================================================================================#
 ## Main Page Interface
 def mainPage():
-    global frm_update
+    global frm_update, stop_flag
+    stop_flag = False
     
     ## Function & Validation List for Main Page
     # Logout function
@@ -1172,15 +1173,16 @@ def mainPage():
             #Todo
         
         # Keep update
-        vmain.after(1, frm_update) #Thread(target = frm_update).start()
-    # Threading for frame processing
-    process_frame = Thread(target=frm_update)
+        if not stop_flag:
+            vmain.after(1, frm_update) #Thread(target = frm_update).start()
     # Initiate CCTV function
     def init_cctv():
-        global det_model
+        global det_model, stop_flag
+        stop_flag = False
         
         loading(mainWindow)
         mainWindow.update()
+        
         # Video path
         src_path = os.path.abspath('cctv_contents/')
         ext = ('*.mp4', '*.avi')
@@ -1199,10 +1201,28 @@ def mainPage():
         camera_loc.config(text="Location: Dummy, Dummy")
         
         # Start monitoring
-        process_frame.start()
+        frm_update()
         loading_splash.destroy()
         mainWindow.attributes('-disabled', 0)
-    
+    # Stop CCTV function
+    def stop_cctv():
+        global stop_flag
+        
+        loading(mainWindow)
+        mainWindow.update()
+        
+        stop_flag = True
+        det_model.__del__()
+        vmain.config(image="")
+        # del det_model
+        
+        # Set the label of CCTV
+        camera_list.config(text="Camera List:")
+        camera_id.config(text="Camera ID:")
+        camera_loc.config(text="Location:")
+        
+        loading_splash.destroy()
+        mainWindow.attributes('-disabled', 0)
     
     global mainWindow
     
@@ -1221,47 +1241,47 @@ def mainPage():
     mainWindow.grid_rowconfigure(2, weight=round(4*ratio))
     
     # Setup frames
-    left_frame = Frame(mainWindow, width=round(cscreen_width*0.78), height=round(cscreen_height), bg="#EDF1F7")
+    left_frame = Frame(mainWindow, width=round(cscreen_width*0.78), height=round(cscreen_height), bg="#505050")
     left_frame.grid(row=0, column=0, rowspan=9, columnspan=3, sticky="nsew")
     right_frame = Frame(mainWindow, width=round(cscreen_width*0.22), height=round(cscreen_height), bg="#1D253D")
     right_frame.grid(row=0, column=3, rowspan=9, columnspan=2, sticky="nsew")
     
     # Left components
-    video_player = Frame(mainWindow, bg="white", highlightbackground="black", highlightthickness=1)
+    video_player = Frame(mainWindow, bg="black", highlightbackground="black", highlightthickness=1)
     video_player.grid(row=0, column=0, rowspan=7, columnspan=3, sticky="nsew", padx=round(25*ratio), pady=(round(30*ratio), round(15*ratio)))
-    vmain = Label(video_player, bg="white")
+    vmain = Label(video_player, bg="black")
     vmain.pack(anchor='c', expand=TRUE)
     if(usession.user_role == 1):
-        btn_frame1 = Frame(mainWindow, bg="#EDF1F7")
+        btn_frame1 = Frame(mainWindow, bg="#505050")
         btn_frame1.grid(row=7, rowspan=2, column=0, sticky="nsew")
         btn_mnguserimg = Image.open('asset/manageuser_btn.png')
         btn_mnguserimg = btn_mnguserimg.resize((round(182*ratio),round(50*ratio)), Image.ANTIALIAS)
         btn_mnguserimg = ImageTk.PhotoImage(btn_mnguserimg)
-        btn_mnguser = Button(btn_frame1, cursor="hand2", command=lambda:usermanagementPage(), image=btn_mnguserimg, bg="#EDF1F7", relief=FLAT, bd=0, highlightthickness=0, activebackground="#EDF1F7")
+        btn_mnguser = Button(btn_frame1, cursor="hand2", command=lambda:usermanagementPage(), image=btn_mnguserimg, bg="#505050", relief=FLAT, bd=0, highlightthickness=0, activebackground="#EDF1F7")
         btn_mnguser.image = btn_mnguserimg
         btn_mnguser.pack(pady=(round(10*ratio),0))
-        btn_frame2 = Frame(mainWindow, bg="#EDF1F7")
+        btn_frame2 = Frame(mainWindow, bg="#505050")
         btn_frame2.grid(row=7, rowspan=2, column=1, sticky="nsew")
         btn_mngcamimg = Image.open('asset/managecam_btn.png')
         btn_mngcamimg = btn_mngcamimg.resize((round(182*ratio),round(50*ratio)), Image.ANTIALIAS)
         btn_mngcamimg = ImageTk.PhotoImage(btn_mngcamimg)
-        btn_mngcamera = Button(btn_frame2, cursor="hand2", command=lambda:cammanagementPage(), image=btn_mngcamimg, bg="#EDF1F7", relief=FLAT, bd=0, highlightthickness=0, activebackground="#EDF1F7")
+        btn_mngcamera = Button(btn_frame2, cursor="hand2", command=lambda:cammanagementPage(), image=btn_mngcamimg, bg="#505050", relief=FLAT, bd=0, highlightthickness=0, activebackground="#EDF1F7")
         btn_mngcamera.image = btn_mngcamimg
         btn_mngcamera.pack(pady=(round(10*ratio),0))
-        btn_frame3 = Frame(mainWindow, bg="#EDF1F7")
+        btn_frame3 = Frame(mainWindow, bg="#505050")
         btn_frame3.grid(row=7, rowspan=2, column=2, sticky="nsew")
         btn_agncamimg = Image.open('asset/assigncam_btn.png')
         btn_agncamimg = btn_agncamimg.resize((round(182*ratio),round(50*ratio)), Image.ANTIALIAS)
         btn_agncamimg = ImageTk.PhotoImage(btn_agncamimg)
-        btn_asscamera = Button(btn_frame3, cursor="hand2", command=lambda:assigncamPage(), image=btn_agncamimg, bg="#EDF1F7", relief=FLAT, bd=0, highlightthickness=0, activebackground="#EDF1F7")
+        btn_asscamera = Button(btn_frame3, cursor="hand2", command=lambda:assigncamPage(), image=btn_agncamimg, bg="#505050", relief=FLAT, bd=0, highlightthickness=0, activebackground="#EDF1F7")
         btn_asscamera.image = btn_agncamimg
         btn_asscamera.pack(pady=(round(10*ratio),0))
     else:
-        btn_frame1 = Frame(mainWindow, bg="#EDF1F7")
+        btn_frame1 = Frame(mainWindow, bg="#505050")
         btn_frame1.grid(row=8, column=0, sticky="nsew", pady=(round(10*ratio), round(50*ratio)))
-        btn_frame2 = Frame(mainWindow, bg="#EDF1F7")
+        btn_frame2 = Frame(mainWindow, bg="#505050")
         btn_frame2.grid(row=8, column=1, sticky="nsew")
-        btn_frame3 = Frame(mainWindow, bg="#EDF1F7")
+        btn_frame3 = Frame(mainWindow, bg="#505050")
         btn_frame3.grid(row=8, column=2, sticky="nsew")
     # Right components
     img = Image.open('asset/logo.png')
@@ -1308,7 +1328,7 @@ def mainPage():
     btn_init.pack(fill='x')
     btn_frame8 = Frame(mainWindow, bg="#1D253D")
     btn_frame8.grid(row=4, column=4, sticky="nsew", padx=(round(5*ratio), round(30*ratio)), pady=(0, round(5*ratio)))
-    btn_stop = Button(btn_frame8, cursor="hand2", text="Stop", font=("Arial Rounded MT Bold", round(13*ratio)), height=1, width=round(15*ratio), fg="white", bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB", activeforeground="white")
+    btn_stop = Button(btn_frame8, cursor="hand2", command=lambda:stop_cctv(), text="Stop", font=("Arial Rounded MT Bold", round(13*ratio)), height=1, width=round(15*ratio), fg="white", bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB", activeforeground="white")
     btn_stop.pack(fill='x')
     camera_list = Label(mainWindow, text="Camera List: ", font=("Lato", round(13*ratio)), bg="#1D253D", fg="white")
     camera_list.grid(row=5, column=3, columnspan=2, sticky="w", padx=round(30*ratio), pady=(round(5*ratio),0))
@@ -3577,10 +3597,10 @@ def mapselectorPage():
     mapselectorWindow.grid_rowconfigure(0, weight=1)
 
     frame_left = customtkinter.CTkFrame(master=mapselectorWindow, width=150, corner_radius=0)
-    frame_left.grid(row=0, column=0, padx=0, pady=0, sticky="nsew")
+    frame_left.grid(row=0, column=0, rowspan=2, padx=0, pady=0, sticky="nsew")
 
     frame_right = customtkinter.CTkFrame(master=mapselectorWindow, corner_radius=0)
-    frame_right.grid(row=0, column=1, rowspan=1, pady=0, padx=0, sticky="nsew")
+    frame_right.grid(row=0, column=1, rowspan=2, pady=0, padx=0, sticky="nsew")
     
     button_1 = customtkinter.CTkButton(master=frame_left,
                                         text="Set Marker",
@@ -3605,15 +3625,9 @@ def mapselectorPage():
                                         border_width=0,
                                         corner_radius=8)
     button_3.grid(pady=(20, 0), padx=(20, 20), row=2, column=0)
-    
-    frame_right.grid_rowconfigure(0, weight=1)
-    frame_right.grid_rowconfigure(1, weight=0)
-    frame_right.grid_columnconfigure(0, weight=1)
-    frame_right.grid_columnconfigure(1, weight=0)
-    frame_right.grid_columnconfigure(2, weight=1)
 
-    map_widget = TkinterMapView(frame_right, corner_radius=11)
-    map_widget.grid(row=0, rowspan=1, column=0, columnspan=3, sticky="nswe", padx=(20, 20), pady=(20, 0))
+    map_widget = TkinterMapView(mapselectorWindow, corner_radius=11)
+    map_widget.grid(row=0, column=1, sticky="nswe", padx=(20, 20), pady=(20, 0))
     map_widget.set_address("Kuala Lumpur")
     map_widget.set_zoom(10)
     
@@ -3621,29 +3635,31 @@ def mapselectorPage():
                                         command=add_marker_event,
                                         pass_coords=True)
 
-    entry = customtkinter.CTkEntry(master=frame_right,
+    frame_right_btm = customtkinter.CTkFrame(master=mapselectorWindow, corner_radius=0)
+    frame_right_btm.grid(row=1, column=1, pady=(20, 20), sticky="nsew", padx=(20, 20))
+    entry = customtkinter.CTkEntry(master=frame_right_btm,
                                         placeholder_text="Type Address",
                                         width=140,
                                         height=30,
                                         corner_radius=8)
-    entry.grid(row=1, column=0, sticky="we", padx=(20, 0), pady=20)
+    entry.pack(side=LEFT, padx=(5, 5))
     entry.entry.bind("<Return>", search_event)
 
-    button_5 = customtkinter.CTkButton(master=frame_right,
+    button_5 = customtkinter.CTkButton(master=frame_right_btm,
                                             height=30,
                                             text="Search",
                                             command=search_event,
                                             border_width=0,
                                             corner_radius=8)
-    button_5.grid(row=1, column=1, sticky="w", padx=(20, 0), pady=20)
+    button_5.pack(side=LEFT, padx=(5, 5))
 
-    slider_1 = customtkinter.CTkSlider(master=frame_right,
+    slider_1 = customtkinter.CTkSlider(master=frame_right_btm,
                                             width=200,
                                             height=16,
                                             from_=0, to=19,
                                             border_width=5,
                                             command=slider_event)
-    slider_1.grid(row=1, column=2, sticky="e", padx=20, pady=20)
+    slider_1.pack(side=RIGHT)
     slider_1.set(map_widget.zoom)
     loading_splash.destroy()
 
