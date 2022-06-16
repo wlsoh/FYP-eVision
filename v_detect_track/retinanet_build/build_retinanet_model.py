@@ -428,7 +428,7 @@ callbacks_list = [
 (train_dataset, val_dataset), dataset_info = tfds.load("coco/2017", split=["train", "validation"], with_info=True, data_dir="data")
 
 # Define pipeline for better efficiency
-autotune = tf.data.AUTOTUNE
+autotune = tf.data.experimental.AUTOTUNE
 train_dataset = train_dataset.map(preprocess_data, num_parallel_calls=autotune)
 train_dataset = train_dataset.shuffle(8 * batch_size)
 train_dataset = train_dataset.padded_batch(batch_size=batch_size, padding_values=(0.0, 1e-8, -1), drop_remainder=True)
@@ -443,17 +443,17 @@ val_dataset = val_dataset.apply(tf.data.experimental.ignore_errors())
 val_dataset = val_dataset.prefetch(autotune)
 
 # Train the model
-train_steps_per_epoch = dataset_info.splits["train"].num_examples // batch_size
-val_steps_per_epoch = dataset_info.splits["validation"].num_examples // batch_size
+# train_steps_per_epoch = dataset_info.splits["train"].num_examples // batch_size
+# val_steps_per_epoch = dataset_info.splits["validation"].num_examples // batch_size
 
-train_steps = 4 * 100000
-epochs = train_steps // train_steps_per_epoch
+# train_steps = 4 * 100000
+# epochs = train_steps // train_steps_per_epoch
 
-# epochs = 1
+epochs = 1
 
 model.fit(
-    train_dataset,
-    validation_data=val_dataset,
+    train_dataset.take(100),
+    validation_data=val_dataset.take(50),
     epochs=epochs,
     callbacks=callbacks_list,
     verbose=1,

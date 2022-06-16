@@ -15,7 +15,6 @@ graph = tf.get_default_graph()
 from keras_retinanet import models
 from keras_retinanet.utils.image import preprocess_image, resize_image
 
-
 class fused_accident_detection:
     accident_frame = 0
     total_frames = 0 
@@ -47,9 +46,9 @@ class fused_accident_detection:
     
     # Sets up Tensorflow/Keras backend 
     def get_session(self):
-        config = tf.ConfigProto()
+        config = tf.compat.v1.ConfigProto()
         config.gpu_options.allow_growth = True
-        return tf.Session(config=config)
+        return tf.compat.v1.Session(config=config)
     
     # Processing each frame
     def proc_frame(self):

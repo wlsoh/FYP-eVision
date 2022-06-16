@@ -539,8 +539,10 @@ def logout():
     del usession # Delete user session
     # Clear all files in temp folder
     dir = './temp'
+    dont_remove = '.gitignore'
     for f in os.listdir(dir):
-        os.remove(os.path.join(dir, f))
+        if f != dont_remove:
+            os.remove(os.path.join(dir, f))
     mainWindow.destroy() # Destroy current winfow
     root.deiconify() # Show login page again
     root.geometry(f'{width1}x{height1}+{round(x1)}+{round(y1)}')
@@ -1170,8 +1172,7 @@ def mainPage():
             #Todo
         
         # Keep update
-        if ava_frame:
-            Thread(target = frm_update).start()
+        vmain.after(1, frm_update) #Thread(target = frm_update).start()
     # Threading for frame processing
     process_frame = Thread(target=frm_update)
     # Initiate CCTV function
