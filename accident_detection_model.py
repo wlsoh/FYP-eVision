@@ -14,6 +14,8 @@ import tensorflow as tf
 graph = tf.get_default_graph()
 from keras_retinanet import models
 from keras_retinanet.utils.image import preprocess_image, resize_image
+from keras.models import load_model
+from PIL import Image
 
 class fused_accident_detection:
     accident_frame = 0
@@ -29,6 +31,11 @@ class fused_accident_detection:
         
         # Load tarined retinanet model for vehicle detection
         self.model = models.load_model(vdet_model_path, backbone_name='resnet50')
+        
+        # Load trained CNN model for accident proven
+        model_path = os.path.abspath('accident_detect/acci_VGG19_model.h5')
+        self.acci_model = tf.keras.models.load_model(model_path)
+        self.class_name = ['Accident', 'Non Accident']
         
         # Initiate video source
         self.video_src = src
@@ -144,10 +151,26 @@ class fused_accident_detection:
                     isAcci_sus = True
 
                 ## Second Validation: neural network accident classification (Resnet)
-                # Pending here....
+                if isAcci_sus:
+                    img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    im_pil = Image.fromarray((img*255).astype(np.uint8))
+                    im = im_pil.resize((128, 128))
+                    img_array = tf.keras.preprocessing.image.img_to_array(im)
+                    img_array = np.expand_dims(img_array, axis=0)
+                    images = np.vstack([img_array])
+                    prediction = self.acci_model.predict([images])
+                    result_ind = max(prediction).argmax()
+                    result = self.class_name[result_ind]
+                    
+                    if result == 'Accident':
+                        isAcci_conf = True
+                    else:
+                        isAcci_conf = False
                 
                 ## Show detected vehicles and potential accidents
-                if isAcci_sus:
+                if isAcci_sus and isAcci_conf:
+                    cv2.circle(dup_frame, objs[0], 40, (0, 0, 255), 2) # radius 40, BGR red, thickness 2
+                elif isAcci_sus and not isAcci_conf:
                     cv2.circle(dup_frame, objs[0], 5, (0, 255, 255), 2) # radius 5, BGR yellow, thickness 2
                 else:
                     cv2.circle(dup_frame, objs[0], 5, (0, 255, 0), 2) # radius 5, BGR green, thickness 2
@@ -173,7 +196,7 @@ class fused_accident_detection:
         self.total_frames += 1
         if isAcci_conf:
             self.accident_frame += 1
-        print((self.accident_frame / self.total_frames) * 100)
+        print(str((self.accident_frame / self.total_frames) * 100) + " Acci Sus:" + str(isAcci_sus) + " Acci Con:" + str(isAcci_conf))
         
         return ava_frame, dup_frame, frm_time, isAcci_conf
     

@@ -22,3 +22,4 @@ dependencies:
     - google-auth-oauthlib
     - tensorflow_datasets==3.2.1
     - numpy==1.16.4
+    - scikit-learn
