@@ -3,133 +3,15 @@
 # Program Name: Building accident detection nn model
 # Date Created: 20/06/2022
 
-from matplotlib import testing
 import tensorflow as tf
 from keras.models import Sequential
 from keras.layers import BatchNormalization, Conv2D, Flatten, Dense, MaxPooling2D, InputLayer
-from keras.applications import VGG19
-from keras.callbacks import ModelCheckpoint
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from math import ceil
 import pandas as pd
 import pickle
-from PIL import Image
 from sklearn.model_selection import train_test_split
-
-# # Configure batch processing specs
-# batch_size = 100
-# img_h = 128
-# img_w = 128
-
-# src_path_train = os.path.abspath('accident_detect/accident_data/train/')
-# src_path_val = os.path.abspath('accident_detect/accident_data/val/')
-# src_path_test = os.path.abspath('accident_detect/accident_data/test/')
-
-# # Obtain the well-splitted dataset for training and validation, testing
-# datagen = tf.keras.preprocessing.image.ImageDataGenerator()
-
-# training_ds = datagen.flow_from_directory(
-#     src_path_train,
-#     seed=42,
-#     target_size=(img_h, img_w),
-#     batch_size=batch_size
-# )
-
-# validation_ds = datagen.flow_from_directory(
-#     src_path_val,
-#     seed=42,
-#     target_size= (img_h, img_w),
-#     batch_size=batch_size
-# )
-
-# testing_ds = datagen.flow_from_directory(
-#     src_path_test,
-#     seed=42,
-#     target_size= (img_h, img_w),
-#     batch_size=batch_size
-# )
-
-# # Set class label
-# class_names = ['Accidnet', 'Non Accident']
-
-# # Define CNN Model
-# base5 = VGG19(weights='imagenet', include_top=False, input_shape=(128, 128, 3))  
-# NN_transfer_5 = Sequential(
-#                         [InputLayer(input_shape=(128,128,3)),
-#                          base5,
-#                          Flatten(),  # should be fine , or add layers
-#                          Dense(128, activation='relu'),
-#                          Dense(64, activation='relu'),
-#                          Dense(32, activation='relu'),   # 2 dense is must bcuz VGG16 model Conv2D twice and Maxpooling -> get a lot more features
-#                          Dense(2, activation='sigmoid')]
-#                        )
-
-# # MyCNN = Sequential([
-# #   BatchNormalization(input_shape=(128,128,3)),
-# #   Conv2D(32, 3, activation='relu'),
-# #   MaxPooling2D(),
-# #   Conv2D(64, 3, activation='relu'),
-# #   MaxPooling2D(),
-# #   Conv2D(128, 3, activation='relu'),
-# #   MaxPooling2D(),
-# #   Flatten(),
-# #   Dense(256, activation='relu'),
-    
-# #   Dense(2, activation= 'softmax')#Softmax is often used as the activation for the last layer of a classification network because the result could be interpreted as a probability distribution.
-# # ])
-# #Computes the crossentropy loss between the labels and predictions.
-
-# NN_transfer_5.compile(optimizer='adam',loss='categorical_crossentropy', metrics=['accuracy'])
-
-# # Train the model
-# model = NN_transfer_5.fit_generator(training_ds, validation_data= validation_ds, epochs = 30, steps_per_epoch = ceil(training_ds.n/training_ds.batch_size), validation_steps = ceil(validation_ds.n/validation_ds.batch_size))
-
-# # # Evaluate the model
-# # AccuracyVector = []
-# # plt.figure(figsize=(30, 30))
-# # for images, labels in testing_ds.take(1):
-# #     predictions = MyCNN.predict_generator(images)
-# #     predlabel = []
-# #     prdlbl = []
-    
-# #     for n in predictions:
-# #         predlabel.append(class_names[np.argmax(n)])
-# #         prdlbl.append(np.argmax(n))
-    
-# #     AccuracyVector = np.array(prdlbl) == labels
-# #     for i in range(40):
-# #         ax = plt.subplot(10, 4, i + 1)
-# #         plt.imshow(images[i].numpy().astype("uint8"))
-# #         plt.title('Predict : '+ predlabel[i]+'   Real :'+class_names[labels[i]] )
-# #         plt.axis('off')
-# #         plt.grid(True)
-# # plt.show()
-
-# # Evaluate model
-# NN_transfer_5.evaluate_generator(generator=validation_ds, steps=ceil(validation_ds.n/validation_ds.batch_size))
-
-# # Test model
-# testing_ds.reset()
-# predict = NN_transfer_5.predict_generator(testing_ds, steps = ceil(testing_ds.n/testing_ds.batch_size))
-# # predict the class label
-# y_classes = np.argmax(predict, axis=-1)
-# labels = (training_ds.class_indices)
-# print(labels)
-# labels = dict((v,k) for k,v in labels.items())
-# predictions = [labels[k] for k in y_classes]
-
-# filenames=testing_ds.filenames
-# results=pd.DataFrame({"Filename":filenames,
-#                       "Predictions":predictions})
-# results.to_csv("results.csv",index=False)
-
-# # Save model if evaluated good
-# # NN_transfer_5.save("acci_cnn_model.h5")
-# NN_transfer_5.save("acci_VGG19_model.h5")
-
-# =========================================================================
 
 # Read all accident images in training set
 list_images_accident = []
