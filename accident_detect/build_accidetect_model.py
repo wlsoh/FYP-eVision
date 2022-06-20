@@ -134,7 +134,7 @@ from sklearn.model_selection import train_test_split
 # Read all accident images in training set
 list_images_accident = []
 name_accident= []
-for dirname, _, filenames in os.walk('accident_detect/new_data/Accident/'):
+for dirname, _, filenames in os.walk('accident_detect/new_dataset/Accident/'):
     for filename in filenames:
         list_images_accident.append(os.path.join(dirname, filename))
         name_accident.append(filename)
@@ -152,7 +152,7 @@ df_images_accident["Class"] = "Accident"
 # Read all non accident images that in training set
 list_images_no_accident = []
 name_no_accident= []
-for dirname_2, _, filenames_2 in os.walk('accident_detect/new_data/Non Accident/'):
+for dirname_2, _, filenames_2 in os.walk('accident_detect/new_dataset/Non Accident/'):
     for filename in filenames_2:
         list_images_no_accident.append(os.path.join(dirname_2, filename))
         name_no_accident.append(filename)
@@ -172,7 +172,7 @@ df_all_images = pd.concat([df_images_accident, df_images_no_accident], ignore_in
 
 # Preprocess images
 def prepare_image(img_path):
-    img = tf.keras.preprocessing.image.load_img(img_path, target_size=(128,128))
+    img = tf.keras.preprocessing.image.load_img(img_path) #, target_size=(128,128)
     x = tf.keras.preprocessing.image.img_to_array(img)
     
     return x
@@ -180,13 +180,13 @@ def prepare_image(img_path):
 images = []
 labels = []
 
-directory = os.fsencode('accident_detect/new_data/')
+directory = os.fsencode('accident_detect/new_dataset/')
 
 for folder in os.listdir(directory):
     label = os.fsdecode(folder)
-    for img in os.listdir(f'accident_detect/new_data/{label}'):
+    for img in os.listdir(f'accident_detect/new_dataset/{label}'):
         img_name = os.fsdecode(img)
-        images.append(prepare_image(f'accident_detect/new_data/{label}/{img_name}'))
+        images.append(prepare_image(f'accident_detect/new_dataset/{label}/{img_name}'))
         labels.append(label)
         
 label_0_1 = [int(labels[w].replace('Non Accident', "0").replace("Accident",'1')) for w in range(len(labels))]
@@ -197,18 +197,18 @@ X, Y = images, label_0_1
 X = np.array(X)
 Y = np.array(Y)
 
-open_file = open("img_128x128.txt", "wb")
+open_file = open("img_28x28.txt", "wb")
 pickle.dump(X, open_file)
 open_file.close()
 
-open_file = open("label_128x128.txt", "wb")
+open_file = open("label_28x28.txt", "wb")
 pickle.dump(Y, open_file)
 open_file.close()
 
-with open("img_128x128.txt", "rb") as fp: 
+with open("img_28x28.txt", "rb") as fp: 
     x = pickle.load(fp)
     
-with open("label_128x128.txt", "rb") as fp: 
+with open("label_28x28.txt", "rb") as fp: 
     y= pickle.load(fp)
     
 # Split dataset for training testing validation
@@ -231,36 +231,56 @@ print ("val_labels shape: " + str(y_val.shape))
 print ("test_images shape: " + str(x_test.shape))
 print ("test_labels shape: " + str(y_test.shape))
 
-base5 = VGG19(weights='imagenet', include_top=False, input_shape=(128, 128, 3))  
+# base5 = VGG19(weights='imagenet', include_top=False, input_shape=(28, 28, 3))  
 
-# Freeze convolutional layers
-for layer in base5.layers:
-    layer.trainable = False  
+# # Freeze convolutional layers
+# for layer in base5.layers:
+#     layer.trainable = False  
 
-NN_transfer_5 = Sequential(
-                        [InputLayer(input_shape=(128,128,3)),
-                         base5,
-                         Flatten(),  # should be fine , or add layers
-                         Dense(128, activation='relu'),
-                         Dense(64, activation='relu'),
-                         Dense(32, activation='relu'),   # 2 dense is must bcuz VGG16 model Conv2D twice and Maxpooling -> get a lot more features
-                         Dense(1, activation='sigmoid')]
-                       )
+# NN_transfer_5 = Sequential(
+#                         [InputLayer(input_shape=(28,28,3)),
+#                          base5,
+#                          Flatten(),  # should be fine , or add layers
+#                          Dense(128, activation='relu'),
+#                          Dense(64, activation='relu'),
+#                          Dense(32, activation='relu'),   # 2 dense is must bcuz VGG16 model Conv2D twice and Maxpooling -> get a lot more features
+#                          Dense(1, activation='sigmoid')]
+#                        )
 
-NN_transfer_5.compile(loss='binary_crossentropy',optimizer='adam',metrics=['accuracy'])
-# base5.summary()
-NN_transfer_5_model = NN_transfer_5.fit(x_train, y_train, epochs=15, validation_data=(x_val,y_val), verbose=1)
+MY_CNN = Sequential([
+  Conv2D(16, 3, activation='relu', padding='same', input_shape=(28,28,3)),
+  BatchNormalization(),
+  MaxPooling2D(pool_size=(2,2), strides=(2,2)),
+  Conv2D(32, 3, activation='relu', padding='same'),
+  BatchNormalization(),
+  MaxPooling2D(pool_size=(2,2), strides=(2,2)),
+  Conv2D(64, 3, activation='relu', padding='same'),
+  BatchNormalization(),
+  MaxPooling2D(pool_size=(2,2), strides=(2,2)),
+  Conv2D(128, 3, activation='relu', padding='same'),
+  BatchNormalization(),
+  MaxPooling2D(pool_size=(2,2), strides=(2,2)),
+  Flatten(),
+  Dense(64, activation='relu'),
+    
+  Dense(2, activation= 'softmax')
+])
+
+MY_CNN.compile(loss='sparse_categorical_crossentropy',optimizer='adam',metrics=['accuracy'])
+print(MY_CNN.summary())
+cnn_model = MY_CNN.fit(x_train, y_train, epochs=10, validation_data=(x_val,y_val), verbose=1)
 
 # Evaluate model
-plt.plot(NN_transfer_5_model.history['acc'], label='accuracy')
-plt.plot(NN_transfer_5_model.history['val_acc'], label = 'val_accuracy')
+plt.plot(cnn_model.history['acc'], label='accuracy')
+plt.plot(cnn_model.history['val_acc'], label = 'val_accuracy')
 plt.xlabel('Epoch')
 plt.ylabel('Accuracy')
+plt.title("Model Accuracy")
 plt.ylim([0.5, 1])
 plt.legend(loc='lower right')
 plt.show()
 
-val_loss, val_acc = NN_transfer_5.evaluate(x_val,  y_val, verbose=2)
+val_loss, val_acc = MY_CNN.evaluate(x_val,  y_val, verbose=2)
 
 print(val_acc)
 
@@ -279,4 +299,4 @@ print(val_acc)
 # results.to_csv("results.csv",index=False)
 
 # # Save model if evaluated good
-NN_transfer_5.save("acci_VGG19_model.h5")
+MY_CNN.save("new_acci_cnn_model.h5")
