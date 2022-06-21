@@ -150,7 +150,7 @@ MY_CNN = Sequential([
 
 MY_CNN.compile(loss='sparse_categorical_crossentropy',optimizer='adam',metrics=['accuracy'])
 print(MY_CNN.summary())
-cnn_model = MY_CNN.fit(x_train, y_train, epochs=10, validation_data=(x_val,y_val), verbose=1)
+cnn_model = MY_CNN.fit(x_train, y_train, epochs=14, validation_data=(x_val,y_val), verbose=1)
 
 # Evaluate model
 plt.plot(cnn_model.history['acc'], label='accuracy')
