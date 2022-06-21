@@ -151,7 +151,7 @@ if(exist == FALSE):
   CREATE TABLE DetectedAccident (
       acci_id CHAR(5) NOT NULL DEFAULT '0',
       cam_id CHAR(5) NOT NULL,
-      rev_id CHAR(5) NOT NULL,
+      rev_id CHAR(5) NULL,
       acci_datetime DATETIME NOT NULL,
       acci_proof VARCHAR(255) NOT NULL,
       PRIMARY KEY (acci_id),
