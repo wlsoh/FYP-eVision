@@ -3,6 +3,7 @@
 # Program Name: Main GUI Integration
 # Date Created: 05/05/2022
 import os, io, re, secrets, string, pymysql, glob, cv2
+from time import time
 import pandas as pd
 import customtkinter
 import tkintermapview
@@ -20,6 +21,7 @@ from mysql_db.db_connect import MySqlConnector
 from email_sender import *
 from accident_detection_model import fused_accident_detection
 from threading import Thread
+import glob
 
 
 #==============================================================================================#
@@ -169,8 +171,7 @@ class Usersession:
                 newf.delete(0, END)
                 conf.delete(0, END)
                 newf.focus()
-            
-                
+                         
     # Upload avatar function
     def upload_avatar(self, loc):
         file = askopenfile(parent=profileWindow, mode='rb', title='Choose a image file', filetypes=[("PNG", "*.png"),("JPG", "*.jpg")])
@@ -342,9 +343,7 @@ class Usersession:
                     newf.delete(0, END)
                     conf.delete(0, END)
                     oldf.focus()
-                    
-                        
-                    
+                               
     # Update profile details function
     def updateprofile(self, uf, ul, ad, ci, st, po, em, ph):
         confirmbox = messagebox.askquestion('Profile Update Confirmation', 'Are you sure to update your personal details with current information?', icon='warning')
@@ -543,6 +542,14 @@ def logout():
     for f in os.listdir(dir):
         if f != dont_remove:
             os.remove(os.path.join(dir, f))
+    dir1 = './temp_accidetect'
+    for g in os.listdir(dir1):
+        if g != dont_remove:
+            os.remove(os.path.join(dir1, g))
+    # dir2 = './cctv_contents'
+    # for h in os.listdir(dir2):
+    #     if h != dont_remove:
+    #         os.remove(os.path.join(dir2, h))
     mainWindow.destroy() # Destroy current winfow
     root.deiconify() # Show login page again
     root.geometry(f'{width1}x{height1}+{round(x1)}+{round(y1)}')
@@ -1108,13 +1115,14 @@ def forgetpassPage():
 ## Main Page Interface
 def mainPage():
     global frm_update, stop_flag
-    stop_flag = False
+    stop_flag = True
     
     ## Function & Validation List for Main Page
     # Logout function
     def mainlogout():
         confirmbox = messagebox.askquestion('e-Vision Logout', 'Are you sure to logout the system?', icon='warning')
         if confirmbox == 'yes':
+            stop_cctv_alt()
             logout()
     # First change password validation function
     def validate_pass2(*args):
@@ -1158,9 +1166,49 @@ def mainPage():
             fbtn_save.config(state='normal', cursor="hand2")
         else:
             fbtn_save.config(state='disabled', cursor="")
+    # Record an accident function
+    def recordaccident(acci_evidences, cam_id, datetime_now):
+        temp_file_id = []
+        
+        for i in range(len(acci_evidences)):
+            uploadimg(acci_evidences[i])
+            tem_id = getfilelist()
+            temp_file_id.append(tem_id)
+        
+        if len(acci_evidences) > 1:
+            converted = ",".join(temp_file_id)
+        else:
+            converted = temp_file_id[0]
+            
+        # Add the new accident
+        try:
+            mysql_con = MySqlConnector(sql_config) # Initial connection
+            sql = '''INSERT INTO DetectedAccident (cam_id, acci_datetime, acci_proof)
+            VALUES (%s, %s, %s)''' # Record Accident
+            insert = mysql_con.update(sql, (cam_id, datetime_now, converted))
+            if insert > 0:
+                suc = True
+            # If error
+            else:
+                suc = False
+        except pymysql.Error as e:
+            print("Error %d: %s" % (e.args[0], e.args[1]))
+            return False
+        finally:
+            # Close the connection
+            mysql_con.close()
+        
+        # Clear all files in temp folder
+        to_del = [os.path.basename(s) for s in acci_evidences]
+        dir = './temp_accidetect'
+        for i in os.listdir(dir):
+            if i in to_del:
+                os.remove(os.path.join(dir, i))
+            
+        return suc
     # Frame update function
     def frm_update():
-        ava_frame, cv_img, frm_time, isAcci_conf = det_model.proc_frame()
+        ava_frame, cv_img, frm_time, isAcci_conf, acci_overperiod = det_model.proc_frame()
         
         frm = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGBA)
         frm = Image.fromarray(frm)
@@ -1169,60 +1217,146 @@ def mainPage():
         vmain.config(image=frm)
         
         # If accident detected, do something
-        # if isAcci_conf:
-            #Todo
+        if acci_overperiod > 0:
+            if isAcci_conf:
+                current_time = datetime.now()
+                file_name = current_time.strftime("ACCIDENT_" + "%d-%m-%y_%H-%M-%S")
+                cv2.imwrite("temp_accidetect/" + file_name + ".jpg", cv_img)
+                
+        # Start upload accident
+        if acci_overperiod == 5:
+            path_loc = os.path.abspath('temp_accidetect/*.jpg')
+            evidence_list = glob.glob(path_loc)
+            cur_cam_id = "C0004"
+            timenow = datetime.now()
+            
+            # Submit an accident detected (Threading -> work in bg)
+            Thread(target=recordaccident, args=(evidence_list, cur_cam_id, timenow,)).start()
         
         # Keep update
         if not stop_flag:
             vmain.after(1, frm_update) #Thread(target = frm_update).start()
     # Initiate CCTV function
     def init_cctv():
-        global det_model, stop_flag
-        stop_flag = False
+        global det_model, stop_flag, cur_cctv_idx, cctv_list
         
-        loading(mainWindow)
-        mainWindow.update()
-        
-        # Video path
-        src_path = os.path.abspath('cctv_contents/')
-        ext = ('*.mp4', '*.avi')
-        cctv_list = []
-        for cctv_ext in ext:
-            cctv_list.extend(glob.glob(os.path.join(src_path, cctv_ext)))
-        cur_cctv_idx = 0
+        if not stop_flag:
+            messagebox.showerror("Invalid CCTV Operation", "The CCTV had already initiated!")
+        else:
+            stop_flag = False
             
-        # Inititate detection model
-        vdet_model_path = os.path.abspath('v_detect_track/retinanet_vdet_model.h5')
-        det_model = fused_accident_detection(vdet_model_path, cctv_list[cur_cctv_idx])
-        
-        # Set the label of CCTV
-        camera_list.config(text="Camera List: {}/{}".format((cur_cctv_idx + 1), len(cctv_list)))
-        camera_id.config(text="Camera ID: Dummy")
-        camera_loc.config(text="Location: Dummy, Dummy")
-        
-        # Start monitoring
-        frm_update()
-        loading_splash.destroy()
-        mainWindow.attributes('-disabled', 0)
+            loading(mainWindow)
+            mainWindow.update()
+            vmain.pack(anchor='c', expand=TRUE)
+            
+            # Video path
+            src_path = os.path.abspath('cctv_contents/')
+            ext = ('*.mp4', '*.avi')
+            cctv_list = []
+            for cctv_ext in ext:
+                cctv_list.extend(glob.glob(os.path.join(src_path, cctv_ext)))
+            cur_cctv_idx = 0
+                
+            # Inititate detection model
+            vdet_model_path = os.path.abspath('v_detect_track/retinanet_vdet_model.h5')
+            det_model = fused_accident_detection(vdet_model_path, cctv_list[cur_cctv_idx])
+            
+            # Set the label of CCTV
+            camera_list.config(text="Camera List: {}/{}".format((cur_cctv_idx + 1), len(cctv_list)))
+            camera_id.config(text="Camera ID: Dummy")
+            camera_loc.config(text="Location: Dummy, Dummy")
+            
+            # Start monitoring
+            frm_update()
+            loading_splash.destroy()
+            mainWindow.attributes('-disabled', 0)
     # Stop CCTV function
     def stop_cctv():
+        global stop_flag, cur_cctv_idx, cctv_list
+        
+        if stop_flag:
+            messagebox.showerror("Invalid CCTV Operation", "The CCTV had not initiated! Please initiate the CCTV before performing the operation.")
+        else:
+            stop_flag = True
+            det_model.__del__()
+            vmain.imgtk = ""
+            vmain.config(image="")
+            vmain.pack_forget()
+            cur_cctv_idx = 0
+            cctv_list = []
+            det_model.isInit_frame = True
+            det_model.prev_frame_objs = []
+            det_model.cur_frame_objs = []
+            det_model.total_frames = 0
+            det_model.accident_frame = 0
+            det_model.acci_period_frame = 0
+            # del det_model
+            
+            # Set the label of CCTV
+            camera_list.config(text="Camera List:")
+            camera_id.config(text="Camera ID:")
+            camera_loc.config(text="Location:")
+    # Stop CCTV function alt
+    def stop_cctv_alt():
         global stop_flag
         
-        loading(mainWindow)
-        mainWindow.update()
+        if not stop_flag:
+            stop_cctv()
+    # Load prev CCTV
+    def jump_prev_cctv():
+        global cur_cctv_idx, cctv_list, stop_flag
         
-        stop_flag = True
-        det_model.__del__()
-        vmain.config(image="")
-        # del det_model
+        if stop_flag:
+            messagebox.showerror("Invalid CCTV Operation", "The CCTV had not initiated! Please initiate the CCTV before performing the operation.")
+        else:
+            det_model.__del__()
+            det_model.isInit_frame = True
+            det_model.prev_frame_objs = []
+            det_model.cur_frame_objs = []
+            det_model.total_frames = 0
+            det_model.accident_frame = 0
+            det_model.acci_period_frame = 0
+            
+            cur_cctv_idx -= 1
+            # If dont have prev cctv (circular playback)
+            if (cur_cctv_idx < 0):
+                cur_cctv_idx = len(cctv_list) - 1
+            det_model.src = cctv_list[cur_cctv_idx]
+            det_model.video = cv2.VideoCapture(det_model.src)
+                    
+            # Set the label of CCTV
+            camera_list.config(text="Camera List: {}/{}".format((cur_cctv_idx + 1), len(cctv_list)))
+            camera_id.config(text="Camera ID: Test")
+            camera_loc.config(text="Location: Test")
+     # Load next CCTV
+    def jump_next_cctv():
+        global cur_cctv_idx, cctv_list, stop_flag
         
-        # Set the label of CCTV
-        camera_list.config(text="Camera List:")
-        camera_id.config(text="Camera ID:")
-        camera_loc.config(text="Location:")
-        
-        loading_splash.destroy()
-        mainWindow.attributes('-disabled', 0)
+        if stop_flag:
+            messagebox.showerror("Invalid CCTV Operation", "The CCTV had not initiated! Please initiate the CCTV before performing the operation.")
+        else:
+            det_model.__del__()
+            det_model.isInit_frame = True
+            det_model.prev_frame_objs = []
+            det_model.cur_frame_objs = []
+            det_model.total_frames = 0
+            det_model.accident_frame = 0
+            det_model.acci_period_frame = 0
+            
+            cur_cctv_idx += 1
+            # If dont have next cctv (circular playback)
+            if (cur_cctv_idx >= len(cctv_list)):
+                cur_cctv_idx = 0
+            det_model.src = cctv_list[cur_cctv_idx]
+            det_model.video = cv2.VideoCapture(det_model.src)
+            det_model.total_frames = 0
+            det_model.accident_frame = 0
+                    
+            # Set the label of CCTV
+            camera_list.config(text="Camera List: {}/{}".format((cur_cctv_idx + 1), len(cctv_list)))
+            camera_id.config(text="Camera ID: Test")
+            camera_loc.config(text="Location: Test")
+            
     
     global mainWindow
     
@@ -1250,14 +1384,13 @@ def mainPage():
     video_player = Frame(mainWindow, bg="black", highlightbackground="black", highlightthickness=1)
     video_player.grid(row=0, column=0, rowspan=7, columnspan=3, sticky="nsew", padx=round(25*ratio), pady=(round(30*ratio), round(15*ratio)))
     vmain = Label(video_player, bg="black")
-    vmain.pack(anchor='c', expand=TRUE)
     if(usession.user_role == 1):
         btn_frame1 = Frame(mainWindow, bg="#505050")
         btn_frame1.grid(row=7, rowspan=2, column=0, sticky="nsew")
         btn_mnguserimg = Image.open('asset/manageuser_btn.png')
         btn_mnguserimg = btn_mnguserimg.resize((round(182*ratio),round(50*ratio)), Image.ANTIALIAS)
         btn_mnguserimg = ImageTk.PhotoImage(btn_mnguserimg)
-        btn_mnguser = Button(btn_frame1, cursor="hand2", command=lambda:usermanagementPage(), image=btn_mnguserimg, bg="#505050", relief=FLAT, bd=0, highlightthickness=0, activebackground="#EDF1F7")
+        btn_mnguser = Button(btn_frame1, cursor="hand2", command=lambda:[stop_cctv_alt(), usermanagementPage()], image=btn_mnguserimg, bg="#505050", relief=FLAT, bd=0, highlightthickness=0, activebackground="#505050")
         btn_mnguser.image = btn_mnguserimg
         btn_mnguser.pack(pady=(round(10*ratio),0))
         btn_frame2 = Frame(mainWindow, bg="#505050")
@@ -1265,7 +1398,7 @@ def mainPage():
         btn_mngcamimg = Image.open('asset/managecam_btn.png')
         btn_mngcamimg = btn_mngcamimg.resize((round(182*ratio),round(50*ratio)), Image.ANTIALIAS)
         btn_mngcamimg = ImageTk.PhotoImage(btn_mngcamimg)
-        btn_mngcamera = Button(btn_frame2, cursor="hand2", command=lambda:cammanagementPage(), image=btn_mngcamimg, bg="#505050", relief=FLAT, bd=0, highlightthickness=0, activebackground="#EDF1F7")
+        btn_mngcamera = Button(btn_frame2, cursor="hand2", command=lambda:[stop_cctv_alt(), cammanagementPage()], image=btn_mngcamimg, bg="#505050", relief=FLAT, bd=0, highlightthickness=0, activebackground="#505050")
         btn_mngcamera.image = btn_mngcamimg
         btn_mngcamera.pack(pady=(round(10*ratio),0))
         btn_frame3 = Frame(mainWindow, bg="#505050")
@@ -1273,7 +1406,7 @@ def mainPage():
         btn_agncamimg = Image.open('asset/assigncam_btn.png')
         btn_agncamimg = btn_agncamimg.resize((round(182*ratio),round(50*ratio)), Image.ANTIALIAS)
         btn_agncamimg = ImageTk.PhotoImage(btn_agncamimg)
-        btn_asscamera = Button(btn_frame3, cursor="hand2", command=lambda:assigncamPage(), image=btn_agncamimg, bg="#505050", relief=FLAT, bd=0, highlightthickness=0, activebackground="#EDF1F7")
+        btn_asscamera = Button(btn_frame3, cursor="hand2", command=lambda:[stop_cctv_alt(), assigncamPage()], image=btn_agncamimg, bg="#505050", relief=FLAT, bd=0, highlightthickness=0, activebackground="#505050")
         btn_asscamera.image = btn_agncamimg
         btn_asscamera.pack(pady=(round(10*ratio),0))
     else:
@@ -1292,7 +1425,7 @@ def mainPage():
     img_label.grid(column=3, row=0, columnspan=2, sticky="nsew", pady=(round(30*ratio), round(5*ratio)))
     btn_frame4 = Frame(mainWindow, bg="#1D253D")
     btn_frame4.grid(row=1, column=3, sticky="nsew", padx=(round(30*ratio), round(5*ratio)), pady=round(10*ratio))
-    btn_profile = Button(btn_frame4, cursor="hand2", text="Profile", command=lambda:profilePage(), font=("Arial Rounded MT Bold", round(13*ratio)), fg="white", bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB", activeforeground="white")
+    btn_profile = Button(btn_frame4, cursor="hand2", text="Profile", command=lambda:[stop_cctv_alt(), profilePage()], font=("Arial Rounded MT Bold", round(13*ratio)), fg="white", bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB", activeforeground="white")
     btn_profile.pack(fill='x')
     btn_frame5 = Frame(mainWindow, bg="#1D253D")
     btn_frame5.grid(row=1, column=4, sticky="nsew", padx=(round(5*ratio), round(30*ratio)), pady=round(10*ratio))
@@ -1341,7 +1474,7 @@ def mainPage():
     icon_prev = Image.open('asset/previous_icon.png')
     icon_prev = icon_prev.resize((round(30*ratio),round(30*ratio)), Image.ANTIALIAS)
     icon_prev = ImageTk.PhotoImage(icon_prev)
-    btn_prev = Button(btn_frame9, cursor="hand2", image=icon_prev, height=round(30*ratio), width=round(150*ratio), bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB")
+    btn_prev = Button(btn_frame9, cursor="hand2", command=lambda:jump_prev_cctv(), image=icon_prev, height=round(30*ratio), width=round(150*ratio), bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB")
     btn_prev.image = icon_prev
     btn_prev.pack(fill='x')
     btn_frame10 = Frame(mainWindow, bg="#1D253D")
@@ -1349,7 +1482,7 @@ def mainPage():
     icon_next = Image.open('asset/next_icon.png')
     icon_next = icon_next.resize((round(30*ratio),round(30*ratio)), Image.ANTIALIAS)
     icon_next = ImageTk.PhotoImage(icon_next)
-    btn_next = Button(btn_frame10, cursor="hand2", image=icon_next, height=round(30*ratio), width=round(150*ratio), bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB")
+    btn_next = Button(btn_frame10, cursor="hand2", command=lambda:jump_next_cctv(), image=icon_next, height=round(30*ratio), width=round(150*ratio), bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB")
     btn_next.image = icon_next
     btn_next.pack(fill='x')
     mainWindow.protocol("WM_DELETE_WINDOW", mainlogout) # If click on close button of window
