@@ -12,7 +12,7 @@ from tensorflow import keras
 import matplotlib.pyplot as plt
 import tensorflow_datasets as tfds
 
-# Get COCO dataset
+# Get COCO dataset (can switch to custom dataset -> see keras-retinanet-library (by Hans Gaiser) for build)
 url = "https://github.com/srihari-humbarwadi/datasets/releases/download/v0.1.0/data.zip"
 filename = os.path.join(os.getcwd(), "data.zip")
 keras.utils.get_file(filename, url)
@@ -395,7 +395,7 @@ class RetinaNetLoss(tf.losses.Loss):
     
 ## Training Retinanet
 # Setup training parameter
-model_dir = "retinanet/"
+model_dir = "v_detect_track/"
 label_encoder = LabelEncoder()
 
 num_classes = 80
@@ -469,3 +469,28 @@ image = tf.keras.Input(shape=[None, None, 3], name="image")
 predictions = model(image, training=False)
 detections = DecodePredictions(confidence_threshold=0.5)(image, predictions)
 inference_model = tf.keras.Model(inputs=image, outputs=detections)
+
+# Generate detections for validate
+def prepare_image(image):
+    image, _, ratio = resize_and_pad_image(image, jitter=None)
+    image = tf.keras.applications.resnet.preprocess_input(image)
+    return tf.expand_dims(image, axis=0), ratio
+
+
+val_dataset = tfds.load("coco/2017", split="validation", data_dir="data")
+int2str = dataset_info.features["objects"]["label"].int2str
+
+for sample in val_dataset.take(2):
+    image = tf.cast(sample["image"], dtype=tf.float32)
+    input_image, ratio = prepare_image(image)
+    detections = inference_model.predict(input_image)
+    num_detections = detections.valid_detections[0]
+    class_names = [
+        int2str(int(x)) for x in detections.nmsed_classes[0][:num_detections]
+    ]
+    visualize_detections(
+        image,
+        detections.nmsed_boxes[0][:num_detections] / ratio,
+        class_names,
+        detections.nmsed_scores[0][:num_detections],
+    )
