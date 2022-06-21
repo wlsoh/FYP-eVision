@@ -443,17 +443,17 @@ val_dataset = val_dataset.apply(tf.data.experimental.ignore_errors())
 val_dataset = val_dataset.prefetch(autotune)
 
 # Train the model
-# train_steps_per_epoch = dataset_info.splits["train"].num_examples // batch_size
-# val_steps_per_epoch = dataset_info.splits["validation"].num_examples // batch_size
+train_steps_per_epoch = dataset_info.splits["train"].num_examples // batch_size
+val_steps_per_epoch = dataset_info.splits["validation"].num_examples // batch_size
 
-# train_steps = 4 * 100000
-# epochs = train_steps // train_steps_per_epoch
+train_steps = 4 * 100000
+epochs = train_steps // train_steps_per_epoch
 
 epochs = 1
 
 model.fit(
-    train_dataset.take(100),
-    validation_data=val_dataset.take(50),
+    train_dataset,
+    validation_data=val_dataset,
     epochs=epochs,
     callbacks=callbacks_list,
     verbose=1,
@@ -494,3 +494,6 @@ for sample in val_dataset.take(2):
         class_names,
         detections.nmsed_scores[0][:num_detections],
     )
+    
+# Save final model
+inference_model.save("v_detect_track/retinanet_vdet_model.h5")
