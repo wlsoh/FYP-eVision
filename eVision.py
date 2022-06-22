@@ -3,6 +3,7 @@
 # Program Name: Main GUI Integration
 # Date Created: 05/05/2022
 import os, io, re, secrets, string, pymysql, glob, cv2
+from tkinter import font
 from time import time
 import pandas as pd
 import customtkinter
@@ -1166,6 +1167,79 @@ def mainPage():
             fbtn_save.config(state='normal', cursor="hand2")
         else:
             fbtn_save.config(state='disabled', cursor="")
+    # Load detected accident list
+    def load_accilist():
+        found1 = False
+        found2 = False
+        success = False
+        
+        try:
+            mysql_con = MySqlConnector(sql_config) # Initial connection
+            if usession.user_role == 1:
+                sql = '''SELECT * FROM DetectedAccident da, Camera c WHERE c.cam_id = da.cam_id'''
+                result_details = mysql_con.queryall(sql)
+                if result_details:
+                    success = True
+                    new_tree.delete(*new_tree.get_children())
+                    history_tree.delete(*history_tree.get_children())
+                    for dt in result_details:
+                        loc = dt[10] + ", " + dt[11]
+                        if dt[2] == None:
+                            if not found1:
+                                found1 = True
+                            new_tree.insert("", 'end', values=(dt[0], dt[3], dt[1], loc))
+                        else:
+                            if not found2:
+                                found2 = True
+                            history_tree.insert("", 'end', values=(dt[2], dt[5], dt[1], loc))
+                # If no existing data found
+                else:
+                    found1 = False
+                    found2 = False
+                    success = False
+            else:
+                sql = '''SELECT * FROM User_Camera uc, DetectedAccident da, Camera c WHERE uc.cam_id = da.cam_id AND uc.cam_id = c.cam_id AND uc.user_id = (%s)'''
+                result_details = mysql_con.queryall(sql, (usession.user_id))
+                if result_details:
+                    success = True
+                    new_tree.delete(*new_tree.get_children())
+                    history_tree.delete(*history_tree.get_children())
+                    for dt in result_details:
+                        loc = dt[12] + ", " + dt[13]
+                        if dt[4] == None:
+                            if not found1:
+                                found1 = True
+                            new_tree.insert("", 'end', values=(dt[2], dt[5], dt[1], loc))
+                        else:
+                            if not found2:
+                                found2 = True
+                            history_tree.insert("", 'end', values=(dt[2], dt[5], dt[1], loc))
+                # If no existing data found
+                else:
+                    found1 = False
+                    found2 = False
+                    success = False
+        except pymysql.Error as e:
+            print("Error %d: %s" % (e.args[0], e.args[1]))
+            return False
+        finally:
+            # Close the connection
+            mysql_con.close()
+            
+        return found1, found2, success
+    # Load detected accident button click
+    def load_accilist_alt():
+        rst1, rst2, rst3 = load_accilist()
+        if not rst3:
+            messagebox.showerror("Accident List Refresh Fail", "Error occured! Please contact developer for help!")
+        elif rst1 and rst2:
+            messagebox.showinfo("Accident List Refresh Success", "Both new and history list had been update!")
+        elif rst1 and not rst2:
+            messagebox.showinfo("Accident List Refresh Success", "Both new and history list had been update but there was no existing history accident found!")
+        elif not rst1 and rst2:
+            messagebox.showinfo("Accident List Refresh Success", "Both new and history list had been update but there was no existing new accident found!")
+        elif not rst1 and not rst2:
+            messagebox.showinfo("Accident List Refresh Success", "Both new and history list had been update but there was no existing new and history accident found!")
     # Record an accident function
     def recordaccident(acci_evidences, cam_id, datetime_now):
         temp_file_id = []
@@ -1443,6 +1517,10 @@ def mainPage():
         })],
     })]
     )
+    notebookstyle.configure('Treeview', background="#34415B", foreground="white", rowheight=round(30*ratio),
+                            fieldbackground="#34415B", font=("Lato", round(10*ratio)))
+    notebookstyle.configure('Treeview.Heading', background="#34415B", foreground="white",
+                            fieldbackground="#34415B", font=("Franklin Gothic Medium Cond", round(12*ratio)))
     acci_tab = ttk.Notebook(mainWindow)
     acci_tab.grid(row=2, column=3, columnspan=2, sticky="nsew", padx=round(30*ratio))
     new_accif = Frame(acci_tab, bg="#34415B")
@@ -1451,9 +1529,88 @@ def mainPage():
     history_accif.pack(fill="both", expand=1)
     acci_tab.add(new_accif, text="New Detected")
     acci_tab.add(history_accif, text="Accident History")
+    # Treeview frame
+    new_tree_frame = Frame(new_accif, relief=FLAT, bd=0, bg="#34415B")
+    new_tree_frame.pack(expand=TRUE, fill=BOTH)
+    new_tree_frame.pack_propagate(0)
+    # Treeview components
+    f01 = Frame(new_tree_frame, relief=FLAT, bd=0 , bg="#34415B")
+    f01.pack(side=TOP, fill=X)
+    new_lbl = Label(f01, text="Detected Accidents List", font=("Arial Rounded MT Bold", round(10*ratio)), bg="#34415B", fg="white")
+    new_lbl.pack(padx=(round(5*ratio), 0), pady=round(5*ratio), side=LEFT, fill=BOTH, anchor="center")
+    info_icon = Image.open('asset/info1.png')
+    info_icon = info_icon.resize((round(15*ratio),round(15*ratio)))
+    info_icon = ImageTk.PhotoImage(info_icon)
+    info_lbl = Label(f01, image=info_icon, bg="#34415B")
+    info_lbl.image = info_icon
+    info_lbl.pack(pady=round(5*ratio), side=LEFT, fill=BOTH)
+    CreateToolTip(info_lbl, text = 'Please double click \nto view records')
+    new_tree_vscroll = Scrollbar(new_tree_frame, relief=FLAT, bd=0)
+    new_tree_vscroll.pack(side=RIGHT, fill=Y)
+    new_tree_hscroll = Scrollbar(new_tree_frame, orient='horizontal',relief=FLAT, bd=0)
+    new_tree_hscroll.pack(side=BOTTOM, fill=X)
+    clm1 = ['acci_id', 'acci_datetime', 'cam_id', 'loc']
+    new_tree = ttk.Treeview(new_tree_frame, columns=clm1, show='headings', yscrollcommand=new_tree_vscroll.set, xscrollcommand=new_tree_hscroll.set, selectmode="browse")
+    new_tree.pack(side=TOP, expand=TRUE, fill=BOTH)
+    # Configure scrollbar
+    new_tree_vscroll.config(command=new_tree.yview)
+    new_tree_hscroll.config(command=new_tree.xview)
+    # Define haeder column name
+    new_tree.heading('acci_id', text='Accident ID')
+    new_tree.heading('acci_datetime', text='Date Time')
+    new_tree.heading('cam_id', text='Camera ID')
+    new_tree.heading('loc', text='Location')
+    # Define column width and alignments
+    new_tree.column('acci_id', width=round(80*ratio), minwidth=round(80*ratio), anchor ='c')
+    new_tree.column('acci_datetime', width=round(80*ratio), minwidth=round(80*ratio), anchor ='c')
+    new_tree.column('cam_id', width=round(80*ratio), minwidth=round(80*ratio), anchor ='c')
+    new_tree.column('loc', width=round(80*ratio), minwidth=round(80*ratio), anchor ='c')
+    new_tree.update()
+    new_tree.column('acci_id', width=round(80*ratio))
+    new_tree.column('acci_datetime', width=round(140*ratio))
+    new_tree.column('cam_id', width=round(80*ratio))
+    new_tree.column('loc', width=round(120*ratio))
+    # Treeview frame
+    history_tree_frame = Frame(history_accif, relief=FLAT, bd=0, bg="#34415B")
+    history_tree_frame.pack(expand=TRUE, fill=BOTH)
+    history_tree_frame.pack_propagate(0)
+    # Treeview components
+    f02 = Frame(history_tree_frame, relief=FLAT, bd=0 , bg="#34415B")
+    f02.pack(side=TOP, fill=X)
+    history_lbl = Label(f02, text="Detected Accidents List", font=("Arial Rounded MT Bold", round(10*ratio)), bg="#34415B", fg="white")
+    history_lbl.pack(padx=(round(5*ratio), 0), pady=round(5*ratio), side=LEFT, fill=BOTH, anchor="center")
+    info1_lbl = Label(f02, image=info_icon, bg="#34415B")
+    info1_lbl.image = info_icon
+    info1_lbl.pack(pady=round(5*ratio), side=LEFT, fill=BOTH)
+    CreateToolTip(info1_lbl, text = 'Please double click \nto view records')
+    history_tree_vscroll = Scrollbar(history_tree_frame, relief=FLAT, bd=0)
+    history_tree_vscroll.pack(side=RIGHT, fill=Y)
+    history_tree_hscroll = Scrollbar(history_tree_frame, orient='horizontal',relief=FLAT, bd=0)
+    history_tree_hscroll.pack(side=BOTTOM, fill=X)
+    clm2 = ['acci_id', 'acci_datetime', 'cam_id', 'loc']
+    history_tree = ttk.Treeview(history_tree_frame, columns=clm2, show='headings', yscrollcommand=history_tree_vscroll.set, xscrollcommand=history_tree_hscroll.set, selectmode="browse")
+    history_tree.pack(side=TOP, expand=TRUE, fill=BOTH)
+    # Configure scrollbar
+    history_tree_vscroll.config(command=history_tree.yview)
+    history_tree_hscroll.config(command=history_tree.xview)
+    # Define haeder column name
+    history_tree.heading('acci_id', text='Accident ID')
+    history_tree.heading('acci_datetime', text='Date Time')
+    history_tree.heading('cam_id', text='Camera ID')
+    history_tree.heading('loc', text='Location')
+    # Define column width and alignments
+    history_tree.column('acci_id', width=round(80*ratio), minwidth=round(80*ratio), anchor ='c')
+    history_tree.column('acci_datetime', width=round(80*ratio), minwidth=round(80*ratio), anchor ='c')
+    history_tree.column('cam_id', width=round(80*ratio), minwidth=round(80*ratio), anchor ='c')
+    history_tree.column('loc', width=round(80*ratio), minwidth=round(80*ratio), anchor ='c')
+    history_tree.update()
+    history_tree.column('acci_id', width=round(80*ratio))
+    history_tree.column('acci_datetime', width=round(140*ratio))
+    history_tree.column('cam_id', width=round(80*ratio))
+    history_tree.column('loc', width=round(120*ratio))
     btn_frame6 = Frame(mainWindow, bg="#1D253D")
     btn_frame6.grid(row=3, column=3, columnspan=2, sticky="nsew", padx=round(30*ratio), pady=round(10*ratio))
-    btn_refresh = Button(btn_frame6, cursor="hand2", text="Refresh Accident List", font=("Arial Rounded MT Bold", round(13*ratio)), height=1, width=round(32*ratio), fg="white", bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB", activeforeground="white")
+    btn_refresh = Button(btn_frame6, cursor="hand2", command=lambda:load_accilist_alt(), text="Refresh Accident List", font=("Arial Rounded MT Bold", round(13*ratio)), height=1, width=round(32*ratio), fg="white", bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB", activeforeground="white")
     btn_refresh.pack(fill='x')
     btn_frame7 = Frame(mainWindow, bg="#1D253D")
     btn_frame7.grid(row=4, column=3, sticky="nsew", padx=(round(30*ratio), round(5*ratio)), pady=(0, round(5*ratio)))
@@ -5581,5 +5738,6 @@ def assigncamPage():
     empava_tree.tag_configure('oddrow', background="white")
     empava_tree.tag_configure('evenrow', background="#ecf3fd")
     loadallcam()
+
 
 root.mainloop()
