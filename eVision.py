@@ -23,6 +23,7 @@ from email_sender import *
 from accident_detection_model import fused_accident_detection
 from threading import Thread
 import glob
+from playsound import playsound
 
 
 #==============================================================================================#
@@ -621,7 +622,7 @@ def getvideo(fileid):
             print('Download progress {0}'.format(status.progress()*100))
             
         fh.seek(0)
-        with open(os.path.join('./temp', file_name), 'wb') as f:
+        with open(os.path.join('./cctv_contents', file_name), 'wb') as f:
             f.write(fh.read())
             f.close()         
 
@@ -1167,6 +1168,16 @@ def mainPage():
             fbtn_save.config(state='normal', cursor="hand2")
         else:
             fbtn_save.config(state='disabled', cursor="")
+    # Unpack the alert label function
+    def unpack():
+        if alert_lbl.winfo_ismapped():
+            alert_lbl.pack_forget()
+    # Alert sound function
+    def play_alert():
+        alert_lbl.pack(padx=(0, round(5*ratio)), pady=round(5*ratio), side=RIGHT, fill=BOTH)
+        playsound('./asset/alert_notification.wav')
+        
+        alert_lbl.after(8000, unpack)
     # Load detected accident list
     def load_accilist():
         found1 = False
@@ -1241,8 +1252,10 @@ def mainPage():
         elif not rst1 and not rst2:
             messagebox.showinfo("Accident List Refresh Success", "Both new and history list had been update but there was no existing new and history accident found!")
     # Record an accident function
-    def recordaccident(acci_evidences, cam_id, datetime_now):
+    def recordaccident(acci_evidences, cam_id, datetime_now, street, city, state):
         temp_file_id = []
+        suc = False
+        e_suc = False
         
         for i in range(len(acci_evidences)):
             uploadimg(acci_evidences[i])
@@ -1278,38 +1291,86 @@ def mainPage():
         for i in os.listdir(dir):
             if i in to_del:
                 os.remove(os.path.join(dir, i))
-            
-        return suc
+                
+        # Send an email notification to current user (in case away)
+        receiver = [usession.user_email]
+        send = mail_accidetected(receiver, cam_id, street, city, state, datetime_now)
+        if send:
+            e_suc = True
+        else:
+            e_suc = False
+        
+        Thread(target=play_alert).start()
+        load_accilist()
+        
+        return suc, e_suc
     # Frame update function
     def frm_update():
-        ava_frame, cv_img, frm_time, isAcci_conf, acci_overperiod = det_model.proc_frame()
-        
-        frm = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGBA)
-        frm = Image.fromarray(frm)
-        frm = ImageTk.PhotoImage(frm)
-        vmain.imgtk = frm
-        vmain.config(image=frm)
-        
-        # If accident detected, do something
-        if acci_overperiod > 0:
-            if isAcci_conf:
-                current_time = datetime.now()
-                file_name = current_time.strftime("ACCIDENT_" + "%d-%m-%y_%H-%M-%S")
-                cv2.imwrite("temp_accidetect/" + file_name + ".jpg", cv_img)
-                
-        # Start upload accident
-        if acci_overperiod == 5:
-            path_loc = os.path.abspath('temp_accidetect/*.jpg')
-            evidence_list = glob.glob(path_loc)
-            cur_cam_id = "C0004"
-            timenow = datetime.now()
+        try:
+            ava_frame, cv_img, frm_time, isAcci_conf, acci_overperiod = det_model.proc_frame()
             
-            # Submit an accident detected (Threading -> work in bg)
-            Thread(target=recordaccident, args=(evidence_list, cur_cam_id, timenow,)).start()
+            frm = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGBA)
+            frm = Image.fromarray(frm)
+            frm = ImageTk.PhotoImage(frm)
+            vmain.imgtk = frm
+            vmain.config(image=frm)
+            
+            # If accident detected, do something
+            if acci_overperiod > 0:
+                if isAcci_conf:
+                    current_time = datetime.now()
+                    file_name = current_time.strftime("ACCIDENT_" + "%d-%m-%y_%H-%M-%S")
+                    cv2.imwrite("temp_accidetect/" + file_name + ".jpg", cv_img)
+                    
+            # Start upload accident
+            if acci_overperiod == 5:
+                path_loc = os.path.abspath('temp_accidetect/*.jpg')
+                evidence_list = glob.glob(path_loc)
+                cur_cam_id = "C0004"
+                timenow = datetime.now()
+                
+                # Submit an accident detected (Threading -> work in bg)
+                Thread(target=recordaccident, args=(evidence_list, cur_cam_id, timenow, cam_detaillist[cur_cctv_idx][1], cam_detaillist[cur_cctv_idx][2], cam_detaillist[cur_cctv_idx][3])).start()
+            
+            # Keep update
+            if not stop_flag:
+                vmain.after(1, frm_update) #Thread(target = frm_update).start()
+        except:
+            print("An exception occurred due to stopped video (Please ignore)")
+    # Acquire CCTV file function
+    def get_resources():
+        global cam_detaillist
         
-        # Keep update
-        if not stop_flag:
-            vmain.after(1, frm_update) #Thread(target = frm_update).start()
+        dir = './cctv_contents'
+        dont_remove = '.gitignore'
+        for h in os.listdir(dir):
+            if h != dont_remove:
+                os.remove(os.path.join(dir, h))
+        
+        try:
+            mysql_con = MySqlConnector(sql_config) # Initial connection
+            if usession.user_role == 1:
+                sql = '''SELECT * FROM Camera'''
+                result_details = mysql_con.queryall(sql)
+            else:
+                sql = '''SELECT * FROM Camera c, User_Camera uc WHERE c.cam_id = uc.cam_id AND uc.user_id = (%s)'''
+                result_details = mysql_con.update(sql, (usession.user_id))
+            if result_details:
+                cam_list = []
+                cam_detaillist = []
+                for i in result_details:
+                    temp = [i[0], i[4], i[5], i[6]]
+                    cam_detaillist.append(temp)
+                    cam_list.append(i[3])
+                
+                for j in cam_list:
+                    getvideo(j)
+        except pymysql.Error as e:
+            print("Error %d: %s" % (e.args[0], e.args[1]))
+            return False
+        finally:
+            # Close the connection
+            mysql_con.close()
     # Initiate CCTV function
     def init_cctv():
         global det_model, stop_flag, cur_cctv_idx, cctv_list
@@ -1322,6 +1383,8 @@ def mainPage():
             loading(mainWindow)
             mainWindow.update()
             vmain.pack(anchor='c', expand=TRUE)
+            
+            get_resources()
             
             # Video path
             src_path = os.path.abspath('cctv_contents/')
@@ -1337,8 +1400,8 @@ def mainPage():
             
             # Set the label of CCTV
             camera_list.config(text="Camera List: {}/{}".format((cur_cctv_idx + 1), len(cctv_list)))
-            camera_id.config(text="Camera ID: Dummy")
-            camera_loc.config(text="Location: Dummy, Dummy")
+            camera_id.config(text="Camera ID: {}".format(cam_detaillist[cur_cctv_idx][0]))
+            camera_loc.config(text="Location: {}, {}".format(cam_detaillist[cur_cctv_idx][2], cam_detaillist[cur_cctv_idx][3]))
             
             # Start monitoring
             frm_update()
@@ -1364,6 +1427,11 @@ def mainPage():
             det_model.total_frames = 0
             det_model.accident_frame = 0
             det_model.acci_period_frame = 0
+            dir = './cctv_contents'
+            dont_remove = '.gitignore'
+            for h in os.listdir(dir):
+                if h != dont_remove:
+                    os.remove(os.path.join(dir, h))
             # del det_model
             
             # Set the label of CCTV
@@ -1400,9 +1468,9 @@ def mainPage():
                     
             # Set the label of CCTV
             camera_list.config(text="Camera List: {}/{}".format((cur_cctv_idx + 1), len(cctv_list)))
-            camera_id.config(text="Camera ID: Test")
-            camera_loc.config(text="Location: Test")
-     # Load next CCTV
+            camera_id.config(text="Camera ID: {}".format(cam_detaillist[cur_cctv_idx][0]))
+            camera_loc.config(text="Location: {}, {}".format(cam_detaillist[cur_cctv_idx][2], cam_detaillist[cur_cctv_idx][3]))
+    # Load next CCTV
     def jump_next_cctv():
         global cur_cctv_idx, cctv_list, stop_flag
         
@@ -1428,9 +1496,13 @@ def mainPage():
                     
             # Set the label of CCTV
             camera_list.config(text="Camera List: {}/{}".format((cur_cctv_idx + 1), len(cctv_list)))
-            camera_id.config(text="Camera ID: Test")
-            camera_loc.config(text="Location: Test")
-            
+            camera_id.config(text="Camera ID: {}".format(cam_detaillist[cur_cctv_idx][0]))
+            camera_loc.config(text="Location: {}, {}".format(cam_detaillist[cur_cctv_idx][2], cam_detaillist[cur_cctv_idx][3]))
+    # Continuous load
+    def cont_load():
+        load_accilist()
+        
+        mainWindow.after(30000, cont_load)   
     
     global mainWindow
     
@@ -1455,6 +1527,7 @@ def mainPage():
     right_frame.grid(row=0, column=3, rowspan=9, columnspan=2, sticky="nsew")
     
     # Left components
+    Thread(target=cont_load).start()
     video_player = Frame(mainWindow, bg="black", highlightbackground="black", highlightthickness=1)
     video_player.grid(row=0, column=0, rowspan=7, columnspan=3, sticky="nsew", padx=round(25*ratio), pady=(round(30*ratio), round(15*ratio)))
     vmain = Label(video_player, bg="black")
@@ -1544,6 +1617,7 @@ def mainPage():
     info_lbl = Label(f01, image=info_icon, bg="#34415B")
     info_lbl.image = info_icon
     info_lbl.pack(pady=round(5*ratio), side=LEFT, fill=BOTH)
+    alert_lbl = Label(f01, text="New Accident Detected!", font=("Arial Rounded MT Bold", round(8*ratio)), bg="#34415B", fg="#ee4b2b")
     CreateToolTip(info_lbl, text = 'Please double click \nto view records')
     new_tree_vscroll = Scrollbar(new_tree_frame, relief=FLAT, bd=0)
     new_tree_vscroll.pack(side=RIGHT, fill=Y)
