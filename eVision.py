@@ -1502,7 +1502,26 @@ def mainPage():
     def cont_load():
         load_accilist()
         
-        mainWindow.after(30000, cont_load)   
+        try:
+            mainWindow.after(30000, cont_load)
+        except:
+            print("Error: page stop (please ignore")
+    # Review Accident function
+    def reviewacci1(e):
+        selection = new_tree.focus() #returning index number
+        tempsel = new_tree.item(selection, 'values') #returning list of values of selected
+        page_type = 'new'
+        
+        Thread(target=revacciPage, args=(tempsel, page_type,)).start()
+    # Review Accident function
+    def reviewacci2(e):
+        selection = new_tree.focus() #returning index number
+        tempsel = new_tree.item(selection, 'values') #returning list of values of selected
+        page_type = 'history'
+        
+        Thread(target=revacciPage, args=(tempsel, page_type,)).start()
+        
+        
     
     global mainWindow
     
@@ -1527,7 +1546,6 @@ def mainPage():
     right_frame.grid(row=0, column=3, rowspan=9, columnspan=2, sticky="nsew")
     
     # Left components
-    Thread(target=cont_load).start()
     video_player = Frame(mainWindow, bg="black", highlightbackground="black", highlightthickness=1)
     video_player.grid(row=0, column=0, rowspan=7, columnspan=3, sticky="nsew", padx=round(25*ratio), pady=(round(30*ratio), round(15*ratio)))
     vmain = Label(video_player, bg="black")
@@ -1682,6 +1700,8 @@ def mainPage():
     history_tree.column('acci_datetime', width=round(140*ratio))
     history_tree.column('cam_id', width=round(80*ratio))
     history_tree.column('loc', width=round(120*ratio))
+    new_tree.bind("<Double-1>", reviewacci1)
+    history_tree.bind("<Double-1>", reviewacci2)
     btn_frame6 = Frame(mainWindow, bg="#1D253D")
     btn_frame6.grid(row=3, column=3, columnspan=2, sticky="nsew", padx=round(30*ratio), pady=round(10*ratio))
     btn_refresh = Button(btn_frame6, cursor="hand2", command=lambda:load_accilist_alt(), text="Refresh Accident List", font=("Arial Rounded MT Bold", round(13*ratio)), height=1, width=round(32*ratio), fg="white", bg="#5869F0", relief=RIDGE, bd=1, activebackground="#414EBB", activeforeground="white")
@@ -1717,6 +1737,7 @@ def mainPage():
     btn_next.image = icon_next
     btn_next.pack(fill='x')
     mainWindow.protocol("WM_DELETE_WINDOW", mainlogout) # If click on close button of window
+    Thread(target=cont_load).start()
     # Check for first time login
     if(usession.user_firstlogin == 1):
         mainWindow.attributes('-disabled', 1)
@@ -5813,5 +5834,211 @@ def assigncamPage():
     empava_tree.tag_configure('evenrow', background="#ecf3fd")
     loadallcam()
 
+
+#==============================================================================================#
+#                                   Review Accident Page                                       #
+#==============================================================================================#
+## Reviewing Detected Accident Interface (new/history)
+def revacciPage(accidata, pagetype):
+    global cur_index
+    cur_index = 0
+    
+    ## Function & Validation list for Review Accident Page
+    # Limit first name entry box length function
+    def getdata(type):
+        global evi_img
+        
+        loading(revacciWindow)
+        revacciWindow.update()
+        
+        if(type == 'new'):
+            try:
+                mysql_con = MySqlConnector(sql_config) # Initial connection
+                sql = '''SELECT * FROM DetectedAccident WHERE acci_id = (%s)'''
+                result_details = mysql_con.queryall(sql, (accidata[0]))
+                if result_details:
+                    evi_img = result_details[0][4].split(",")
+                    
+                    # Download the image
+                    for i in evi_img:
+                        getimg(i)
+            except pymysql.Error as e:
+                print("Error %d: %s" % (e.args[0], e.args[1]))
+                return False
+            finally:
+                # Close the connection
+                mysql_con.close()
+        else:
+            try:
+                mysql_con = MySqlConnector(sql_config) # Initial connection
+                sql = '''SELECT * FROM DetectedAccident da, Camera c, Review r, User u WHERE da.cam_id = c.cam_id  AND r.user_id = u.user_id AND da.acci_id = (%s)'''
+                result_details = mysql_con.queryall(sql, (accidata[0]))
+                if result_details:
+                    evi_img = result_details[0][4].split(",")
+                    
+                    # Download the image
+                    for i in evi_img:
+                        getimg(i)
+            except pymysql.Error as e:
+                print("Error %d: %s" % (e.args[0], e.args[1]))
+                return False
+            finally:
+                # Close the connection
+                mysql_con.close()      
+                
+        loading_splash.destroy()
+        revacciWindow.attributes('-disabled', 0)
+        return result_details
+        # Load prev CCTV
+    def jump_prev():
+        global cur_index, evi_img
+            
+        cur_index -= 1
+        # If dont have prev (circular playback)
+        if (cur_index < 0):
+            cur_index = len(evi_img) - 1
+        fname = evi_img[cur_index] + ".png"
+        parentdir = os.path.abspath('temp/')
+        img_show = ImageTk.PhotoImage(Image.open(os.path.join(parentdir, fname)))
+        imain.configure(image=img_show)
+        imain.image = img_show
+        imgnumber.config(text="Image List: {}/{}".format((cur_index + 1), len(evi_img)))
+    # Load next CCTV
+    def jump_next():
+        global cur_index, evi_img
+            
+        cur_index += 1
+        # If dont have next (circular playback)
+        if (cur_index >= len(evi_img)):
+            cur_index = 0
+        fname = evi_img[cur_index] + ".png"
+        parentdir = os.path.abspath('temp/')
+        img_show = ImageTk.PhotoImage(Image.open(os.path.join(parentdir, fname)))
+        imain.configure(image=img_show)
+        imain.image = img_show
+        imgnumber.config(text="Image List: {}/{}".format((cur_index + 1), len(evi_img)))
+    # Close window function
+    def close_win():
+        revacciWindow.destroy()
+    
+    
+    # Configure  window attribute
+    revacciWindow = Toplevel(mainWindow)
+    revacciWindow.title('e-Vision Accident Review')
+    revacciWindow.iconbitmap('asset/logo.ico')
+    height = round(920*ratio)
+    width = round(1350*ratio)
+    x = (cscreen_width/2)-(width/2)
+    y = ((cscreen_height/2)-(height/2))-round(35*ratio)
+    revacciWindow.geometry(f'{width}x{height}+{round(x)}+{round(y)}')
+    revacciWindow.resizable(False, False)
+    
+    # Configure row column attribute
+    revacciWindow.grid_columnconfigure(0, weight=round(1*ratio))
+    # revacciWindow.grid_rowconfigure(13, weight=round(1*ratio))
+    
+    # Setup frames
+    left_frame = Frame(revacciWindow, width=round(cscreen_width*0.5208), height=round(cscreen_height*0.8519), bg="#f8f9fb")
+    left_frame.grid(row=0, column=0, rowspan=16, sticky="nsew")
+    right_frame = Frame(revacciWindow, width=round(cscreen_width*0.1823), height=round(cscreen_height*0.8519), bg="#2f333c")
+    right_frame.grid(row=0, column=1, rowspan=16, sticky="nsew")
+    
+    # Get info
+    data = getdata(pagetype)
+    
+    # Left Components
+    image_frame = Frame(revacciWindow, bg="black", highlightbackground="black", highlightthickness=1)
+    image_frame.grid(row=0, column=0, rowspan=15, sticky="nsew", padx=round(30*ratio), pady=(round(30*ratio), 0))
+    imain = Label(image_frame, bg="black")
+    imain.pack()
+    fname = evi_img[cur_index] + ".png"
+    parentdir = os.path.abspath('temp/')
+    img_show = ImageTk.PhotoImage(Image.open(os.path.join(parentdir, fname)))
+    imain.configure(image=img_show)
+    imain.image = img_show
+    f00 = Frame(revacciWindow, bg="#f8f9fb")
+    f00.grid(row=15, column=0, sticky="nsew", padx=round(30*ratio))
+    imgnumber = Label(f00, text="Image List: {}/{}".format((cur_index + 1), len(evi_img)), font=("Arial Rounded MT Bold", round(14*ratio)), bg="#f8f9fb", fg="black") 
+    imgnumber.pack(side=LEFT)
+    if len(evi_img) > 1:
+        f1 = Frame(f00, bg="#f8f9fb")
+        f1.pack(side=RIGHT)
+        icon_next = Image.open('asset/next_icon.png')
+        icon_next = icon_next.resize((round(30*ratio),round(30*ratio)), Image.ANTIALIAS)
+        icon_next = ImageTk.PhotoImage(icon_next)
+        btn_next = Button(f1, cursor="hand2", image=icon_next, command=lambda:jump_next(), height=round(30*ratio), width=round(150*ratio), bg="#007cf1", relief=RIDGE, bd=1, activebackground="#005db5")
+        btn_next.image = icon_next
+        btn_next.pack(fill='x')
+        f0 = Frame(f00, bg="#f8f9fb")
+        f0.pack(side=RIGHT, padx=round(10*ratio))
+        icon_prev = Image.open('asset/previous_icon.png')
+        icon_prev = icon_prev.resize((round(30*ratio),round(30*ratio)), Image.ANTIALIAS)
+        icon_prev = ImageTk.PhotoImage(icon_prev)
+        btn_prev = Button(f0, cursor="hand2", image=icon_prev, command=lambda:jump_prev(), height=round(30*ratio), width=round(150*ratio), bg="#007cf1", relief=RIDGE, bd=1, activebackground="#005db5")
+        btn_prev.image = icon_prev
+        btn_prev.pack(fill='x')
+    
+    # Right Components
+    title = Image.open('asset/accident_info.png')
+    title = title.resize((round(285*ratio),round(75*ratio)), Image.ANTIALIAS)
+    title = ImageTk.PhotoImage(title)
+    title_label = Label(revacciWindow, image=title, bg="#2f333c")
+    title_label.image = title
+    title_label.grid(row=0, column=1, rowspan=2, sticky="nsew", padx=round(30*ratio), pady=(round(50*ratio),round(20*ratio)))
+    big_frame = Frame(revacciWindow, bg="#2f333c")
+    big_frame.grid(row=2, column=1, sticky="nsew", rowspan=14)
+    acci_label = Label(big_frame, text="Accident ID", font=("Arial Rounded MT Bold", round(12*ratio)), bg="#2f333c", fg="white", anchor='w')
+    acci_label.pack(expand=False, fill=BOTH, padx=round(30*ratio), pady=(round(15*ratio), 0))
+    acci_id = Label(big_frame, text="{}".format(accidata[0]), font=("Lato", round(12*ratio)), bg="#2f333c", fg="white", anchor='w', wraplength=round(300*ratio), justify="left")
+    acci_id.pack(expand=False, fill=BOTH, padx=round(30*ratio))
+    cam_label = Label(big_frame, text="Camera ID", font=("Arial Rounded MT Bold", round(12*ratio)), bg="#2f333c", fg="white", anchor='w')
+    cam_label.pack(expand=False, fill=BOTH, padx=round(30*ratio), pady=(round(15*ratio), 0))
+    cam_id = Label(big_frame, text="{}".format(accidata[2]), font=("Lato", round(12*ratio)), bg="#2f333c", fg="white", anchor='w', wraplength=round(300*ratio), justify="left")
+    cam_id.pack(expand=False, fill=BOTH, padx=round(30*ratio))
+    loc_label = Label(big_frame, text="Location", font=("Arial Rounded MT Bold", round(12*ratio)), bg="#2f333c", fg="white", anchor='w')
+    loc_label.pack(expand=False, fill=BOTH, padx=round(30*ratio), pady=(round(15*ratio), 0))
+    loc_con = Label(big_frame, text="{}".format(accidata[3]), font=("Lato", round(12*ratio)), bg="#2f333c", fg="white", anchor='w', wraplength=round(300*ratio), justify="left")
+    loc_con.pack(expand=False, fill=BOTH, padx=round(30*ratio))
+    dattime_label = Label(big_frame, text="Accident Date Time", font=("Arial Rounded MT Bold", round(12*ratio)), bg="#2f333c", fg="white", anchor='w')
+    dattime_label.pack(expand=False, fill=BOTH, padx=round(30*ratio), pady=(round(15*ratio), 0))
+    dattime_con = Label(big_frame, text="{}".format(accidata[1]), font=("Lato", round(12*ratio)), bg="#2f333c", fg="white", anchor='w', wraplength=round(300*ratio), justify="left")
+    dattime_con.pack(expand=False, fill=BOTH, padx=round(30*ratio))
+    if pagetype == 'history':
+        reviewby_label = Label(big_frame, text="Reviewed By", font=("Arial Rounded MT Bold", round(12*ratio)), bg="#2f333c", fg="white", anchor='w')
+        reviewby_label.pack(expand=False, fill=BOTH, padx=round(30*ratio), pady=(round(15*ratio), 0))
+        reviewby_con = Label(big_frame, text="{} - {} {}".format(data[0][19], data[0][20], data[0][21]), font=("Lato", round(12*ratio)), bg="#2f333c", fg="white", anchor='w', wraplength=round(300*ratio), justify="left")
+        reviewby_con.pack(expand=False, fill=BOTH, padx=round(30*ratio))
+        reviewdt_label = Label(big_frame, text="Review Date Time", font=("Arial Rounded MT Bold", round(12*ratio)), bg="#2f333c", fg="white", anchor='w')
+        reviewdt_label.pack(expand=False, fill=BOTH, padx=round(30*ratio), pady=(round(15*ratio), 0))
+        reviewdt_con = Label(big_frame, text="{}".format(data[17]), font=("Lato", round(12*ratio)), bg="#2f333c", fg="white", anchor='w', wraplength=round(300*ratio), justify="left")
+        reviewdt_con.pack(expand=False, fill=BOTH, padx=round(30*ratio))
+        reviewdc_label = Label(big_frame, text="Review Result", font=("Arial Rounded MT Bold", round(12*ratio)), bg="#2f333c", fg="white", anchor='w')
+        reviewdc_label.pack(expand=False, fill=BOTH, padx=round(30*ratio), pady=(round(15*ratio), 0))
+        if data[18] == 1:
+            result = "Marked Accident & Resolved"
+        else:
+            result = "Non Accident"
+        reviewdc_con = Label(big_frame, text="{}".format(result), font=("Lato", round(12*ratio)), bg="#2f333c", fg="white", anchor='w', wraplength=round(300*ratio), justify="left")
+        reviewdc_con.pack(expand=False, fill=BOTH, padx=round(30*ratio))
+    f9a = Frame(big_frame, bg="#2f333c")
+    f9a.pack(side= BOTTOM, fill=BOTH, expand=False, pady=(round(10*ratio), round(45*ratio)))
+    f9 = Frame(f9a, bd=round(4*ratio), bg="#71c577")
+    f9.pack(fill=X, padx=round(30*ratio))
+    close_btn = Button(f9, text="Close",  font=("Arial Rounded MT Bold", round(12*ratio)), command=lambda:close_win(), fg="white", bg="#71c577", relief=FLAT, bd=0, activebackground="#71c577", activeforeground="white", cursor="hand2")
+    close_btn.pack(expand=TRUE, fill=BOTH)
+    if pagetype == 'new':
+        f8a = Frame(big_frame, bg="#2f333c")
+        f8a.pack(side= BOTTOM, fill=BOTH, expand=False, pady=round(10*ratio))
+        f8 = Frame(f8a, bd=round(4*ratio), bg="#71c577")
+        f8.pack(fill=X, padx=round(30*ratio))
+        marknon_btn = Button(f8, text="Mark Non Accident",  font=("Arial Rounded MT Bold", round(12*ratio)), fg="white", bg="#71c577", relief=FLAT, bd=0, activebackground="#71c577", activeforeground="white", cursor="hand2")
+        marknon_btn.pack(expand=TRUE, fill=BOTH)
+        f7a = Frame(big_frame, bg="#2f333c")
+        f7a.pack(side= BOTTOM, fill=BOTH, expand=False, pady=round(10*ratio))
+        f7 = Frame(f7a, bd=round(4*ratio), bg="#71c577")
+        f7.pack(fill=X, padx=round(30*ratio))
+        markacci_btn = Button(f7, text="Mark Accident Resolved",  font=("Arial Rounded MT Bold", round(12*ratio)), fg="white", bg="#71c577", relief=FLAT, bd=0, activebackground="#71c577", activeforeground="white", cursor="hand2")
+        markacci_btn.pack(expand=TRUE, fill=BOTH)
+    
 
 root.mainloop()
