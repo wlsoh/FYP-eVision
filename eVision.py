@@ -1180,7 +1180,7 @@ def mainPage():
     def load_accilist():
         found1 = False
         found2 = False
-        success = False
+        success = True
         
         try:
             mysql_con = MySqlConnector(sql_config) # Initial connection
@@ -1205,7 +1205,6 @@ def mainPage():
                 else:
                     found1 = False
                     found2 = False
-                    success = False
             else:
                 sql = '''SELECT * FROM User_Camera uc, DetectedAccident da, Camera c WHERE uc.cam_id = da.cam_id AND uc.cam_id = c.cam_id AND uc.user_id = (%s)'''
                 result_details = mysql_con.queryall(sql, (usession.user_id))
@@ -1227,10 +1226,9 @@ def mainPage():
                 else:
                     found1 = False
                     found2 = False
-                    success = False
         except pymysql.Error as e:
+            success = False
             print("Error %d: %s" % (e.args[0], e.args[1]))
-            return False
         finally:
             # Close the connection
             mysql_con.close()
@@ -1338,6 +1336,7 @@ def mainPage():
     # Acquire CCTV file function
     def get_resources():
         global cam_detaillist
+        not_empty = False
         
         dir = './cctv_contents'
         dont_remove = '.gitignore'
@@ -1363,12 +1362,17 @@ def mainPage():
                 
                 for j in cam_list:
                     getvideo(j)
+                not_empty = True
+            else:
+                not_empty = False
         except pymysql.Error as e:
             print("Error %d: %s" % (e.args[0], e.args[1]))
             return False
         finally:
             # Close the connection
             mysql_con.close()
+            
+        return not_empty
     # Initiate CCTV function
     def init_cctv():
         global det_model, stop_flag, cur_cctv_idx, cctv_list
@@ -1376,35 +1380,40 @@ def mainPage():
         if not stop_flag:
             messagebox.showerror("Invalid CCTV Operation", "The CCTV had already initiated!")
         else:
-            stop_flag = False
-            
             loading(mainWindow)
             mainWindow.update()
             vmain.pack(anchor='c', expand=TRUE)
             
-            get_resources()
+            rslt = get_resources()
             
-            # Video path
-            src_path = os.path.abspath('cctv_contents/')
-            ext = ('*.mp4', '*.avi')
-            cctv_list = []
-            for cctv_ext in ext:
-                cctv_list.extend(glob.glob(os.path.join(src_path, cctv_ext)))
-            cur_cctv_idx = 0
+            if rslt:
+                stop_flag = False
                 
-            # Inititate detection model
-            vdet_model_path = os.path.abspath('v_detect_track/retinanet_vdet_model.h5')
-            det_model = fused_accident_detection(vdet_model_path, cctv_list[cur_cctv_idx])
-            
-            # Set the label of CCTV
-            camera_list.config(text="Camera List: {}/{}".format((cur_cctv_idx + 1), len(cctv_list)))
-            camera_id.config(text="Camera ID: {}".format(cam_detaillist[cur_cctv_idx][0]))
-            camera_loc.config(text="Location: {}, {}".format(cam_detaillist[cur_cctv_idx][2], cam_detaillist[cur_cctv_idx][3]))
-            
-            # Start monitoring
-            frm_update()
-            loading_splash.destroy()
-            mainWindow.attributes('-disabled', 0)
+                # Video path
+                src_path = os.path.abspath('cctv_contents/')
+                ext = ('*.mp4', '*.avi')
+                cctv_list = []
+                for cctv_ext in ext:
+                    cctv_list.extend(glob.glob(os.path.join(src_path, cctv_ext)))
+                cur_cctv_idx = 0
+                    
+                # Inititate detection model
+                vdet_model_path = os.path.abspath('v_detect_track/retinanet_vdet_model.h5')
+                det_model = fused_accident_detection(vdet_model_path, cctv_list[cur_cctv_idx])
+                
+                # Set the label of CCTV
+                camera_list.config(text="Camera List: {}/{}".format((cur_cctv_idx + 1), len(cctv_list)))
+                camera_id.config(text="Camera ID: {}".format(cam_detaillist[cur_cctv_idx][0]))
+                camera_loc.config(text="Location: {}, {}".format(cam_detaillist[cur_cctv_idx][2], cam_detaillist[cur_cctv_idx][3]))
+                
+                # Start monitoring
+                frm_update()
+                loading_splash.destroy()
+                mainWindow.attributes('-disabled', 0)
+            else:
+                loading_splash.destroy()
+                messagebox.showerror("Invalid CCTV Operation", "No existing CCTV had been assigned to you! Please contact Admin for more info.")
+                mainWindow.attributes('-disabled', 0)
     # Stop CCTV function
     def stop_cctv():
         global stop_flag, cur_cctv_idx, cctv_list
@@ -1510,14 +1519,16 @@ def mainPage():
         tempsel = new_tree.item(selection, 'values') #returning list of values of selected
         page_type = 'new'
         
-        Thread(target=revacciPage, args=(tempsel, page_type,)).start()
+        if tempsel:
+            Thread(target=revacciPage, args=(tempsel, page_type,)).start()
     # Review Accident function
     def reviewacci2(e):
         selection = history_tree.focus() #returning index number
         tempsel = history_tree.item(selection, 'values') #returning list of values of selected
         page_type = 'history'
         
-        Thread(target=revacciPage, args=(tempsel, page_type,)).start()
+        if tempsel:
+            Thread(target=revacciPage, args=(tempsel, page_type,)).start()
         
         
     
@@ -3842,7 +3853,7 @@ def usermanagementPage():
     usrmng_tree_vscroll.pack(side=RIGHT, fill=Y)
     usrmng_tree_hscroll = Scrollbar(usrmng_tree_frame, orient='horizontal', relief=FLAT, bd=0)
     usrmng_tree_hscroll.pack(side=BOTTOM, fill=X)
-    column_headerlist = ['user_id', 'user_firstname', 'user_lastname', 'user_addressline', 'user_city', 'user_postcode', 'user_state', 'user_email', 'user_phone', 'user_lastlogin', 'user_isDelete']
+    column_headerlist = ['user_id', 'user_isDelete', 'user_firstname', 'user_lastname', 'user_addressline', 'user_city', 'user_postcode', 'user_state', 'user_email', 'user_phone', 'user_lastlogin']
     usrmng_tree = ttk.Treeview(usrmng_tree_frame, columns=column_headerlist, show='headings', yscrollcommand=usrmng_tree_vscroll.set, xscrollcommand=usrmng_tree_hscroll.set, selectmode="browse", height=round(22*ratio))
     usrmng_tree.pack(side=TOP, expand=TRUE, fill=BOTH)
     style.map('Treeview', background=[('selected', '#04D8AE')])  #selected color
