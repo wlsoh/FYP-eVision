@@ -3,8 +3,6 @@
 # Program Name: Main GUI Integration
 # Date Created: 05/05/2022
 import os, io, re, secrets, string, pymysql, glob, cv2
-from tkinter import font
-from time import time
 import pandas as pd
 import customtkinter
 import tkintermapview
@@ -1116,7 +1114,7 @@ def forgetpassPage():
 #==============================================================================================#
 ## Main Page Interface
 def mainPage():
-    global frm_update, stop_flag
+    global frm_update, stop_flag, load_accilist
     stop_flag = True
     
     ## Function & Validation List for Main Page
@@ -1202,7 +1200,7 @@ def mainPage():
                         else:
                             if not found2:
                                 found2 = True
-                            history_tree.insert("", 'end', values=(dt[2], dt[5], dt[1], loc))
+                            history_tree.insert("", 'end', values=(dt[0], dt[3], dt[1], loc))
                 # If no existing data found
                 else:
                     found1 = False
@@ -1515,8 +1513,8 @@ def mainPage():
         Thread(target=revacciPage, args=(tempsel, page_type,)).start()
     # Review Accident function
     def reviewacci2(e):
-        selection = new_tree.focus() #returning index number
-        tempsel = new_tree.item(selection, 'values') #returning list of values of selected
+        selection = history_tree.focus() #returning index number
+        tempsel = history_tree.item(selection, 'values') #returning list of values of selected
         page_type = 'history'
         
         Thread(target=revacciPage, args=(tempsel, page_type,)).start()
@@ -5863,6 +5861,9 @@ def revacciPage(accidata, pagetype):
                     for i in evi_img:
                         getimg(i)
             except pymysql.Error as e:
+                loading_splash.destroy()
+                revacciWindow.attributes('-disabled', 0)
+                messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
                 print("Error %d: %s" % (e.args[0], e.args[1]))
                 return False
             finally:
@@ -5870,6 +5871,7 @@ def revacciPage(accidata, pagetype):
                 mysql_con.close()
         else:
             try:
+                print(accidata)
                 mysql_con = MySqlConnector(sql_config) # Initial connection
                 sql = '''SELECT * FROM DetectedAccident da, Camera c, Review r, User u WHERE da.cam_id = c.cam_id  AND r.user_id = u.user_id AND da.acci_id = (%s)'''
                 result_details = mysql_con.queryall(sql, (accidata[0]))
@@ -5880,6 +5882,9 @@ def revacciPage(accidata, pagetype):
                     for i in evi_img:
                         getimg(i)
             except pymysql.Error as e:
+                loading_splash.destroy()
+                revacciWindow.attributes('-disabled', 0)
+                messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
                 print("Error %d: %s" % (e.args[0], e.args[1]))
                 return False
             finally:
@@ -5920,6 +5925,214 @@ def revacciPage(accidata, pagetype):
     # Close window function
     def close_win():
         revacciWindow.destroy()
+    # Mark Accident function
+    def mark_acci_resolve(acci_id, user_id):
+        confirmbox = messagebox.askquestion('e-Vision', 'Are you sure that accident {} detected confirmed as accident and had been resolved?'.format(acci_id), icon='warning')
+        if confirmbox == 'yes':
+            loading(revacciWindow)
+            revacciWindow.update()
+            
+            try:
+                mysql_con = MySqlConnector(sql_config) # Initial connection
+                sql = '''SELECT rev_id FROM DetectedAccident WHERE acci_id = (%s)''' 
+                result_details1 = mysql_con.queryall(sql, (acci_id))
+                if result_details1:
+                    if not (result_details1[0][0] is None):
+                        loading_splash.destroy()
+                        revacciWindow.attributes('-disabled', 0)
+                        revacciWindow.destroy()
+                        messagebox.showerror("Accident Review Fail", "The accident {} detected had been review previously!".format(acci_id))
+                        load_accilist()
+                        return False
+            except pymysql.Error as e:
+                loading_splash.destroy()
+                revacciWindow.attributes('-disabled', 0)
+                messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                print("Error %d: %s" % (e.args[0], e.args[1]))
+                return False
+            finally:
+                # Close the connection
+                mysql_con.close()
+            
+            timenow = datetime.now()
+            time = timenow.strftime("%Y-%m-%d %H:%M:%S")
+            suc = False
+            suc1 = False
+            
+            try:
+                mysql_con = MySqlConnector(sql_config) # Initial connection
+                sql = '''INSERT INTO Review (user_id, rev_datetime, rev_isAccident)
+                VALUES (%s, %s, 1)''' # Record Accident
+                insert = mysql_con.update(sql, (user_id, time))
+                if insert > 0:
+                    suc = True
+                # If error
+                else:
+                    return False
+            except pymysql.Error as e:
+                loading_splash.destroy()
+                revacciWindow.attributes('-disabled', 0)
+                messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                print("Error %d: %s" % (e.args[0], e.args[1]))
+                return False
+            finally:
+                # Close the connection
+                mysql_con.close()
+                
+            if suc:
+                try:
+                    mysql_con = MySqlConnector(sql_config) # Initial connection
+                    sql = '''SELECT * FROM Review WHERE user_id = (%s) and rev_datetime = (%s)''' # Record Accident
+                    result_details = mysql_con.queryall(sql, (user_id, time))
+                    if result_details:
+                        print(result_details)
+                    # If error
+                    else:
+                        suc1 = False
+                except pymysql.Error as e:
+                    loading_splash.destroy()
+                    revacciWindow.attributes('-disabled', 0)
+                    messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                    print("Error %d: %s" % (e.args[0], e.args[1]))
+                    return False
+                finally:
+                    # Close the connection
+                    mysql_con.close()
+                
+                try:
+                    mysql_con = MySqlConnector(sql_config) # Initial connection
+                    sql = '''UPDATE DetectedAccident SET rev_id = (%s) WHERE acci_id = (%s)'''
+                    update = mysql_con.update(sql, (result_details[0][0], acci_id))
+                    if update > 0:
+                        suc1 = True
+                    # If error
+                    else:
+                        suc1 = False
+                except pymysql.Error as e:
+                    loading_splash.destroy()
+                    revacciWindow.attributes('-disabled', 0)
+                    messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                    print("Error %d: %s" % (e.args[0], e.args[1]))
+                    return False
+                finally:
+                    # Close the connection
+                    mysql_con.close()
+                    
+            if suc and suc1:
+                loading_splash.destroy()
+                revacciWindow.attributes('-disabled', 0)
+                revacciWindow.destroy()
+                messagebox.showinfo("Accident Review Success", "The accident {} detected had been marked and resolved.".format(acci_id))
+                # Reload list
+                load_accilist()
+            else:
+                loading_splash.destroy()
+                revacciWindow.attributes('-disabled', 0)
+                messagebox.showerror("Accident Review Failed", "Error occured in reviewing the accident! Please contact developer for help!")
+    # Mark Accident function
+    def mark_nonacci(acci_id, user_id):
+        confirmbox = messagebox.askquestion('e-Vision', 'Are you sure that accident {} detected confirmed as non accident?'.format(acci_id), icon='warning')
+        if confirmbox == 'yes':
+            loading(revacciWindow)
+            revacciWindow.update()
+            
+            try:
+                mysql_con = MySqlConnector(sql_config) # Initial connection
+                sql = '''SELECT rev_id FROM DetectedAccident WHERE acci_id = (%s)''' 
+                result_details1 = mysql_con.queryall(sql, (acci_id))
+                if result_details1:
+                    if not (result_details1[0][0] is None):
+                        loading_splash.destroy()
+                        revacciWindow.attributes('-disabled', 0)
+                        revacciWindow.destroy()
+                        messagebox.showerror("Accident Review Fail", "The accident {} detected had been review previously!".format(acci_id))
+                        load_accilist()
+                        return False
+            except pymysql.Error as e:
+                loading_splash.destroy()
+                revacciWindow.attributes('-disabled', 0)
+                messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                print("Error %d: %s" % (e.args[0], e.args[1]))
+                return False
+            finally:
+                # Close the connection
+                mysql_con.close()
+            
+            timenow = datetime.now()
+            time = timenow.strftime("%Y-%m-%d %H:%M:%S")
+            suc = False
+            suc1 = False
+            
+            try:
+                mysql_con = MySqlConnector(sql_config) # Initial connection
+                sql = '''INSERT INTO Review (user_id, rev_datetime, rev_isAccident)
+                VALUES (%s, %s, 0)''' # Record Accident
+                insert = mysql_con.update(sql, (user_id, time))
+                if insert > 0:
+                    suc = True
+                # If error
+                else:
+                    return False
+            except pymysql.Error as e:
+                loading_splash.destroy()
+                revacciWindow.attributes('-disabled', 0)
+                messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                print("Error %d: %s" % (e.args[0], e.args[1]))
+                return False
+            finally:
+                # Close the connection
+                mysql_con.close()
+                
+            if suc:
+                try:
+                    mysql_con = MySqlConnector(sql_config) # Initial connection
+                    sql = '''SELECT * FROM Review WHERE user_id = (%s) and rev_datetime = (%s)''' # Record Accident
+                    result_details = mysql_con.queryall(sql, (user_id, time))
+                    if result_details:
+                        print(result_details)
+                    # If error
+                    else:
+                        suc1 = False
+                except pymysql.Error as e:
+                    loading_splash.destroy()
+                    revacciWindow.attributes('-disabled', 0)
+                    messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                    print("Error %d: %s" % (e.args[0], e.args[1]))
+                    return False
+                finally:
+                    # Close the connection
+                    mysql_con.close()
+                
+                try:
+                    mysql_con = MySqlConnector(sql_config) # Initial connection
+                    sql = '''UPDATE DetectedAccident SET rev_id = (%s) WHERE acci_id = (%s)'''
+                    update = mysql_con.update(sql, (result_details[0][0], acci_id))
+                    if update > 0:
+                        suc1 = True
+                    # If error
+                    else:
+                        suc1 = False
+                except pymysql.Error as e:
+                    loading_splash.destroy()
+                    revacciWindow.attributes('-disabled', 0)
+                    messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
+                    print("Error %d: %s" % (e.args[0], e.args[1]))
+                    return False
+                finally:
+                    # Close the connection
+                    mysql_con.close()
+                    
+            if suc and suc1:
+                loading_splash.destroy()
+                revacciWindow.attributes('-disabled', 0)
+                revacciWindow.destroy()
+                messagebox.showinfo("Accident Review Success", "The accident {} detected had been marked as non accident category.".format(acci_id))
+                # Reload list
+                load_accilist()
+            else:
+                loading_splash.destroy()
+                revacciWindow.attributes('-disabled', 0)
+                messagebox.showerror("Accident Review Failed", "Error occured in reviewing the accident! Please contact developer for help!")             
     
     
     # Configure  window attribute
@@ -6010,11 +6223,11 @@ def revacciPage(accidata, pagetype):
         reviewby_con.pack(expand=False, fill=BOTH, padx=round(30*ratio))
         reviewdt_label = Label(big_frame, text="Review Date Time", font=("Arial Rounded MT Bold", round(12*ratio)), bg="#2f333c", fg="white", anchor='w')
         reviewdt_label.pack(expand=False, fill=BOTH, padx=round(30*ratio), pady=(round(15*ratio), 0))
-        reviewdt_con = Label(big_frame, text="{}".format(data[17]), font=("Lato", round(12*ratio)), bg="#2f333c", fg="white", anchor='w', wraplength=round(300*ratio), justify="left")
+        reviewdt_con = Label(big_frame, text="{}".format(data[0][17]), font=("Lato", round(12*ratio)), bg="#2f333c", fg="white", anchor='w', wraplength=round(300*ratio), justify="left")
         reviewdt_con.pack(expand=False, fill=BOTH, padx=round(30*ratio))
         reviewdc_label = Label(big_frame, text="Review Result", font=("Arial Rounded MT Bold", round(12*ratio)), bg="#2f333c", fg="white", anchor='w')
         reviewdc_label.pack(expand=False, fill=BOTH, padx=round(30*ratio), pady=(round(15*ratio), 0))
-        if data[18] == 1:
+        if data[0][18] == 1:
             result = "Marked Accident & Resolved"
         else:
             result = "Non Accident"
@@ -6031,13 +6244,13 @@ def revacciPage(accidata, pagetype):
         f8a.pack(side= BOTTOM, fill=BOTH, expand=False, pady=round(10*ratio))
         f8 = Frame(f8a, bd=round(4*ratio), bg="#71c577")
         f8.pack(fill=X, padx=round(30*ratio))
-        marknon_btn = Button(f8, text="Mark Non Accident",  font=("Arial Rounded MT Bold", round(12*ratio)), fg="white", bg="#71c577", relief=FLAT, bd=0, activebackground="#71c577", activeforeground="white", cursor="hand2")
+        marknon_btn = Button(f8, text="Mark Non Accident", command=lambda:mark_nonacci(accidata[0], usession.user_id),  font=("Arial Rounded MT Bold", round(12*ratio)), fg="white", bg="#71c577", relief=FLAT, bd=0, activebackground="#71c577", activeforeground="white", cursor="hand2")
         marknon_btn.pack(expand=TRUE, fill=BOTH)
         f7a = Frame(big_frame, bg="#2f333c")
         f7a.pack(side= BOTTOM, fill=BOTH, expand=False, pady=round(10*ratio))
         f7 = Frame(f7a, bd=round(4*ratio), bg="#71c577")
         f7.pack(fill=X, padx=round(30*ratio))
-        markacci_btn = Button(f7, text="Mark Accident Resolved",  font=("Arial Rounded MT Bold", round(12*ratio)), fg="white", bg="#71c577", relief=FLAT, bd=0, activebackground="#71c577", activeforeground="white", cursor="hand2")
+        markacci_btn = Button(f7, text="Mark Accident Resolved", command=lambda:mark_acci_resolve(accidata[0], usession.user_id),  font=("Arial Rounded MT Bold", round(12*ratio)), fg="white", bg="#71c577", relief=FLAT, bd=0, activebackground="#71c577", activeforeground="white", cursor="hand2")
         markacci_btn.pack(expand=TRUE, fill=BOTH)
     
 
