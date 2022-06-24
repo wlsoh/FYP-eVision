@@ -1322,7 +1322,7 @@ def mainPage():
             if acci_overperiod == 5:
                 path_loc = os.path.abspath('temp_accidetect/*.jpg')
                 evidence_list = glob.glob(path_loc)
-                cur_cam_id = "C0004"
+                cur_cam_id = cam_detaillist[cur_cctv_idx][0]
                 timenow = datetime.now()
                 
                 # Submit an accident detected (Threading -> work in bg)
@@ -1351,7 +1351,7 @@ def mainPage():
                 result_details = mysql_con.queryall(sql)
             else:
                 sql = '''SELECT * FROM Camera c, User_Camera uc WHERE c.cam_id = uc.cam_id AND uc.user_id = (%s)'''
-                result_details = mysql_con.update(sql, (usession.user_id))
+                result_details = mysql_con.queryall(sql, (usession.user_id))
             if result_details:
                 cam_list = []
                 cam_detaillist = []
@@ -5857,8 +5857,8 @@ def revacciPage(accidata, pagetype):
     def getdata(type):
         global evi_img
         
-        loading(revacciWindow)
-        revacciWindow.update()
+        # loading(revacciWindow)
+        # revacciWindow.update()
         
         if(type == 'new'):
             try:
@@ -5872,8 +5872,8 @@ def revacciPage(accidata, pagetype):
                     for i in evi_img:
                         getimg(i)
             except pymysql.Error as e:
-                loading_splash.destroy()
-                revacciWindow.attributes('-disabled', 0)
+                # loading_splash.destroy()
+                # revacciWindow.attributes('-disabled', 0)
                 messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
                 print("Error %d: %s" % (e.args[0], e.args[1]))
                 return False
@@ -5884,7 +5884,7 @@ def revacciPage(accidata, pagetype):
             try:
                 print(accidata)
                 mysql_con = MySqlConnector(sql_config) # Initial connection
-                sql = '''SELECT * FROM DetectedAccident da, Camera c, Review r, User u WHERE da.cam_id = c.cam_id  AND r.user_id = u.user_id AND da.acci_id = (%s)'''
+                sql = '''SELECT * FROM DetectedAccident da, Camera c, Review r, User u WHERE da.cam_id = c.cam_id  AND r.user_id = u.user_id AND da.rev_id = r.rev_id AND da.acci_id = (%s)'''
                 result_details = mysql_con.queryall(sql, (accidata[0]))
                 if result_details:
                     evi_img = result_details[0][4].split(",")
@@ -5893,8 +5893,8 @@ def revacciPage(accidata, pagetype):
                     for i in evi_img:
                         getimg(i)
             except pymysql.Error as e:
-                loading_splash.destroy()
-                revacciWindow.attributes('-disabled', 0)
+                # loading_splash.destroy()
+                # revacciWindow.attributes('-disabled', 0)
                 messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
                 print("Error %d: %s" % (e.args[0], e.args[1]))
                 return False
@@ -5902,8 +5902,8 @@ def revacciPage(accidata, pagetype):
                 # Close the connection
                 mysql_con.close()      
                 
-        loading_splash.destroy()
-        revacciWindow.attributes('-disabled', 0)
+        # loading_splash.destroy()
+        # revacciWindow.attributes('-disabled', 0)
         return result_details
         # Load prev CCTV
     def jump_prev():
@@ -5940,8 +5940,7 @@ def revacciPage(accidata, pagetype):
     def mark_acci_resolve(acci_id, user_id):
         confirmbox = messagebox.askquestion('e-Vision', 'Are you sure that accident {} detected confirmed as accident and had been resolved?'.format(acci_id), icon='warning')
         if confirmbox == 'yes':
-            loading(revacciWindow)
-            revacciWindow.update()
+            revacciWindow.attributes('-disabled', 1)
             
             try:
                 mysql_con = MySqlConnector(sql_config) # Initial connection
@@ -5949,14 +5948,12 @@ def revacciPage(accidata, pagetype):
                 result_details1 = mysql_con.queryall(sql, (acci_id))
                 if result_details1:
                     if not (result_details1[0][0] is None):
-                        loading_splash.destroy()
                         revacciWindow.attributes('-disabled', 0)
                         revacciWindow.destroy()
                         messagebox.showerror("Accident Review Fail", "The accident {} detected had been review previously!".format(acci_id))
                         load_accilist()
                         return False
             except pymysql.Error as e:
-                loading_splash.destroy()
                 revacciWindow.attributes('-disabled', 0)
                 messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
                 print("Error %d: %s" % (e.args[0], e.args[1]))
@@ -5981,7 +5978,6 @@ def revacciPage(accidata, pagetype):
                 else:
                     return False
             except pymysql.Error as e:
-                loading_splash.destroy()
                 revacciWindow.attributes('-disabled', 0)
                 messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
                 print("Error %d: %s" % (e.args[0], e.args[1]))
@@ -6001,7 +5997,6 @@ def revacciPage(accidata, pagetype):
                     else:
                         suc1 = False
                 except pymysql.Error as e:
-                    loading_splash.destroy()
                     revacciWindow.attributes('-disabled', 0)
                     messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
                     print("Error %d: %s" % (e.args[0], e.args[1]))
@@ -6020,7 +6015,6 @@ def revacciPage(accidata, pagetype):
                     else:
                         suc1 = False
                 except pymysql.Error as e:
-                    loading_splash.destroy()
                     revacciWindow.attributes('-disabled', 0)
                     messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
                     print("Error %d: %s" % (e.args[0], e.args[1]))
@@ -6030,22 +6024,19 @@ def revacciPage(accidata, pagetype):
                     mysql_con.close()
                     
             if suc and suc1:
-                loading_splash.destroy()
                 revacciWindow.attributes('-disabled', 0)
                 revacciWindow.destroy()
                 messagebox.showinfo("Accident Review Success", "The accident {} detected had been marked and resolved.".format(acci_id))
                 # Reload list
                 load_accilist()
             else:
-                loading_splash.destroy()
                 revacciWindow.attributes('-disabled', 0)
                 messagebox.showerror("Accident Review Failed", "Error occured in reviewing the accident! Please contact developer for help!")
     # Mark Accident function
     def mark_nonacci(acci_id, user_id):
         confirmbox = messagebox.askquestion('e-Vision', 'Are you sure that accident {} detected confirmed as non accident?'.format(acci_id), icon='warning')
         if confirmbox == 'yes':
-            loading(revacciWindow)
-            revacciWindow.update()
+            revacciWindow.attributes('-disabled', 1)
             
             try:
                 mysql_con = MySqlConnector(sql_config) # Initial connection
@@ -6053,14 +6044,12 @@ def revacciPage(accidata, pagetype):
                 result_details1 = mysql_con.queryall(sql, (acci_id))
                 if result_details1:
                     if not (result_details1[0][0] is None):
-                        loading_splash.destroy()
                         revacciWindow.attributes('-disabled', 0)
                         revacciWindow.destroy()
                         messagebox.showerror("Accident Review Fail", "The accident {} detected had been review previously!".format(acci_id))
                         load_accilist()
                         return False
             except pymysql.Error as e:
-                loading_splash.destroy()
                 revacciWindow.attributes('-disabled', 0)
                 messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
                 print("Error %d: %s" % (e.args[0], e.args[1]))
@@ -6085,7 +6074,6 @@ def revacciPage(accidata, pagetype):
                 else:
                     return False
             except pymysql.Error as e:
-                loading_splash.destroy()
                 revacciWindow.attributes('-disabled', 0)
                 messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
                 print("Error %d: %s" % (e.args[0], e.args[1]))
@@ -6105,7 +6093,6 @@ def revacciPage(accidata, pagetype):
                     else:
                         suc1 = False
                 except pymysql.Error as e:
-                    loading_splash.destroy()
                     revacciWindow.attributes('-disabled', 0)
                     messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
                     print("Error %d: %s" % (e.args[0], e.args[1]))
@@ -6124,7 +6111,6 @@ def revacciPage(accidata, pagetype):
                     else:
                         suc1 = False
                 except pymysql.Error as e:
-                    loading_splash.destroy()
                     revacciWindow.attributes('-disabled', 0)
                     messagebox.showerror("Database Connection Error", "Error occured in database server! Please contact developer for help!")
                     print("Error %d: %s" % (e.args[0], e.args[1]))
@@ -6134,14 +6120,12 @@ def revacciPage(accidata, pagetype):
                     mysql_con.close()
                     
             if suc and suc1:
-                loading_splash.destroy()
                 revacciWindow.attributes('-disabled', 0)
                 revacciWindow.destroy()
                 messagebox.showinfo("Accident Review Success", "The accident {} detected had been marked as non accident category.".format(acci_id))
                 # Reload list
                 load_accilist()
             else:
-                loading_splash.destroy()
                 revacciWindow.attributes('-disabled', 0)
                 messagebox.showerror("Accident Review Failed", "Error occured in reviewing the accident! Please contact developer for help!")             
     
