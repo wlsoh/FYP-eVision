@@ -546,10 +546,10 @@ def logout():
     for g in os.listdir(dir1):
         if g != dont_remove:
             os.remove(os.path.join(dir1, g))
-    # dir2 = './cctv_contents'
-    # for h in os.listdir(dir2):
-    #     if h != dont_remove:
-    #         os.remove(os.path.join(dir2, h))
+    dir2 = './cctv_contents'
+    for h in os.listdir(dir2):
+        if h != dont_remove:
+            os.remove(os.path.join(dir2, h))
     mainWindow.destroy() # Destroy current winfow
     root.deiconify() # Show login page again
     root.geometry(f'{width1}x{height1}+{round(x1)}+{round(y1)}')

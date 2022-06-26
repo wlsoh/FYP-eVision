@@ -5,7 +5,8 @@
 
 import tensorflow as tf
 from keras.models import Sequential
-from keras.layers import BatchNormalization, Conv2D, Flatten, Dense, MaxPooling2D, InputLayer
+from keras.layers import BatchNormalization, Conv2D, Flatten, Dense, MaxPooling2D, Activation
+from keras.optimizers import Adam
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -113,44 +114,34 @@ print ("val_labels shape: " + str(y_val.shape))
 print ("test_images shape: " + str(x_test.shape))
 print ("test_labels shape: " + str(y_test.shape))
 
-# base5 = VGG19(weights='imagenet', include_top=False, input_shape=(28, 28, 3))  
-
-# # Freeze convolutional layers
-# for layer in base5.layers:
-#     layer.trainable = False  
-
-# NN_transfer_5 = Sequential(
-#                         [InputLayer(input_shape=(28,28,3)),
-#                          base5,
-#                          Flatten(),  # should be fine , or add layers
-#                          Dense(128, activation='relu'),
-#                          Dense(64, activation='relu'),
-#                          Dense(32, activation='relu'),   # 2 dense is must bcuz VGG16 model Conv2D twice and Maxpooling -> get a lot more features
-#                          Dense(1, activation='sigmoid')]
-#                        )
-
 MY_CNN = Sequential([
-  Conv2D(16, 3, activation='relu', padding='same', input_shape=(28,28,3)),
+  Conv2D(16, 3, padding='same', input_shape=(28,28,3)),
   BatchNormalization(),
+  Activation('relu'),
   MaxPooling2D(pool_size=(2,2), strides=(2,2)),
-  Conv2D(32, 3, activation='relu', padding='same'),
+  Conv2D(32, 3, padding='same'),
   BatchNormalization(),
+  Activation('relu'),
   MaxPooling2D(pool_size=(2,2), strides=(2,2)),
-  Conv2D(64, 3, activation='relu', padding='same'),
+  Conv2D(64, 3, padding='same'),
   BatchNormalization(),
+  Activation('relu'),
   MaxPooling2D(pool_size=(2,2), strides=(2,2)),
-  Conv2D(128, 3, activation='relu', padding='same'),
+  Conv2D(128, 3, padding='same'),
   BatchNormalization(),
+  Activation('relu'),
   MaxPooling2D(pool_size=(2,2), strides=(2,2)),
   Flatten(),
-  Dense(64, activation='relu'),
-    
+  Dense(200, activation='relu'),
+
   Dense(2, activation= 'softmax')
 ])
 
-MY_CNN.compile(loss='sparse_categorical_crossentropy',optimizer='adam',metrics=['accuracy'])
+opt = Adam(lr=0.0001)
+
+MY_CNN.compile(loss='sparse_categorical_crossentropy',optimizer=opt,metrics=['accuracy'])
 print(MY_CNN.summary())
-cnn_model = MY_CNN.fit(x_train, y_train, epochs=14, validation_data=(x_val,y_val), verbose=1)
+cnn_model = MY_CNN.fit(x_train, y_train, epochs=22, validation_data=(x_val,y_val), verbose=1)
 
 # Evaluate model
 plt.plot(cnn_model.history['acc'], label='accuracy')
