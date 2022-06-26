@@ -1,5 +1,7 @@
 Requirements:
-    - Anaconda Environment - https://docs.anaconda.com/anaconda/install/windows/
+    - Anaconda Environment 
+        Windows - https://docs.anaconda.com/anaconda/install/windows/
+        Mac OS - https://docs.anaconda.com/anaconda/install/mac-os/
     - NVIDIA Graphic Card (with CUDA ability)
 
 Installation Guide:
