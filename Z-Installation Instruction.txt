@@ -1,0 +1,20 @@
+Requirements:
+    - Anaconda Environment - https://docs.anaconda.com/anaconda/install/windows/
+    - NVIDIA Graphic Card (with CUDA ability)
+
+Installation Guide:
+    1. Ensure your device had fulfilled the requirements above.
+    2. Open new terminal and navigate to current code folder directory.
+    3. In the terminate type in 'conda env create -f conda-gpu.yml' without the quotes to create a new interpreter environment for initiate the system.
+       (Recreate the environment if encountered errors, please uninstall and re-install the environment)
+       ('conda env remove -n conda-cuda-gpu' -> to uninstall the environment, then 'conda env create -f conda-gpu.yml' again to install the environment)
+    4. After successful creation of environment, change the current IDE interpreter environment to the conda-cdu-gpu.
+    5. Run eVision.py file to initiate the system.
+    6. Web browser will be popped up to ask to log in to any google email credential.
+    7. After entered the valid credential, click on 'Advanced' and click on 'Go to e-Vision Desktop App'.
+    8. Then, allow access by click on 'Continue' button.
+    9. Once completed, the e-Vision application will be able to run successfully. (Can continue login with valid credential of e-Vision)
+
+e-Vision Master Admin Credential:
+    Email: evisionmalaysia@gmail.com
+    Password: admin1010
