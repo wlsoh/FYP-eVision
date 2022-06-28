@@ -2,6 +2,7 @@
 # Intake: UC3F2111CS(IS)
 # Program Name: Main GUI Integration
 # Date Created: 05/05/2022
+
 import os, io, re, secrets, string, pymysql, glob, cv2
 import pandas as pd
 import customtkinter
@@ -1324,6 +1325,7 @@ def mainPage():
                 evidence_list = glob.glob(path_loc)
                 cur_cam_id = cam_detaillist[cur_cctv_idx][0]
                 timenow = datetime.now()
+                timenow = timenow.strftime("%Y-%m-%d %H:%M:%S")
                 
                 # Submit an accident detected (Threading -> work in bg)
                 Thread(target=recordaccident, args=(evidence_list, cur_cam_id, timenow, cam_detaillist[cur_cctv_idx][1], cam_detaillist[cur_cctv_idx][2], cam_detaillist[cur_cctv_idx][3])).start()
