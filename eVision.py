@@ -535,7 +535,10 @@ def loading(win):
 
 # Logout function
 def logout():
-    global usession, passwordShown
+    global usession, passwordShown, det_model
+    stop_cctv_log()
+    if 'det_model' in globals():
+        del det_model
     del usession # Delete user session
     # Clear all files in temp folder
     dir = './temp'
@@ -789,6 +792,20 @@ def login(eloc, ploc, eml_error, pas_error):
                     eloc.focus()
                     messagebox.showerror("Login Failed", "Your e-Vision account had been deactivated! Please contact company's Admin for assistance.")
                 else:
+                    dir = './temp'
+                    dont_remove = '.gitignore'
+                    for f in os.listdir(dir):
+                        if f != dont_remove:
+                            os.remove(os.path.join(dir, f))
+                    dir1 = './temp_accidetect'
+                    for g in os.listdir(dir1):
+                        if g != dont_remove:
+                            os.remove(os.path.join(dir1, g))
+                    dir2 = './cctv_contents'
+                    for h in os.listdir(dir2):
+                        if h != dont_remove:
+                            os.remove(os.path.join(dir2, h))
+                    
                     usession = Usersession(
                         result_details[0][0], 
                         result_details[0][1], 
@@ -1115,7 +1132,7 @@ def forgetpassPage():
 #==============================================================================================#
 ## Main Page Interface
 def mainPage():
-    global frm_update, stop_flag, load_accilist
+    global frm_update, stop_flag, load_accilist, stop_cctv_log
     stop_flag = True
     
     ## Function & Validation List for Main Page
@@ -1352,7 +1369,7 @@ def mainPage():
                 sql = '''SELECT * FROM Camera'''
                 result_details = mysql_con.queryall(sql)
             else:
-                sql = '''SELECT * FROM Camera c, User_Camera uc WHERE c.cam_id = uc.cam_id AND uc.user_id = (%s)'''
+                sql = '''SELECT * FROM Camera c, User_Camera uc WHERE c.cam_id = uc.cam_id AND c.cam_isDelete = 0 AND uc.user_id = (%s)'''
                 result_details = mysql_con.queryall(sql, (usession.user_id))
             if result_details:
                 cam_list = []
@@ -1386,9 +1403,43 @@ def mainPage():
             mainWindow.update()
             vmain.pack(anchor='c', expand=TRUE)
             
-            rslt = get_resources()
-            
-            if rslt:
+            dir = './cctv_contents'
+            allfiles = os.listdir(dir)
+            files = [ fname for fname in allfiles if fname.endswith('.mp4')]
+            if len(files) <= 0:
+                rslt = get_resources()
+                
+                if not rslt:
+                    loading_splash.destroy()
+                    messagebox.showerror("Invalid CCTV Operation", "No existing CCTV had been assigned to you! Please contact Admin for more info.")
+                    mainWindow.attributes('-disabled', 0)
+                    
+                    return False
+                else:
+                    stop_flag = False
+                
+                    # Video path
+                    src_path = os.path.abspath('cctv_contents/')
+                    ext = ('*.mp4', '*.avi')
+                    cctv_list = []
+                    for cctv_ext in ext:
+                        cctv_list.extend(glob.glob(os.path.join(src_path, cctv_ext)))
+                    cur_cctv_idx = 0
+                        
+                    # Inititate detection model
+                    vdet_model_path = os.path.abspath('v_detect_track/retinanet_vdet_model.h5')
+                    det_model = fused_accident_detection(vdet_model_path, cctv_list[cur_cctv_idx])
+                    
+                    # Set the label of CCTV
+                    camera_list.config(text="Camera List: {}/{}".format((cur_cctv_idx + 1), len(cctv_list)))
+                    camera_id.config(text="Camera ID: {}".format(cam_detaillist[cur_cctv_idx][0]))
+                    camera_loc.config(text="Location: {}, {}".format(cam_detaillist[cur_cctv_idx][2], cam_detaillist[cur_cctv_idx][3]))
+                    
+                    # Start monitoring
+                    frm_update()
+                    loading_splash.destroy()
+                    mainWindow.attributes('-disabled', 0)
+            else:
                 stop_flag = False
                 
                 # Video path
@@ -1412,10 +1463,6 @@ def mainPage():
                 frm_update()
                 loading_splash.destroy()
                 mainWindow.attributes('-disabled', 0)
-            else:
-                loading_splash.destroy()
-                messagebox.showerror("Invalid CCTV Operation", "No existing CCTV had been assigned to you! Please contact Admin for more info.")
-                mainWindow.attributes('-disabled', 0)
     # Stop CCTV function
     def stop_cctv():
         global stop_flag, cur_cctv_idx, cctv_list
@@ -1436,11 +1483,32 @@ def mainPage():
             det_model.total_frames = 0
             det_model.accident_frame = 0
             det_model.acci_period_frame = 0
-            dir = './cctv_contents'
-            dont_remove = '.gitignore'
-            for h in os.listdir(dir):
-                if h != dont_remove:
-                    os.remove(os.path.join(dir, h))
+            # del det_model
+            
+            # Set the label of CCTV
+            camera_list.config(text="Camera List:")
+            camera_id.config(text="Camera ID:")
+            camera_loc.config(text="Location:")
+    # Stop CCTV function
+    def stop_cctv_log():
+        global stop_flag, cur_cctv_idx, cctv_list
+        
+        if stop_flag:
+            pass
+        else:
+            stop_flag = True
+            det_model.__del__()
+            vmain.imgtk = ""
+            vmain.config(image="")
+            vmain.pack_forget()
+            cur_cctv_idx = 0
+            cctv_list = []
+            det_model.isInit_frame = True
+            det_model.prev_frame_objs = []
+            det_model.cur_frame_objs = []
+            det_model.total_frames = 0
+            det_model.accident_frame = 0
+            det_model.acci_period_frame = 0
             # del det_model
             
             # Set the label of CCTV
