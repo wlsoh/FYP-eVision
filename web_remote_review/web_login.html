@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>e-Vision Login</title>
+    <link rel="shortcut icon" href="web_asset/logo.png" type="image/x-icon" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css?family=Acme&display=swap" rel="stylesheet">
+    <script src="https://kit.fontawesome.com/3a53c435df.js" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/js/bootstrap.min.js"></script>
+
+    <style>
+        /*style for animated background*/
+        .animated-bg{
+            min-width: 100%;
+            min-height: 100vh;
+            background: linear-gradient(-45deg, #EE7752, #E73C7E, #23A6D5, #23D5AB);
+            background-size: 400% 400%;
+            animation: change 10s ease-in-out infinite;
+            padding-top: 40px;
+            padding-bottom: 40px;
+            font-family: 'Acme', sans-serif;
+            color: white;
+        }
+        @keyframes change{
+            0%{
+                background-position: 0 50%;
+            }
+            50%{
+                background-position: 100% 50%;
+            }
+            100%{
+                background-position: 0 50%;
+            }
+        }
+        #card {
+            /* Add shadows to create the "card" effect */
+            box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
+            transition: 0.3s;
+            background-color: #343A40;
+            width: 40vw;
+            margin: auto;
+            padding: 3%;
+            box-shadow: 0 12px 32px 0 lightblue;
+        }
+        .form-test {
+            margin: 30px 0px 20px 0px;
+        }
+        @media only screen and (min-width: 1080px) and (max-width: 1280px) {
+            #card {
+                width: 50vw;
+            }
+        }
+        @media only screen and (min-width: 850px) and (max-width: 1079px) {
+            #card {
+                width: 60vw;
+            }
+        }
+        @media only screen and (min-width: 600px) and (max-width: 849px) {
+            #card {
+                width: 70vw;
+            }
+        }
+        @media only screen and (max-width: 599px) {
+            #card {
+                width: 85%;
+            }
+            .form-test {
+                margin: 30px 10px 30px 10px;
+            }
+        }
+    </style>
+    <script>
+        function getQueryVariable(variable) { 
+            var query = window.location.search.substring(1); 
+            var vars = query.split("&"); 
+            for (var i=0; i < vars.length; i++) { 
+                var pair = vars[i].split("="); 
+                if (pair[0] == variable) { 
+                    return pair[1]; 
+                }
+            } 
+        }
+
+        function onLoad() {
+            var value = getQueryVariable("aid");
+            var e = document.getElementById('fetch');
+            e.value = value;
+        }
+    </script>
+  </head>
+
+  <body onload="onLoad()">
+    <section class="animated-bg">
+      <div class="container-fluid" id="card">
+        <div class="text-center" style="padding: 15px;">
+            <img src="web_asset/logo_round.png" class="rounded">
+        </div>
+        <p class="h2 text-center" style="margin-top: 20px;">Remote Review Login</p>
+        <form action="web_login.php" method="POST" class="form-test needs-validation" novalidate>
+            <div class="input-group mb-3">
+                <span class="input-group-text" id="basic-addon1" for="validationCustom03">Email</span>
+                <input type="email" class="email form-control" placeholder="Email" aria-label="email" aria-describedby="basic-addon1" name="email" id="validationCustom03" required pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,4}$">
+                <div class="invalid-feedback">
+                    Invalid Field!
+                </div>
+            </div>
+            <div class="input-group mb-3" id="show_hide_password">
+                <span class="input-group-text" id="basic-addon1" for="validationCustom03">Password</span>
+                <input type="password" class="form-control" placeholder="Password" aria-label="password" aria-describedby="basic-addon1" name="password" id="validationCustom03" required>
+                <span class="input-group-text" id="basic-addon1" for="validationCustom03"><a href=""><i class="fa fa-eye-slash" aria-hidden="true"></i></span>
+                <div class="invalid-feedback">
+                    Invalid Empty Field!
+                </div>
+            </div>
+            <input type="text" class="form-control" id="fetch" aria-label="params" aria-describedby="basic-addon1" name="params" readonly hidden>
+            <input class="btn btn-primary" type="submit" value="Login" style="width: 100%; margin-top: 5px;">
+        </form>
+      </div>
+    </section>
+
+    <script>
+        (() => {
+        'use strict'
+
+        // Fetch all the forms we want to apply custom Bootstrap validation styles to
+        const forms = document.querySelectorAll('.needs-validation')
+
+        // Loop over them and prevent submission
+        Array.from(forms).forEach(form => {
+            form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+                event.preventDefault()
+                event.stopPropagation()
+            }
+
+            form.classList.add('was-validated')
+            }, false)
+        })
+        })()
+
+        $(document).ready(function() {
+            $("#show_hide_password a").on('click', function(event) {
+                event.preventDefault();
+                if($('#show_hide_password input').attr("type") == "text"){
+                    console.log(1);
+                    $('#show_hide_password input').attr('type', 'password');
+                    $('#show_hide_password i').addClass( "fa-eye-slash" );
+                    $('#show_hide_password i').removeClass( "fa-eye" );
+                }else if($('#show_hide_password input').attr("type") == "password"){
+                    console.log(2);
+                    $('#show_hide_password input').attr('type', 'text');
+                    $('#show_hide_password i').removeClass( "fa-eye-slash" );
+                    $('#show_hide_password i').addClass( "fa-eye" );
+                }
+            });
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.5/dist/umd/popper.min.js" integrity="sha384-Xe+8cL9oJa6tN/veChSP7q+mnSPaj5Bcu9mPX5F5xIGE0DVittaqT5lorf0EI7Vk" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/js/bootstrap.bundle.min.js" integrity="sha384-pprn3073KE6tl6bjs2QrFaJGz5/SUsLqktiwsUTF55Jfv3qYSDhgCecCxMW52nD2" crossorigin="anonymous"></script>
+  </body>
+
+</html>
