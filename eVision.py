@@ -1298,6 +1298,19 @@ def mainPage():
         finally:
             # Close the connection
             mysql_con.close()
+            
+        try:
+            mysql_con1 = MySqlConnector(sql_config) # Initial connection
+            sql1 = '''SELECT acci_id FROM DetectedAccident WHERE cam_id = (%s) AND acci_datetime = (%s) AND acci_proof = (%s)'''
+            result_details = mysql_con1.queryall(sql1, (cam_id, datetime_now, converted))
+            if result_details:
+                aid = result_details[0][0]
+        except pymysql.Error as e:
+            print("Error %d: %s" % (e.args[0], e.args[1]))
+            return False
+        finally:
+            # Close the connection
+            mysql_con1.close()
         
         # Clear all files in temp folder
         to_del = [os.path.basename(s) for s in acci_evidences]
@@ -1308,7 +1321,7 @@ def mainPage():
                 
         # Send an email notification to current user (in case away)
         receiver = [usession.user_email]
-        send = mail_accidetected(receiver, cam_id, street, city, state, datetime_now)
+        send = mail_accidetected(receiver, cam_id, street, city, state, datetime_now, aid)
         if send:
             e_suc = True
         else:
