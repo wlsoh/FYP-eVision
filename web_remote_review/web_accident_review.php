@@ -197,8 +197,8 @@
           </div>
           <input type="text" class="form-control" placeholder="Staff ID" aria-label="acci_datetime" aria-describedby="basic-addon1" value="<?php echo $_SESSION['userid'];?>" name="uid" hidden readonly>
           <div class="d-grid gap-2" style="margin: 10px 0px 20px 0px;">
-            <input class="btn btn-warning" type="submit" value="Mark Accident Resolved" name="action" />
-            <input class="btn btn-primary" type="submit" value="Mark Non Accident" name="action" />
+            <input class="btn btn-warning" type="submit" value="Mark Accident Resolved" name="action" onclick="return confirm('Are you sure to mark as accident and resolved?')"/>
+            <input class="btn btn-primary" type="submit" value="Mark Non Accident" name="action" onclick="return confirm('Are you sure to mark as non accident?')"/>
           </div>
         </form>
       </div>
