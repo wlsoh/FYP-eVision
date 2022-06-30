@@ -58,39 +58,6 @@
         padding: 3%;
         box-shadow: 0 12px 32px 0 lightblue;
       }
-      <?php
-          $fill = scandir('./web_evidence/');
-          $g = 0;
-          foreach($fill as $file) {
-              if($file !== "." && $file !== ".." && $file !== ".gitignore") {
-                echo "#myImg$g {
-                        border-radius: 5px;
-                        cursor: pointer;
-                        transition: 0.3s;
-                      }
-                
-                      #myImg$g:hover {opacity: 0.7;}
-                
-                      .close$g {
-                        position: absolute;
-                        top: 15px;
-                        right: 35px;
-                        color: #f1f1f1;
-                        font-size: 40px;
-                        font-weight: bold;
-                        transition: 0.3s;
-                      }
-                
-                      .close$g:hover,
-                      .close$g:focus {
-                        color: #bbb;
-                        text-decoration: none;
-                        cursor: pointer;
-                      }";
-                $g += 1;
-              }
-          }
-      ?>
       .modal {
         display: none;
         position: fixed;
@@ -123,6 +90,40 @@
         }
       }
     </style>
+    <?php
+        $fill = scandir('./web_evidence/');
+        $g = 0;
+        foreach($fill as $file) {
+            if($file !== "." && $file !== ".." && $file !== ".gitignore") {
+              echo "<style>
+                      #myImg$g {
+                      border-radius: 5px;
+                      cursor: pointer;
+                      transition: 0.3s;
+                    }
+              
+                    #myImg$g:hover {opacity: 0.7;}
+              
+                    .close$g {
+                      position: absolute;
+                      top: 15px;
+                      right: 35px;
+                      color: #f1f1f1;
+                      font-size: 40px;
+                      font-weight: bold;
+                      transition: 0.3s;
+                    }
+              
+                    .close$g:hover,
+                    .close$g:focus {
+                      color: #bbb;
+                      text-decoration: none;
+                      cursor: pointer;
+                    }</style>";
+              $g += 1;
+            }
+        }
+    ?>
   </head>
 
   <body>
