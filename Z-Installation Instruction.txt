@@ -1,21 +1,35 @@
 Requirements:
+    - Device with NVIDIA Graphic Card (with CUDA ability)
+    - Visual Studio Code
+        System version - https://code.visualstudio.com/download
+    - Microsoft C++ Build Tools
+        https://visualstudio.microsoft.com/visual-cpp-build-tools/
+    - Python interpreter
+        https://www.python.org/downloads/release/python-391/
     - Anaconda Environment 
         Windows - https://docs.anaconda.com/anaconda/install/windows/
         Mac OS - https://docs.anaconda.com/anaconda/install/mac-os/
-    - NVIDIA Graphic Card (with CUDA ability)
+    - Microsoft Visual C++ 2015 Redistrubutable Update 3
+        https://visualstudio.microsoft.com/vs/older-downloads/#microsoft-visual-c-2015-redistributable-update-3
+    - Install PIP and add to windows environment variables
+        https://phoenixnap.com/kb/install-pip-windows
 
 Installation Guide:
     1. Ensure your device had fulfilled the requirements above.
-    2. Open new terminal and navigate to current code folder directory.
+    2. Open new vs code terminal and navigate to current code folder directory.
     3. In the terminate type in 'conda env create -f conda-gpu.yml' without the quotes to create a new interpreter environment for initiate the system.
        (Recreate the environment if encountered errors, please uninstall and re-install the environment)
        ('conda env remove -n conda-cuda-gpu' -> to uninstall the environment, then 'conda env create -f conda-gpu.yml' again to install the environment)
     4. After successful creation of environment, change the current IDE interpreter environment to the conda-cdu-gpu.
-    5. Run eVision.py file to initiate the system.
-    6. Web browser will be popped up to ask to log in to any google email credential.
-    7. After entered the valid credential, click on 'Advanced' and click on 'Go to e-Vision Desktop App'.
-    8. Then, allow access by click on 'Continue' button.
-    9. Once completed, the e-Vision application will be able to run successfully. (Can continue login with valid credential of e-Vision)
+    5. Back to vscode terminate, cd to keras-retinanet-library folder
+    6. Install the keras-retinanet-lirbrary using 'pip install . --user' and 'python setup.py build_ext --inplace'
+    7. Run eVision.py file to initiate the system.
+    8. Web browser will be popped up to ask to log in to any google email credential.
+    9. After entered the valid credential, click on 'Advanced' and click on 'Go to e-Vision Desktop App'.
+    10. Then, allow access by click on 'Continue' button.
+    11. Once completed, the e-Vision application will be able to run successfully. (Can continue login with valid credential of e-Vision)
+
+    Note: any extra initiation package errors, can use pip install to resolve.
 
 e-Vision Master Admin Credential:
     Email: evisionmalaysia@gmail.com
