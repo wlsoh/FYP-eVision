@@ -47,6 +47,7 @@ class object_tracker:
         Index 3: Midpoint of object over previous 5 consecutive frames (double-ended queue structure)
         Index 4: Points to the new obj according to old obj assigned (array structure) -> avoid conflict within tracked objs
         Index 5: Magnitude of object vectore in prev frame
+        Index 6: Bounding box info
     '''
     def arr_cur_objs(self, prev_objs, cur_objs):
         # Reset all the indexes for multiple time calling of function

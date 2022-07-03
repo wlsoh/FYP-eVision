@@ -137,6 +137,7 @@ class fused_accident_detection:
                 Index 3: Midpoint of object over previous 5 consecutive frames (double-ended queue structure)
                 Index 4: Points to the new obj according to old obj assigned (array structure) -> avoid conflict within tracked objs
                 Index 5: Magnitude of object vectore in prev frame
+                Index 6: Bounding box info
             '''
             # Accident Detection (magnitude anomaly, classification) -> current frame
             isAcci_sus = False
