@@ -1341,6 +1341,7 @@ def mainPage():
             frm = ImageTk.PhotoImage(frm)
             vmain.imgtk = frm
             vmain.config(image=frm)
+            mainWindow.update()
             
             # If accident detected, do something
             if acci_overperiod > 0:
