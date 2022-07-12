@@ -1389,7 +1389,7 @@ def mainPage():
                 cam_list = []
                 cam_detaillist = []
                 for i in result_details:
-                    temp = [i[0], i[4], i[5], i[6]]
+                    temp = [i[0], i[4], i[5], i[6], i[3]]
                     cam_detaillist.append(temp)
                     cam_list.append(i[3])
                 
@@ -1439,10 +1439,16 @@ def mainPage():
                     for cctv_ext in ext:
                         cctv_list.extend(glob.glob(os.path.join(src_path, cctv_ext)))
                     cur_cctv_idx = 0
-                        
+                    
+                    for x in cctv_list:
+                        head, tail = os.path.split(x)
+                        if tail == (str(cam_detaillist[cur_cctv_idx][4]) + ".mp4") or tail == (str(cam_detaillist[cur_cctv_idx][4]) + ".avi"):
+                            cur_vid = x
+                            break
+                    
                     # Inititate detection model
                     vdet_model_path = os.path.abspath('v_detect_track/retinanet_vdet_model.h5')
-                    det_model = fused_accident_detection(vdet_model_path, cctv_list[cur_cctv_idx])
+                    det_model = fused_accident_detection(vdet_model_path, cur_vid)
                     
                     # Set the label of CCTV
                     camera_list.config(text="Camera List: {}/{}".format((cur_cctv_idx + 1), len(cctv_list)))
@@ -1463,10 +1469,16 @@ def mainPage():
                 for cctv_ext in ext:
                     cctv_list.extend(glob.glob(os.path.join(src_path, cctv_ext)))
                 cur_cctv_idx = 0
+                
+                for x in cctv_list:
+                        head, tail = os.path.split(x)
+                        if tail == (str(cam_detaillist[cur_cctv_idx][4]) + ".mp4") or tail == (str(cam_detaillist[cur_cctv_idx][4]) + ".avi"):
+                            cur_vid = x
+                            break
                     
                 # Inititate detection model
                 vdet_model_path = os.path.abspath('v_detect_track/retinanet_vdet_model.h5')
-                det_model = fused_accident_detection(vdet_model_path, cctv_list[cur_cctv_idx])
+                det_model = fused_accident_detection(vdet_model_path, cur_vid)
                 
                 # Set the label of CCTV
                 camera_list.config(text="Camera List: {}/{}".format((cur_cctv_idx + 1), len(cctv_list)))
@@ -1554,7 +1566,12 @@ def mainPage():
             # If dont have prev cctv (circular playback)
             if (cur_cctv_idx < 0):
                 cur_cctv_idx = len(cctv_list) - 1
-            det_model.src = cctv_list[cur_cctv_idx]
+            for x in cctv_list:
+                head, tail = os.path.split(x)
+                if tail == (str(cam_detaillist[cur_cctv_idx][4]) + ".mp4") or tail == (str(cam_detaillist[cur_cctv_idx][4]) + ".avi"):
+                    cur_vid = x
+                    break
+            det_model.src = cur_vid
             det_model.video = cv2.VideoCapture(det_model.src)
                     
             # Set the label of CCTV
@@ -1580,7 +1597,12 @@ def mainPage():
             # If dont have next cctv (circular playback)
             if (cur_cctv_idx >= len(cctv_list)):
                 cur_cctv_idx = 0
-            det_model.src = cctv_list[cur_cctv_idx]
+            for x in cctv_list:
+                head, tail = os.path.split(x)
+                if tail == (str(cam_detaillist[cur_cctv_idx][4]) + ".mp4") or tail == (str(cam_detaillist[cur_cctv_idx][4]) + ".avi"):
+                    cur_vid = x
+                    break
+            det_model.src = cur_vid
             det_model.video = cv2.VideoCapture(det_model.src)
             det_model.total_frames = 0
             det_model.accident_frame = 0
