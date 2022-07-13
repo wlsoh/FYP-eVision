@@ -1208,7 +1208,7 @@ def mainPage():
         try:
             mysql_con = MySqlConnector(sql_config) # Initial connection
             if usession.user_role == 1:
-                sql = '''SELECT * FROM DetectedAccident da, Camera c WHERE c.cam_id = da.cam_id'''
+                sql = '''SELECT * FROM DetectedAccident da, Camera c WHERE c.cam_id = da.cam_id ORDER BY da.acci_id ASC'''
                 result_details = mysql_con.queryall(sql)
                 if result_details:
                     success = True
@@ -1229,7 +1229,7 @@ def mainPage():
                     found1 = False
                     found2 = False
             else:
-                sql = '''SELECT * FROM User_Camera uc, DetectedAccident da, Camera c WHERE uc.cam_id = da.cam_id AND uc.cam_id = c.cam_id AND uc.user_id = (%s)'''
+                sql = '''SELECT * FROM User_Camera uc, DetectedAccident da, Camera c WHERE uc.cam_id = da.cam_id AND uc.cam_id = c.cam_id AND uc.user_id = (%s) ORDER BY da.acci_id ASC'''
                 result_details = mysql_con.queryall(sql, (usession.user_id))
                 if result_details:
                     success = True
@@ -1388,7 +1388,7 @@ def mainPage():
                 sql = '''SELECT * FROM Camera WHERE cam_isDelete = 0'''
                 result_details = mysql_con.queryall(sql)
             else:
-                sql = '''SELECT * FROM Camera c, User_Camera uc WHERE c.cam_id = uc.cam_id AND c.cam_isDelete = 0 AND uc.user_id = (%s)'''
+                sql = '''SELECT * FROM Camera c, User_Camera uc WHERE c.cam_id = uc.cam_id AND c.cam_isDelete = 0 AND uc.user_id = (%s) ORDER BY c.cam_id ASC'''
                 result_details = mysql_con.queryall(sql, (usession.user_id))
             if result_details:
                 cam_list = []
