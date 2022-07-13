@@ -43,7 +43,6 @@ CLIENT_SECRET_FILE = 'client_secret.json'
 API_NAME = 'drive'
 API_VERSION = 'v3'
 SCOPES = ['https://www.googleapis.com/auth/drive']
-service = Create_Service(CLIENT_SECRET_FILE, API_NAME, API_VERSION, SCOPES)
 folder_id = '18aJTxbazV-zxcygJQ4E9qIu1f1bwAAWH'
 
 
@@ -587,6 +586,7 @@ def backmain(cur):
 # Download image from cloud storage function
 def getimg(fileid):
     # Download the uploaded file
+    service = Create_Service(CLIENT_SECRET_FILE, API_NAME, API_VERSION, SCOPES)
     file_ids = [fileid]
     file_names = [fileid + '.png']
 
@@ -609,6 +609,7 @@ def getimg(fileid):
 # Download video from cloud storage function
 def getvideo(fileid):
     # Download the uploaded file
+    service = Create_Service(CLIENT_SECRET_FILE, API_NAME, API_VERSION, SCOPES)
     file_ids = [fileid]
     file_names = [fileid + '.mp4']
 
@@ -631,6 +632,7 @@ def getvideo(fileid):
 # Upload image to cloud storage function
 def uploadimg(filepath):
     # Upload a file to folder
+    service = Create_Service(CLIENT_SECRET_FILE, API_NAME, API_VERSION, SCOPES)
     file_names = [filepath]
     mime_types = ['image/jpg ']
 
@@ -651,6 +653,7 @@ def uploadimg(filepath):
 # Upload cideo to cloud storage function
 def uploadvid(filepath):
     # Get name and type
+    service = Create_Service(CLIENT_SECRET_FILE, API_NAME, API_VERSION, SCOPES)
     head, tail = os.path.split(filepath)
     component = tail.split(".")
     
@@ -677,6 +680,7 @@ def uploadvid(filepath):
 
 # Delete existing file
 def deletefile(fileid):
+    service = Create_Service(CLIENT_SECRET_FILE, API_NAME, API_VERSION, SCOPES)
     file_id = fileid
     if(file_id != "1cqBLIEBhkWQ1qmRSi1UehZ7pYKeGQm8e"):
         service.files().delete(fileId=file_id).execute()
@@ -684,6 +688,7 @@ def deletefile(fileid):
 # Get the latest file ID
 def getfilelist():
     # Get list of file
+    service = Create_Service(CLIENT_SECRET_FILE, API_NAME, API_VERSION, SCOPES)
     query = f"parents = '{folder_id}'"
     response = service.files().list(q=query).execute()
     files = response.get('files')
@@ -1380,7 +1385,7 @@ def mainPage():
         try:
             mysql_con = MySqlConnector(sql_config) # Initial connection
             if usession.user_role == 1:
-                sql = '''SELECT * FROM Camera'''
+                sql = '''SELECT * FROM Camera WHERE cam_isDelete = 0'''
                 result_details = mysql_con.queryall(sql)
             else:
                 sql = '''SELECT * FROM Camera c, User_Camera uc WHERE c.cam_id = uc.cam_id AND c.cam_isDelete = 0 AND uc.user_id = (%s)'''
@@ -1510,6 +1515,11 @@ def mainPage():
             det_model.accident_frame = 0
             det_model.acci_period_frame = 0
             # del det_model
+            dont_remove = '.gitignore'
+            dir1 = './temp_accidetect'
+            for g in os.listdir(dir1):
+                if g != dont_remove:
+                    os.remove(os.path.join(dir1, g))
             
             # Set the label of CCTV
             camera_list.config(text="Camera List:")
@@ -4624,6 +4634,11 @@ def cammanagementPage():
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)''' # Insert Camera
                     insert = mysql_con.update(sql, (cam_desc, cam_type, temp_id, cam_street, cam_city, cam_state, cam_latitude, cam_longitude,))
                     if insert > 0:
+                        dir = './cctv_contents'
+                        dont_remove = '.gitignore'
+                        for h in os.listdir(dir):
+                            if h != dont_remove:
+                                os.remove(os.path.join(dir, h))
                         refreshcamlist()
                         cid_text.config(state='normal')
                         street_text.config(state='normal')
@@ -4787,7 +4802,13 @@ def cammanagementPage():
                         uploadvid(tempsourcepath)
                         temp_id = getfilelist()
                         deletefile(tempselectedcam[9])
-                                
+                        
+                        dir = './cctv_contents'
+                        dont_remove = '.gitignore'
+                        for h in os.listdir(dir):
+                            if h != dont_remove:
+                                os.remove(os.path.join(dir, h))
+                        
                         try:
                             mysql_con = MySqlConnector(sql_config) # Initial connection
                             sql = '''UPDATE Camera SET cam_desc = (%s), cam_type = (%s), cam_source = (%s), cam_street = (%s), cam_city = (%s), cam_state = (%s), cam_latitude = (%s), cam_longitude = (%s) WHERE cam_id = (%s)''' # Update camera info
@@ -4862,6 +4883,11 @@ def cammanagementPage():
                     sql = '''UPDATE Camera SET cam_isDelete = 1 WHERE cam_id = (%s)''' # Delete camera (soft delete)
                     delete = mysql_con.update(sql, (cam_id))
                     if delete > 0:
+                        dir = './cctv_contents'
+                        dont_remove = '.gitignore'
+                        for h in os.listdir(dir):
+                            if h != dont_remove:
+                                os.remove(os.path.join(dir, h))
                         # Refresh the list
                         refreshcamlist()
                         cid_text.config(state='normal')
@@ -4933,6 +4959,11 @@ def cammanagementPage():
                     sql = '''UPDATE Camera SET cam_isDelete = 0 WHERE cam_id = (%s)'''
                     active = mysql_con.update(sql, (cam_id))
                     if active > 0:
+                        dir = './cctv_contents'
+                        dont_remove = '.gitignore'
+                        for h in os.listdir(dir):
+                            if h != dont_remove:
+                                os.remove(os.path.join(dir, h))
                         # Refresh the list
                         refreshcamlist()
                         cid_text.config(state='normal')
