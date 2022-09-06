@@ -73,4 +73,4 @@ Potential Future Improvements:
 </ul>
 
 ## Setup Requirements & Installation Guide
-*** Please check the <a href="./Z-e-Vision Installation Setup Guidance.docx">installation guide file</a> for complete info. If the model file was corrupted, please check <a href="./Z-Source Note.txt">source file</a> for obtain the resources.
+*** Please check the <a href="./Z-e-Vision Installation Setup Guidance.docx">installation guide file</a> for complete info. If the model file was corrupted, please check <a href="./Z-Source Note.txt">source file</a> to obtain the resources.
