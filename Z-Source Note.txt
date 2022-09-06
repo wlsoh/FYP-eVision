@@ -1,0 +1,5 @@
+Dataset for vehicle detection model building - https://drive.google.com/drive/folders/14i8wqkVxjkubfzZW60FUzeLyo9fBwlYu?usp=sharing
+Dataset for accident model building - https://drive.google.com/drive/folders/16qFahJe-VrTqLaTc4o1bR167ibn4_XaU?usp=sharing
+
+Weight file for vehicle detection model - https://drive.google.com/file/d/1RCovY_YaSaV-ue4rQwhmLX5vzHRIt6XD/view?usp=sharing
+Weight file for CNN model - https://drive.google.com/file/d/1NCmk7Be3fqeV5nnJjoAJnrYkZULY0qNb/view?usp=sharing
