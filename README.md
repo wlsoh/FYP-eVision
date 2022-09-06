@@ -38,7 +38,7 @@
   <tr>
     <td>Actual Accident</td>
     <td>14</td>
-    <td>$3</td>
+    <td>3</td>
   </tr>
   <tr>
     <td>Actual Non-Accident</td>
