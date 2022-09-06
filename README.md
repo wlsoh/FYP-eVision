@@ -10,4 +10,12 @@ Individual Final Year Project (FYP) for Asia Pacific University (APU). A compute
 8) Camera source management & allocation
 
 ## Technical Approach Implementation
-![Alt text](./readme_img/approach_overview.png)
+<p align="center">
+  <img src="./readme_img/approach_overview.png" />
+</p>
+Instead of directly processing entire image frame to detect for traffic accidents, e-Vision implemented vehicle detection, vehicle tracking and accident detection phases in order to track every individual vehicle from the CCTV footage to monitor for accidents occurance. It cannot completely agreed that tracking individual vehicle able to provide more advantages as compared to processing entire frame because it depends on what kind of scenario that the system dealing with. However, such approach able to effectively track distinct vehicles that exist within the frame image with a great performance result.
+
+## Algorithms & Techniques Implementation
+<p align="center">
+  <img src="./readme_img/algorithms_applied.png" />
+</p>
