@@ -2,7 +2,7 @@
 <p align="center">
   <img src="./readme_img/Interface.png" />
 </p>
-<p>Individual Final Year Project (FYP) for Asia Pacific University (APU). A computer vision-based system that able to automatically detect for traffic accidents throughout the CCTV sources by utilizing CUDA technology and provide immediate report to the responsible authority. Equipped with a graphical desktop interface that provide the convenient usage for interacting with the system to utilize the functionalities provided. In addition, a web view functionality was provided for the remote reviewing usage of the detected accident. The overall core features of the e-Vision system are as following.</p>
+<p>Individual Final Year Project (FYP) for degree programme at Asia Pacific University (APU). A computer vision-based system that able to automatically detect for traffic accidents throughout the CCTV sources by utilizing CUDA technology and provide immediate report to the responsible authority. Equipped with a graphical desktop interface that provide the convenient usage for interacting with the system to utilize the functionalities provided. In addition, a web view functionality was provided for the remote reviewing usage of the detected accident. The overall core features of the e-Vision system are as following.</p>
 <ul>
   <li>Automatic traffic accident detection</li>
   <li>Record detected accident with evidence images</li>
