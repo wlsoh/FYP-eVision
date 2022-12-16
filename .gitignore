@@ -1,3 +1,6 @@
 keras-retinanet-library/custom_dataset
 __pycache__/
 .idea
+cctv_contents/
+temp/
+temp_accidetect/
